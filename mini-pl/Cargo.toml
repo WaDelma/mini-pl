@@ -1,0 +1,7 @@
+[package]
+name = "mini-pl"
+version = "0.1.0"
+authors = ["delma <delma@del.ma>"]
+
+[dependencies]
+parsco = {path = "../parsco"}
