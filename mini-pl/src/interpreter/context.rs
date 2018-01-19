@@ -11,12 +11,12 @@ pub struct Context<T> {
 impl<T> Context<T> {
     fn new() -> Self {
         Context {
-            scopes: vec![],
+            scopes: vec![HashMap::new()],
         }
     }
 
     fn create(&self, ident: Ident, value: T) -> Option<T>{
-        self.scopes.last().expect("Scopeless context").insert(ident, value)
+        self.scopes.last().unwrap().insert(ident, value)
     }
 
     fn get(&self, ident: Ident) -> Option<&T> {
