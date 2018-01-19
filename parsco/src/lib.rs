@@ -19,6 +19,13 @@ impl<'b, T: Parser> Parser for &'b T {
     }
 }
 
+impl Parser for () {
+    type Res = ();
+    fn parse<'a>(&self, s: &'a str) -> Option<(Self::Res, &'a str)> {
+        Some(((), s))
+    }
+}
+
 pub struct Wrapper<P>(P);
 
 impl<F, T> Parser for Wrapper<F>
@@ -94,11 +101,30 @@ impl<P1, P2> BitOr<P2> for Empty<P1> {
 
 impl<T> Parser for Empty<T> {
     type Res = T;
-    fn parse<'a>(&self, s: &'a str) -> Option<(Self::Res, &'a str)> {
+    fn parse<'a>(&self, _: &'a str) -> Option<(Self::Res, &'a str)> {
         None
     }
 }
 
 pub fn alt<P>() -> Empty<P> {
     Empty(PhantomData)
+}
+
+pub struct Opt<P> {
+    parser: P,
+}
+
+impl<P: Parser> Parser for Opt<P> {
+    type Res = Option<P::Res>;
+    fn parse<'a>(&self, s: &'a str) -> Option<(Self::Res, &'a str)> {
+        self.parser.parse(s)
+            .map(|(r, s)| (Some(r), s))
+            .or_else(|| Some((None, s)))
+    }
+}
+
+pub fn opt<P>(parser: P) -> Opt<P> {
+    Opt {
+        parser
+    }
 }

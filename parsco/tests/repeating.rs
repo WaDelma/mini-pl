@@ -1,5 +1,5 @@
 extern crate parsco;
-use parsco::{Parser, tag, many0, many1, list0};
+use parsco::{Parser, tag, many0, many1, list0, take_while};
 
 #[derive(Clone, Debug, PartialEq)]
 struct A;
@@ -99,3 +99,36 @@ fn list0_parses_many() {
 //         list1(",", tag("a", A)).parse("a,a,a,c")
 //     );
 // }
+
+#[test]
+fn take_while_zero() {
+    assert_eq!(
+        None,
+        take_while(|c| c == 'a').parse("c")
+    );
+}
+
+#[test]
+fn take_while_one() {
+    assert_eq!(
+        Some((String::from("a"), "c")),
+        take_while(|c| c == 'a').parse("ac")
+    );
+}
+
+#[test]
+fn take_while_many() {
+    assert_eq!(
+        Some((String::from("aaa"), "c")),
+        take_while(|c| c == 'a').parse("aaac")
+    );
+}
+
+
+#[test]
+fn take_while_end() {
+    assert_eq!(
+        Some((String::from("a"), "")),
+        take_while(|c| c == 'a').parse("a")
+    );
+}

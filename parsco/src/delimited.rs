@@ -46,3 +46,24 @@ pub fn terminated<P1, P2>(parser: P1, terminator: P2) -> Terminated<P1, P2> {
         terminator
     }
 }
+
+pub struct Delimited<P1, P2, P3> {
+    precedator: P1,
+    parser: P2,
+    terminator: P3,
+}
+
+impl<P1: Parser<Res=T1>, P2: Parser<Res=T2>, P3: Parser<Res=T3>, T1, T2, T3> Parser for Delimited<P1, P2, P3> {
+    type Res = T2;
+    fn parse<'a>(&self, s: &'a str) -> Option<(Self::Res, &'a str)> {
+        terminated(preceded(&self.precedator, &self.parser), &self.terminator).parse(s)
+    }
+}
+
+pub fn delimited<P1, P2, P3>(precedator: P1, parser: P2, terminator: P3) -> Delimited<P1, P2, P3> {
+    Delimited {
+        precedator,
+        parser,
+        terminator,
+    }
+}
