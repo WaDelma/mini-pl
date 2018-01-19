@@ -1,6 +1,8 @@
+use Ident;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
-    Identifier(String),
+    Identifier(Ident),
     Literal(Literal),
     Punctuation(Punctuation),
     Keyword(Keyword),

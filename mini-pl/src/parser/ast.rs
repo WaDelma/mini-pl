@@ -1,24 +1,25 @@
+use Ident;
 use lexer::tokens::Operator;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Stmt {
     Declaration {
-        ident: String,
+        ident: Ident,
         ty: Type,
         value: Option<Expr>,
     },
     Assignment {
-        ident: String,
+        ident: Ident,
         value: Expr,
     },
     Loop {
-        ident: String,
+        ident: Ident,
         from: Expr,
         to: Expr,
         stmts: Vec<Stmt>,
     },
     Read {
-        ident: String,
+        ident: Ident,
     },
     Print {
         expr: Expr,
@@ -46,7 +47,7 @@ pub enum Expr {
 pub enum Opnd {
     Int(i64),
     StrLit(String),
-    Ident(String),
+    Ident(Ident),
     Expr(Box<Expr>),
 }
 

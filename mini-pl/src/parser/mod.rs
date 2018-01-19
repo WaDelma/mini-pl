@@ -1,5 +1,6 @@
 use parsco::{Parser, many1, preceded, terminated, delimited, fun, one, alt, opt, map, fst};
 
+use Ident;
 use lexer::tokens::Token::*;
 use lexer::tokens::Punctuation::*;
 use lexer::tokens::Side::*;
@@ -154,7 +155,7 @@ pub fn opnd(ts: &[Token]) -> Option<(Opnd, &[Token])> {
     ).parse(ts)
 }
 
-pub fn ident(ts: &[Token]) -> Option<(String, &[Token])> {
+pub fn ident(ts: &[Token]) -> Option<(Ident, &[Token])> {
     fst().parse(ts)
         .and_then(|(t, s)| if let Identifier(ref t) = t {
             Some((t.clone(), s))
