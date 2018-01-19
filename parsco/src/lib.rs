@@ -1,38 +1,96 @@
-use std::marker::PhantomData;
-use std::ops::BitOr;
-
 pub use delimited::*;
 pub use repeating::*;
+pub use control::*;
 
+mod control;
 mod delimited;
 mod repeating;
 
-pub trait Parser {
-    type Res;
-    fn parse<'a>(&self, s: &'a str) -> Option<(Self::Res, &'a str)>;
+pub trait Parseable: Copy {
+    type Symbol;
+    fn len(self) -> usize;
+    fn is_empty(self) -> bool {
+        self.len() == 0
+    }
+    fn first(self) -> Option<Self::Symbol>;
+    fn starts_with(self, pat: &Self) -> bool;
+    fn split_at(self, i: usize) -> Option<(Self, Self)>;
 }
 
-impl<'b, T: Parser> Parser for &'b T {
+impl<'a> Parseable for &'a str {
+    type Symbol = char;
+
+    fn len(self) -> usize {
+        self.len()
+    }
+
+    fn first(self) -> Option<Self::Symbol> {
+        self.chars().next()
+    }
+
+    fn starts_with(self, pat: &Self) -> bool {
+        self.starts_with(pat)
+    }
+
+    fn split_at(self, i: usize) -> Option<(Self, Self)> {
+        if i <= self.len() {
+            Some(self.split_at(i))
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a, T: PartialEq + Clone> Parseable for &'a [T] {
+    type Symbol = T;
+
+    fn len(self) -> usize {
+        self.len()
+    }
+
+    fn first(self) -> Option<Self::Symbol> {
+       <[T]>::first(self).cloned()
+    }
+
+    fn starts_with(self, pat: &Self) -> bool {
+        self.starts_with(pat)
+    }
+
+    fn split_at(self, i: usize) -> Option<(Self, Self)> {
+        if i <= self.len() {
+            Some(self.split_at(i))
+        } else {
+            None
+        }
+    }
+}
+
+pub trait Parser<S: Parseable> {
+    type Res;
+    fn parse(&self, s: S) -> Option<(Self::Res, S)>;
+}
+
+impl<'b, T: Parser<S>, S: Parseable> Parser<S> for &'b T {
     type Res = T::Res;
-    fn parse<'a>(&self, s: &'a str) -> Option<(Self::Res, &'a str)> {
+    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
         (*self).parse(s)
     }
 }
 
-impl Parser for () {
+impl<S: Parseable> Parser<S> for () {
     type Res = ();
-    fn parse<'a>(&self, s: &'a str) -> Option<(Self::Res, &'a str)> {
+    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
         Some(((), s))
     }
 }
 
 pub struct Wrapper<P>(P);
 
-impl<F, T> Parser for Wrapper<F>
-    where F: for<'a> Fn(&'a str) -> Option<(T, &'a str)>
+impl<F, T, S: Parseable> Parser<S> for Wrapper<F>
+    where F: for<'a> Fn(S) -> Option<(T, S)>
 {
     type Res = T;
-    fn parse<'a>(&self, s: &'a str) -> Option<(Self::Res, &'a str)> {
+    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
         self.0(s)
     }
 }
@@ -41,90 +99,63 @@ pub fn fun<F>(f: F) -> Wrapper<F> {
     Wrapper(f)
 }
 
-pub struct Tag<T> {
-    tag: &'static str,
+pub struct Tag<T, S> {
+    tag: S,
     result: T,
 }
 
-impl<T: Clone> Parser for Tag<T> {
+impl<T: Clone, S: Parseable> Parser<S> for Tag<T, S> {
     type Res = T;
-    fn parse<'a>(&self, s: &'a str) -> Option<(Self::Res, &'a str)> {
-        if s.starts_with(self.tag) {
-            Some((self.result.clone(), &s[self.tag.len()..]))
+    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+        if s.starts_with(&self.tag) {
+            Some((self.result.clone(), s.split_at(self.tag.len()).unwrap().1))
         } else {
             None
         }
     }
 }
 
-pub fn tag<T>(tag: &'static str, result: T) -> Tag<T> {
+pub fn tag<T, S>(tag: S, result: T) -> Tag<T, S> {
     Tag {
         tag,
         result
     }
 }
 
-pub struct Alt<P1, P2> {
-    parser: P1,
-    rest: P2,
+pub struct One<S> {
+    symbol: S,
 }
 
-impl<P1, P2, P3> BitOr<P3> for Alt<P1, P2> {
-    type Output = Alt<Self, P3>;
-    fn bitor(self, lhs: P3) -> Self::Output {
-        Alt {
-            parser: self,
-            rest: lhs,
-        }
+impl<S: Parseable> Parser<S> for One<<S as Parseable>::Symbol>
+    where <S as Parseable>::Symbol: PartialEq + Clone
+{
+    type Res = S::Symbol;
+    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+        s.first()
+            .and_then(|f| if f == self.symbol {
+                Some((self.symbol.clone(), s.split_at(1).unwrap().1))
+            } else {
+                None
+            })
     }
 }
 
-impl<P1: Parser<Res=T>, P2: Parser<Res=T>, T> Parser for Alt<P1, P2> {
-    type Res = T;
-    fn parse<'a>(&self, s: &'a str) -> Option<(Self::Res, &'a str)> {
-        self.parser.parse(s)
-            .or_else(|| self.rest.parse(s))
+pub fn one<S>(symbol: S) -> One<S> {
+    One {
+        symbol
     }
 }
 
-pub struct Empty<T>(PhantomData<T>);
+pub struct Fst;
 
-impl<P1, P2> BitOr<P2> for Empty<P1> {
-    type Output = Alt<Self, P2>;
-    fn bitor(self, lhs: P2) -> Self::Output {
-        Alt {
-            parser: self,
-            rest: lhs,
-        }
+impl<S: Parseable> Parser<S> for Fst {
+    type Res = S::Symbol;
+    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+        take(1).parse(s)
+            .and_then(|(t, s)| t.first().map(|t| (t, s)))
     }
 }
 
-impl<T> Parser for Empty<T> {
-    type Res = T;
-    fn parse<'a>(&self, _: &'a str) -> Option<(Self::Res, &'a str)> {
-        None
-    }
-}
-
-pub fn alt<P>() -> Empty<P> {
-    Empty(PhantomData)
-}
-
-pub struct Opt<P> {
-    parser: P,
-}
-
-impl<P: Parser> Parser for Opt<P> {
-    type Res = Option<P::Res>;
-    fn parse<'a>(&self, s: &'a str) -> Option<(Self::Res, &'a str)> {
-        self.parser.parse(s)
-            .map(|(r, s)| (Some(r), s))
-            .or_else(|| Some((None, s)))
-    }
-}
-
-pub fn opt<P>(parser: P) -> Opt<P> {
-    Opt {
-        parser
-    }
+pub fn fst() -> Fst {
+    Fst
 }

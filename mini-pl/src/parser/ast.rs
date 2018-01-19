@@ -1,7 +1,7 @@
+use lexer::tokens::Operator;
 
-struct Stmts(Vec<Stmt>);
-
-enum Stmt {
+#[derive(Clone, Debug, PartialEq)]
+pub enum Stmt {
     Declaration {
         ident: String,
         ty: Type,
@@ -15,7 +15,7 @@ enum Stmt {
         ident: String,
         from: Expr,
         to: Expr,
-        stmts: Stmts,
+        stmts: Vec<Stmt>,
     },
     Read {
         ident: String,
@@ -28,28 +28,51 @@ enum Stmt {
     }
 }
 
-enum Expr {
+#[derive(Clone, Debug, PartialEq)]
+pub enum Expr {
     BinOp {
         lhs: Opnd,
         op: Op,
         rhs: Opnd,
     },
+    UnaOp {
+        op: Op,
+        rhs: Opnd,
+    },
+    Opnd(Opnd),
 }
 
-enum Opnd {
+#[derive(Clone, Debug, PartialEq)]
+pub enum Opnd {
     Int(i64),
-    Str(String),
+    StrLit(String),
     Ident(String),
     Expr(Box<Expr>),
 }
 
-enum Op {
+#[derive(Clone, Debug, PartialEq)]
+pub enum Op {
     Multiplication,
     Addition,
     Substraction,
+    Equality,
 }
 
-enum Type {
+impl Op {
+    pub fn from_oper(o: &Operator) -> Option<Op> {
+        use self::Operator::*;
+        Some(match *o {
+            Addition => Op::Addition,
+            Multiplication => Op::Multiplication,
+            Substraction => Op::Substraction,
+            Equality => Op::Equality,
+            _ => None?,
+        })
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Type {
     Integer,
     Str,
     Bool

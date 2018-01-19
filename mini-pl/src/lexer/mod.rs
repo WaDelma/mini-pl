@@ -7,7 +7,7 @@ use self::tokens::Keyword::*;
 use self::tokens::Operator::*;
 use self::tokens::Literal::*;
 
-mod tokens;
+pub mod tokens;
 #[cfg(test)]
 mod tests;
 

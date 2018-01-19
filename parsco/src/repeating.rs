@@ -1,10 +1,10 @@
-use {Parser, Tag, tag, terminated, preceded, opt};
+use {Parser, Parseable, Tag, tag, terminated, preceded, opt};
 
 pub struct TakeWhile<F> {
     predicate: F,
 }
 
-impl<F: Fn(char) -> bool> Parser for TakeWhile<F> {
+impl<'b, F: Fn(char) -> bool> Parser<&'b str> for TakeWhile<F> {
     type Res = String;
     fn parse<'a>(&self, s: &'a str) -> Option<(Self::Res, &'a str)> {
         if s.len() == 0 {
@@ -13,10 +13,10 @@ impl<F: Fn(char) -> bool> Parser for TakeWhile<F> {
             if i == 0 {
                 None
             } else {
-                Some((s[..i].to_string(), &s[i..]))
+                Some((s[..i].to_string(), &&s[i..]))
             }
         } else {
-            Some((s.to_string(), &s[..0]))
+            Some((s.to_string(), &&s[..0]))
         }
     }
 }
@@ -31,9 +31,9 @@ pub struct Many0<P> {
     parser: P,
 }
 
-impl<P: Parser<Res=T>, T> Parser for Many0<P> {
+impl<P: Parser<S, Res=T>, T, S: Parseable> Parser<S> for Many0<P> {
     type Res = Vec<T>;
-    fn parse<'a>(&self, mut s: &'a str) -> Option<(Self::Res, &'a str)> {
+    fn parse(&self, mut s: S) -> Option<(Self::Res, S)> {
         let mut result = Vec::new();
         while let Some((t, rest)) = self.parser.parse(s) {
             s = rest;
@@ -53,21 +53,16 @@ pub struct Many1<P> {
     parser: P,
 }
 
-impl<P: Parser<Res=T>, T> Parser for Many1<P> {
+impl<P: Parser<S, Res=T>, T, S: Parseable> Parser<S> for Many1<P> {
     type Res = Vec<T>;
-    fn parse<'a>(&self, mut s: &'a str) -> Option<(Self::Res, &'a str)> {
-        let mut result = Vec::new();
-        if let Some((t, rest)) = self.parser.parse(s) {
-            s = rest;
-            result.push(t);
-        } else {
-            return None;
-        }
-        if let Some((t, rest)) = many0(&self.parser).parse(s) {
-            s = rest;
-            result.extend(t);
-        }
-        Some((result, s))
+    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+        many0(&self.parser).parse(s)
+            .and_then(|(t, s)|
+                if t.is_empty() {
+                    None
+                } else {
+                    Some((t, s))
+                })
     }
 }
 
@@ -77,21 +72,21 @@ pub fn many1<P>(parser: P) -> Many1<P> {
     }
 }
 
-pub struct List0<P> {
-    separator: Tag<()>,
+pub struct List0<P, S> {
+    separator: Tag<(), S>,
     parser: P,
 }
 
-impl<P: Parser<Res=T>, T> Parser for List0<P> {
+impl<P: Parser<S, Res=T>, T, S: Parseable> Parser<S> for List0<P, S> {
     type Res = Vec<T>;
-    fn parse<'a>(&self, s: &'a str) -> Option<(Self::Res, &'a str)> {
+    fn parse<'a>(&self, s: S) -> Option<(Self::Res, S)> {
         many0(
             terminated(&self.parser, &self.separator)
         ).parse(s)
     }
 }
 
-pub fn list0<P>(separator: &'static str, parser: P) -> List0<P> {
+pub fn list0<P, S>(separator: S, parser: P) -> List0<P, S> {
     List0 {
         separator: tag(separator, ()),
         parser
@@ -102,9 +97,9 @@ pub struct Whitespace<P> {
     parser: P,   
 }
 
-impl<P: Parser> Parser for Whitespace<P> {
+impl<'b, P: Parser<&'b str>> Parser<&'b str> for Whitespace<P> {
     type Res = P::Res;
-    fn parse<'a>(&self, s: &'a str) -> Option<(Self::Res, &'a str)> {
+    fn parse(&self, s: &'b str) -> Option<(Self::Res, &'b str)> {
         preceded(
             opt(take_while(char::is_whitespace)),
             &self.parser
@@ -115,5 +110,22 @@ impl<P: Parser> Parser for Whitespace<P> {
 pub fn ws<P>(parser: P) -> Whitespace<P> {
     Whitespace {
         parser
+    }
+}
+
+pub struct Take {
+    amount: usize,
+}
+
+impl<S: Parseable> Parser<S> for Take {
+    type Res = S;
+    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+        s.split_at(self.amount)
+    }
+}
+
+pub fn take(amount: usize) -> Take {
+    Take {
+        amount
     }
 }
