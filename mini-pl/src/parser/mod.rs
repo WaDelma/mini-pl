@@ -10,7 +10,7 @@ use lexer::tokens::Literal::*;
 use lexer::tokens::Token;
 use self::ast::{Stmt, Expr, Type, Opnd, BinOp, UnaOp};
 
-mod ast;
+pub mod ast;
 #[cfg(test)]
 mod tests;
 
