@@ -7,6 +7,41 @@ use super::tokens::Literal::*;
 use super::tokenize;
 
 #[test]
+fn operators_lex() {
+    assert_eq!(
+        Some((
+            vec![
+                Operator(Addition),
+                Operator(Substraction),
+                Operator(Multiplication),
+                Operator(Division),
+                Operator(And),
+                Operator(Not),
+                Operator(Equality),
+                Operator(LessThan),
+            ],
+            ""
+        )),
+        tokenize("+-*/&!=<")
+    );
+}
+
+#[test]
+fn punctuation_lexes() {
+    assert_eq!(
+        Some((
+            vec![
+                Punctuation(Parenthesis(Open)),
+                Punctuation(Semicolon),
+                Punctuation(Parenthesis(Close)),
+            ],
+            "§"
+        )),
+        tokenize("(;)§")
+    );
+}
+
+#[test]
 fn example1_lexes() {
     assert_eq!(
         Some((
@@ -167,20 +202,5 @@ fn example3_lexes() {
             print "The result is: ";
             print v; 
         "#)
-    );
-}
-
-#[test]
-fn punctuation_lexes() {
-    assert_eq!(
-        Some((
-            vec![
-                Punctuation(Parenthesis(Open)),
-                Punctuation(Semicolon),
-                Punctuation(Parenthesis(Close)),
-            ],
-            "§"
-        )),
-        tokenize("(;)§")
     );
 }

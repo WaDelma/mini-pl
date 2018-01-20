@@ -4,8 +4,73 @@ use super::ast::Stmt::*;
 use super::ast::Expr::*;
 use super::ast::Opnd::*;
 use super::ast::Type::*;
-use super::ast::Op::*;
+use super::ast::BinOp::*;
+use super::ast::UnaOp::*;
 use super::parse;
+
+#[test]
+fn complex_expr() {
+    let bop = |lhs, op, rhs| Expr(Box::new(BinOper { lhs, op, rhs }));
+    assert_eq!(
+        Some((
+            vec![
+                Print {
+                    expr: BinOper {
+                        lhs: bop(
+                                bop(
+                                    bop(
+                                        Int(4),
+                                        Division,
+                                        Int(2),
+                                    ),
+                                    Addition,
+                                    Int(1),
+                                ),
+                                LessThan,
+                                bop(
+                                    Int(1),
+                                    Substraction,
+                                    bop(
+                                        Int(2),
+                                        Multiplication,
+                                        Int(3),
+                                    ),
+                                ),
+                            ),
+                        op: Equality,
+                        rhs: bop(
+                            Int(0),
+                            And,
+                            Expr(Box::new(UnaOper {
+                                op: Not,
+                                rhs: Int(1)
+                            })),
+                        ),
+                    },
+                },
+            ],
+            &[][..]
+        )),
+        parse(&tokenize("
+            print
+            (
+                (
+                    (
+                        4/2
+                    )+1
+                )<(
+                    1-(
+                        2*3
+                    )
+                )
+            )=(
+                0&(
+                    !1
+                )
+            );
+        ").unwrap().0)
+    );
+}
 
 #[test]
 fn example1_parses() {
@@ -16,10 +81,10 @@ fn example1_parses() {
                     ident: String::from("X"),
                     ty: Integer,
                     value: Some(
-                        BinOp {
+                        BinOper {
                             lhs: Int(4),
                             op: Addition,
-                            rhs: Expr(Box::new(BinOp {
+                            rhs: Expr(Box::new(BinOper {
                                 lhs: Int(6),
                                 op: Multiplication,
                                 rhs: Int(2),
@@ -66,7 +131,7 @@ fn example2_parses() {
                 Loop {
                     ident: String::from("x"),
                     from: Opnd(Int(0)),
-                    to: BinOp {
+                    to: BinOper {
                         lhs: Ident(String::from("nTimes")),
                         op: Substraction,
                         rhs: Int(1)
@@ -81,7 +146,7 @@ fn example2_parses() {
                     ]
                 },
                 Assert {
-                    expr: BinOp {
+                    expr: BinOper {
                         lhs: Ident(String::from("x")),
                         op: Equality,
                         rhs: Ident(String::from("nTimes"))
@@ -139,7 +204,7 @@ fn example3_parses() {
                     stmts: vec![
                         Assignment {
                             ident: String::from("v"),
-                            value: BinOp {
+                            value: BinOper {
                                 lhs: Ident(String::from("v")),
                                 op: Multiplication,
                                 rhs: Ident(String::from("i")),

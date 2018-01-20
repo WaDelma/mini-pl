@@ -1,3 +1,5 @@
+use std::fmt;
+
 use Ident;
 use lexer::tokens::Operator;
 
@@ -31,19 +33,19 @@ pub enum Stmt {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
-    BinOp {
+    BinOper {
         lhs: Opnd,
-        op: Op,
+        op: BinOp,
         rhs: Opnd,
     },
-    UnaOp {
-        op: Op,
+    UnaOper {
+        op: UnaOp,
         rhs: Opnd,
     },
     Opnd(Opnd),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum Opnd {
     Int(i64),
     StrLit(String),
@@ -51,22 +53,71 @@ pub enum Opnd {
     Expr(Box<Expr>),
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum Op {
-    Multiplication,
-    Addition,
-    Substraction,
-    Equality,
+impl fmt::Debug for Opnd {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use self::Opnd::*;
+        match *self {
+            Int(ref i) => {
+                fmt.write_str("Int(")?;
+                i.fmt(fmt)?;
+                fmt.write_str(")")
+            },
+            StrLit(ref s) => {
+                fmt.write_str("StrLit(")?;
+                s.fmt(fmt)?;
+                fmt.write_str(")")
+            },
+            Ident(ref i) => {
+                fmt.write_str("Ident(")?;
+                i.fmt(fmt)?;
+                fmt.write_str(")")
+            },
+            Expr(ref e) => {
+                fmt.write_str("Expr(")?;
+                e.fmt(fmt)?;
+                fmt.write_str(")")
+            },
+        }
+    }
 }
 
-impl Op {
-    pub fn from_oper(o: &Operator) -> Option<Op> {
+#[derive(Clone, Debug, PartialEq)]
+pub enum BinOp {
+    Equality,
+    LessThan,
+    Addition,
+    Substraction,
+    Multiplication,
+    Division,
+    And,
+}
+
+impl BinOp {
+    pub fn from_oper(o: &Operator) -> Option<Self> {
         use self::Operator::*;
         Some(match *o {
-            Addition => Op::Addition,
-            Multiplication => Op::Multiplication,
-            Substraction => Op::Substraction,
-            Equality => Op::Equality,
+            Equality => BinOp::Equality,
+            LessThan => BinOp::LessThan,
+            Addition => BinOp::Addition,
+            Substraction => BinOp::Substraction,
+            Multiplication => BinOp::Multiplication,
+            Division => BinOp::Division,
+            And => BinOp::And,
+            _ => None?,
+        })
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum UnaOp {
+    Not,
+}
+
+impl UnaOp {
+    pub fn from_oper(o: &Operator) -> Option<Self> {
+        use self::Operator::*;
+        Some(match *o {
+            Not => UnaOp::Not,
             _ => None?,
         })
     }

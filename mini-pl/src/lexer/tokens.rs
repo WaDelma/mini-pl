@@ -19,10 +19,14 @@ pub enum Literal {
 pub enum Operator {
     Assignment,
     Equality,
+    LessThan,
     Addition,
     Substraction,
     Multiplication,
+    Division,
     Range,
+    And,
+    Not,
 }
 
 #[derive(Clone, Debug, PartialEq)]

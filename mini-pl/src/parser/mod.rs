@@ -8,7 +8,7 @@ use lexer::tokens::Keyword::*;
 use lexer::tokens::Operator::*;
 use lexer::tokens::Literal::*;
 use lexer::tokens::Token;
-use self::ast::{Stmt, Expr, Type, Opnd, Op};
+use self::ast::{Stmt, Expr, Type, Opnd, BinOp, UnaOp};
 
 mod ast;
 #[cfg(test)]
@@ -118,16 +118,16 @@ pub fn stmt(ts: &[Token]) -> Option<(Stmt, &[Token])> {
 pub fn expr(ts: &[Token]) -> Option<(Expr, &[Token])> {
     (alt()
         | map(
-            (fun(opnd), fun(op), fun(opnd)),
-            |(lhs, op, rhs)| Expr::BinOp {
+            (fun(opnd), fun(binop), fun(opnd)),
+            |(lhs, op, rhs)| Expr::BinOper {
                 lhs,
                 op,
                 rhs
             }
         )
         | map(
-            (fun(op), fun(opnd)),
-            |(op, rhs)| Expr::UnaOp {
+            (fun(unaop), fun(opnd)),
+            |(op, rhs)| Expr::UnaOper {
                 op,
                 rhs
             }
@@ -196,10 +196,19 @@ pub fn string(ts: &[Token]) -> Option<(Opnd, &[Token])> {
         })
 }
 
-pub fn op(ts: &[Token]) -> Option<(Op, &[Token])> {
+pub fn binop(ts: &[Token]) -> Option<(BinOp, &[Token])> {
     fst().parse(ts)
         .and_then(|(t, s)| if let Operator(ref o) = t {
-            Some((Op::from_oper(o)?, s))
+            Some((BinOp::from_oper(o)?, s))
+        } else {
+            None
+        })
+}
+
+pub fn unaop(ts: &[Token]) -> Option<(UnaOp, &[Token])> {
+    fst().parse(ts)
+        .and_then(|(t, s)| if let Operator(ref o) = t {
+            Some((UnaOp::from_oper(o)?, s))
         } else {
             None
         })
