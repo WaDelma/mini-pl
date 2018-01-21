@@ -1,4 +1,5 @@
 extern crate parsco;
+extern crate char_stream;
 extern crate num_traits;
 extern crate num_bigint;
 

@@ -47,12 +47,46 @@ pub enum Expr {
     Opnd(Opnd),
 }
 
+impl fmt::Display for Expr {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use self::Expr::*;
+        fmt.write_str(&match *self {
+            BinOper {
+                ref lhs,
+                ref op,
+                ref rhs,
+            } => {
+                format!("{} {} {}", lhs, op, rhs)
+            },
+            UnaOper {
+                ref op,
+                ref rhs,
+            } => {
+                format!("{}{}", op, rhs)
+            },
+            Opnd(ref opnd) => format!("({})", opnd),
+        })
+    }
+}
+
 #[derive(Clone, PartialEq)]
 pub enum Opnd {
     Int(BigInt),
     StrLit(String),
     Ident(Ident),
     Expr(Box<Expr>),
+}
+
+impl fmt::Display for Opnd {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use self::Opnd::*;
+        fmt.write_str(&match *self {
+            Int(ref i) => i.to_string(),
+            StrLit(ref s) => s.to_string(),
+            Ident(ref i) => i.to_string(),
+            Expr(ref expr) => format!("{}", expr),
+        })
+    }
 }
 
 impl fmt::Debug for Opnd {
@@ -94,6 +128,21 @@ pub enum BinOp {
     And,
 }
 
+impl fmt::Display for BinOp {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use self::BinOp::*;
+        fmt.write_str(match *self {
+            Equality => "=",
+            LessThan => "<",
+            Addition => "+",
+            Substraction => "-",
+            Multiplication => "*",
+            Division => "/",
+            And => "&",
+        })
+    }
+}
+
 impl BinOp {
     pub fn from_oper(o: &Operator) -> Option<Self> {
         use self::Operator::*;
@@ -113,6 +162,15 @@ impl BinOp {
 #[derive(Clone, Debug, PartialEq)]
 pub enum UnaOp {
     Not,
+}
+
+impl fmt::Display for UnaOp {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use self::UnaOp::*;
+        fmt.write_str(match *self {
+            Not => "!",
+        })
+    }
 }
 
 impl UnaOp {
