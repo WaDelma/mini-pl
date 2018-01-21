@@ -7,3 +7,4 @@ authors = ["delma <delma@del.ma>"]
 parsco = {path = "../parsco"}
 num-bigint = "0.1.41" 
 num-traits = "0.1.41"
+unicode-segmentation = "1.1.0"
