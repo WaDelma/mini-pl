@@ -113,7 +113,7 @@ pub fn many1<P>(parser: P) -> Many1<P> {
 }
 
 pub struct List0<P, S> {
-    separator: Tag<(), S>,
+    separator: Tag<S>,
     parser: P,
 }
 
@@ -131,7 +131,7 @@ impl<P, S> Parser<S> for List0<P, S>
 
 pub fn list0<P, S>(separator: S, parser: P) -> List0<P, S> {
     List0 {
-        separator: tag(separator, ()),
+        separator: tag(separator),
         parser
     }
 }

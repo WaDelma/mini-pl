@@ -141,7 +141,7 @@ fn example2_parses() {
                             expr: Opnd(Ident(String::from("x")))
                         },
                         Print {
-                            expr: Opnd(StrLit(String::from(" : Hello, World!\\n"))),
+                            expr: Opnd(StrLit(String::from(" : Hello, World!\n"))),
                         }
                     ]
                 },

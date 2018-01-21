@@ -7,6 +7,123 @@ use super::tokens::Literal::*;
 use super::tokenize;
 
 #[test]
+fn string_literal_lexes() {
+    assert_eq!(
+        Some((
+            vec![
+                Literal(StringLit(String::from("Hello, World!"))),
+            ],
+            ""
+        )),
+        tokenize(r#""Hello, World!""#)
+    );
+}
+
+#[test]
+fn string_literal_with_escaped_quote_lexes() {
+    assert_eq!(
+        Some((
+            vec![
+                Literal(StringLit(String::from("Hello, \"World!\""))),
+            ],
+            ""
+        )),
+        tokenize(r#""Hello, \"World!\"""#)
+    );
+}
+
+#[test]
+fn string_literal_with_escaped_linebreak_lexes() {
+    assert_eq!(
+        Some((
+            vec![
+                Literal(StringLit(String::from("Hello\n World!"))),
+            ],
+            ""
+        )),
+        tokenize(r#""Hello\n World!""#)
+    );
+}
+
+#[test]
+fn string_literal_with_escaped_tab_lexes() {
+    assert_eq!(
+        Some((
+            vec![
+                Literal(StringLit(String::from("Hello\t World!"))),
+            ],
+            ""
+        )),
+        tokenize(r#""Hello\t World!""#)
+    );
+}
+
+#[test]
+fn string_literal_with_escaped_backslash_lexes() {
+    assert_eq!(
+        Some((
+            vec![
+                Literal(StringLit(String::from("Hello\\ World!"))),
+            ],
+            ""
+        )),
+        tokenize(r#""Hello\\ World!""#)
+    );
+}
+
+#[test]
+fn string_literal_with_alert_lexes() {
+    assert_eq!(
+        Some((
+            vec![
+                Literal(StringLit(String::from("Hello, World\x07"))),
+            ],
+            ""
+        )),
+        tokenize(r#""Hello, World\a""#)
+    );
+}
+
+#[test]
+fn string_literal_with_backspace_lexes() {
+    assert_eq!(
+        Some((
+            vec![
+                Literal(StringLit(String::from("Hello,\x08 World!"))),
+            ],
+            ""
+        )),
+        tokenize(r#""Hello,\b World!""#)
+    );
+}
+
+#[test]
+fn string_literal_with_formfeed_lexes() {
+    assert_eq!(
+        Some((
+            vec![
+                Literal(StringLit(String::from("Hello, World!\x0C"))),
+            ],
+            ""
+        )),
+        tokenize(r#""Hello, World!\f""#)
+    );
+}
+
+#[test]
+fn string_literal_with_vertical_tab_lexes() {
+    assert_eq!(
+        Some((
+            vec![
+                Literal(StringLit(String::from("Hello\x0BWorld!"))),
+            ],
+            ""
+        )),
+        tokenize(r#""Hello\vWorld!""#)
+    );
+}
+
+#[test]
 fn line_comment_lexes() {
     assert_eq!(
         Some((
@@ -20,7 +137,7 @@ fn line_comment_lexes() {
 }
 
 #[test]
-fn multiline_comment_lexes_simple() {
+fn multiline_comment_simple_lexes() {
     assert_eq!(
         Some(
             (vec![
@@ -33,7 +150,7 @@ fn multiline_comment_lexes_simple() {
 }
 
 #[test]
-fn multiline_comment_lexes_star() {
+fn multiline_comment_star_lexes() {
     assert_eq!(
         Some(
             (vec![
@@ -46,7 +163,7 @@ fn multiline_comment_lexes_star() {
 }
 
 #[test]
-fn multiline_comment_lexes_nested() {
+fn multiline_comment_nested_lexes() {
     assert_eq!(
         Some((
             vec![
@@ -59,7 +176,7 @@ fn multiline_comment_lexes_nested() {
 }
 
 #[test]
-fn multiline_comment_lexes_complex_nesting() {
+fn multiline_comment_complex_nesting_lexes() {
     assert_eq!(
         Some((
             vec![
@@ -213,7 +330,7 @@ fn example2_lexes() {
                 Identifier(String::from("x")),
                 Punctuation(Semicolon),
                 Keyword(Print),
-                Literal(StringLit(String::from(" : Hello, World!\\n"))),
+                Literal(StringLit(String::from(" : Hello, World!\n"))),
                 Punctuation(Semicolon),
                 Keyword(End),
                 Keyword(For),

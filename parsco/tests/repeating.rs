@@ -1,30 +1,27 @@
 extern crate parsco;
 use parsco::{Parser, tag, many0, many1, list0, take_while, take_until};
 
-#[derive(Clone, Debug, PartialEq)]
-struct A;
-
 #[test]
 fn many0_parses_none() {
     assert_eq!(
         Some((vec![], "ca")),
-        many0(tag("a", A)).parse("ca")
+        many0(tag("a")).parse("ca")
     );
 }
 
 #[test]
 fn many0_parses_one() {
     assert_eq!(
-        Some((vec![A], "c")),
-        many0(tag("a", A)).parse("ac")
+        Some((vec!["a"], "c")),
+        many0(tag("a")).parse("ac")
     );
 }
 
 #[test]
 fn many0_parses_many() {
     assert_eq!(
-        Some((vec![A, A, A], "c")),
-        many0(tag("a", A)).parse("aaac")
+        Some((vec!["a", "a", "a"], "c")),
+        many0(tag("a")).parse("aaac")
     );
 }
 
@@ -32,23 +29,23 @@ fn many0_parses_many() {
 fn many1_doesnt_parse_none() {
     assert_eq!(
         None,
-        many1(tag("a", A)).parse("ca")
+        many1(tag("a")).parse("ca")
     );
 }
 
 #[test]
 fn many1_parses_one() {
     assert_eq!(
-        Some((vec![A], "c")),
-        many1(tag("a", A)).parse("ac")
+        Some((vec!["a"], "c")),
+        many1(tag("a")).parse("ac")
     );
 }
 
 #[test]
 fn many1_parses_many() {
     assert_eq!(
-        Some((vec![A, A, A], "c")),
-        many1(tag("a", A)).parse("aaac")
+        Some((vec!["a", "a", "a"], "c")),
+        many1(tag("a")).parse("aaac")
     );
 }
 
@@ -56,23 +53,23 @@ fn many1_parses_many() {
 fn list0_parses_none() {
     assert_eq!(
         Some((vec![], "c,a")),
-        list0(",", tag("a", A)).parse("c,a")
+        list0(",", tag("a")).parse("c,a")
     );
 }
 
 #[test]
 fn list0_parses_one() {
     assert_eq!(
-        Some((vec![A], "c")),
-        list0(",", tag("a", A)).parse("a,c")
+        Some((vec!["a"], "c")),
+        list0(",", tag("a")).parse("a,c")
     );
 }
 
 #[test]
 fn list0_parses_many() {
     assert_eq!(
-        Some((vec![A, A, A], "c")),
-        list0(",", tag("a", A)).parse("a,a,a,c")
+        Some((vec!["a", "a", "a"], "c")),
+        list0(",", tag("a")).parse("a,a,a,c")
     );
 }
 
@@ -133,10 +130,8 @@ fn take_while_end() {
 }
 #[test]
 fn take_until_simple() {
-    #[derive(Clone, Debug, PartialEq)]
-    struct DC;
     assert_eq!(
-        Some((("ab", DC), "e")),
-        take_until(tag("dc", DC)).parse("abcde")
+        Some((("ab", "cd"), "e")),
+        take_until(tag("cd")).parse("abcde")
     );
 }

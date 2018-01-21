@@ -99,26 +99,24 @@ pub fn fun<F>(f: F) -> Wrapper<F> {
     Wrapper(f)
 }
 
-pub struct Tag<T, S> {
+pub struct Tag<S> {
     tag: S,
-    result: T,
 }
 
-impl<T: Clone, S: Parseable> Parser<S> for Tag<T, S> {
-    type Res = T;
+impl<S: Parseable> Parser<S> for Tag<S> {
+    type Res = S;
     fn parse(&self, s: S) -> Option<(Self::Res, S)> {
         if s.starts_with(&self.tag) {
-            Some((self.result.clone(), s.split_at(self.tag.len()).unwrap().1))
+            Some((self.tag, s.split_at(self.tag.len()).unwrap().1))
         } else {
             None
         }
     }
 }
 
-pub fn tag<T, S>(tag: S, result: T) -> Tag<T, S> {
+pub fn tag<S>(tag: S) -> Tag<S> {
     Tag {
         tag,
-        result
     }
 }
 

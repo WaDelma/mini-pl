@@ -101,3 +101,27 @@ pub fn map<P, F>(parser: P, map: F) -> Map<P, F> {
         map
     }
 }
+
+pub struct Eat<P, T> {
+    parser: P,
+    substitute: T
+}
+
+impl<P, S, T> Parser<S> for Eat<P, T>
+    where P: Parser<S>,
+          S: Parseable,
+          T: Clone,
+{
+    type Res = T;
+    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+        self.parser.parse(s)
+            .map(|(_, s)| (self.substitute.clone(), s))
+    }
+}
+
+pub fn eat<P, T>(parser: P, substitute: T) -> Eat<P, T> {
+    Eat {
+        parser,
+        substitute
+    }
+}
