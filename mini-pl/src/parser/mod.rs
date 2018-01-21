@@ -16,8 +16,10 @@ mod tests;
 
 pub fn parse(ts: &[Token]) -> Option<(Vec<Stmt>, &[Token])> {
     many1(
-        terminated(fun(stmt),
-        one(Punctuation(Semicolon)))
+        terminated(
+            fun(stmt),
+            one(Punctuation(Semicolon))
+        )
     ).parse(ts)
 }
 
@@ -181,7 +183,7 @@ pub fn ty(ts: &[Token]) -> Option<(Type, &[Token])> {
 pub fn int(ts: &[Token]) -> Option<(Opnd, &[Token])> {
     fst().parse(ts)
         .and_then(|(t, s)| if let Literal(Integer(ref i)) = t {
-            Some((Opnd::Int(*i), s))
+            Some((Opnd::Int(i.clone()), s))
         } else {
             None
         })

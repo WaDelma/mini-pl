@@ -18,7 +18,11 @@ impl<P1, P2, P3> BitOr<P3> for Alt<P1, P2> {
     }
 }
 
-impl<P1: Parser<S, Res=T>, P2: Parser<S, Res=T>, T, S: Parseable> Parser<S> for Alt<P1, P2> {
+impl<P1, P2, T, S> Parser<S> for Alt<P1, P2>
+    where S: Parseable,
+          P1: Parser<S, Res=T>,
+          P2: Parser<S, Res=T>,
+{
     type Res = T;
     fn parse(&self, s: S) -> Option<(Self::Res, S)> {
         self.parser.parse(s)
@@ -38,7 +42,9 @@ impl<P1, P2> BitOr<P2> for Empty<P1> {
     }
 }
 
-impl<T, S: Parseable> Parser<S> for Empty<T> {
+impl<T, S> Parser<S> for Empty<T>
+    where S: Parseable,
+{
     type Res = T;
     fn parse(&self, _: S) -> Option<(Self::Res, S)> {
         None
@@ -53,7 +59,10 @@ pub struct Opt<P> {
     parser: P,
 }
 
-impl<P: Parser<S>, S: Parseable> Parser<S> for Opt<P> {
+impl<P, S> Parser<S> for Opt<P>
+    where S: Parseable,
+          P: Parser<S>,
+{
     type Res = Option<P::Res>;
     fn parse(&self, s: S) -> Option<(Self::Res, S)> {
         self.parser.parse(s)

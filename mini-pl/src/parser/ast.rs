@@ -1,3 +1,5 @@
+use num_bigint::BigInt;
+
 use std::fmt;
 
 use Ident;
@@ -47,7 +49,7 @@ pub enum Expr {
 
 #[derive(Clone, PartialEq)]
 pub enum Opnd {
-    Int(i64),
+    Int(BigInt),
     StrLit(String),
     Ident(Ident),
     Expr(Box<Expr>),

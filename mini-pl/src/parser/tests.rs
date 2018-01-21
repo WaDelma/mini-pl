@@ -19,31 +19,31 @@ fn complex_expr() {
                         lhs: bop(
                                 bop(
                                     bop(
-                                        Int(4),
+                                        Int(4.into()),
                                         Division,
-                                        Int(2),
+                                        Int(2.into()),
                                     ),
                                     Addition,
-                                    Int(1),
+                                    Int(1.into()),
                                 ),
                                 LessThan,
                                 bop(
-                                    Int(1),
+                                    Int(1.into()),
                                     Substraction,
                                     bop(
-                                        Int(2),
+                                        Int(2.into()),
                                         Multiplication,
-                                        Int(3),
+                                        Int(3.into()),
                                     ),
                                 ),
                             ),
                         op: Equality,
                         rhs: bop(
-                            Int(0),
+                            Int(0.into()),
                             And,
                             Expr(Box::new(UnaOper {
                                 op: Not,
-                                rhs: Int(1)
+                                rhs: Int(1.into())
                             })),
                         ),
                     },
@@ -82,12 +82,12 @@ fn example1_parses() {
                     ty: Integer,
                     value: Some(
                         BinOper {
-                            lhs: Int(4),
+                            lhs: Int(4.into()),
                             op: Addition,
                             rhs: Expr(Box::new(BinOper {
-                                lhs: Int(6),
+                                lhs: Int(6.into()),
                                 op: Multiplication,
-                                rhs: Int(2),
+                                rhs: Int(2.into()),
                             })),
                         }
                     )
@@ -114,7 +114,7 @@ fn example2_parses() {
                     ident: String::from("nTimes"),
                     ty: Integer,
                     value: Some(
-                        Opnd(Int(0))
+                        Opnd(Int(0.into()))
                     )
                 },
                 Print {
@@ -130,11 +130,11 @@ fn example2_parses() {
                 },
                 Loop {
                     ident: String::from("x"),
-                    from: Opnd(Int(0)),
+                    from: Opnd(Int(0.into())),
                     to: BinOper {
                         lhs: Ident(String::from("nTimes")),
                         op: Substraction,
-                        rhs: Int(1)
+                        rhs: Int(1.into())
                     },
                     stmts: vec![
                         Print {
@@ -189,7 +189,7 @@ fn example3_parses() {
                     ident: String::from("v"),
                     ty: Integer,
                     value: Some(
-                        Opnd(Int(1))
+                        Opnd(Int(1.into()))
                     )
                 },
                 Declaration {
@@ -199,7 +199,7 @@ fn example3_parses() {
                 },
                 Loop {
                     ident: String::from("i"),
-                    from: Opnd(Int(1)),
+                    from: Opnd(Int(1.into())),
                     to: Opnd(Ident(String::from("n"))),
                     stmts: vec![
                         Assignment {

@@ -5,3 +5,5 @@ authors = ["delma <delma@del.ma>"]
 
 [dependencies]
 parsco = {path = "../parsco"}
+num-bigint = "0.1.41" 
+num-traits = "0.1.41"

@@ -7,6 +7,111 @@ use super::tokens::Literal::*;
 use super::tokenize;
 
 #[test]
+fn line_comment_lexes() {
+    assert_eq!(
+        Some((
+            vec![
+                Identifier(String::from("x")),
+            ],
+            ""
+        )),
+        tokenize("x//y")
+    );
+}
+
+#[test]
+fn multiline_comment_lexes_simple() {
+    assert_eq!(
+        Some(
+            (vec![
+                Identifier(String::from("x")),
+            ],
+            ""
+        )),
+        tokenize("x/*y*/")
+    );
+}
+
+#[test]
+fn multiline_comment_lexes_star() {
+    assert_eq!(
+        Some(
+            (vec![
+                Identifier(String::from("x")),
+            ],
+            ""
+        )),
+        tokenize("x/**y*/")
+    );
+}
+
+#[test]
+fn multiline_comment_lexes_nested() {
+    assert_eq!(
+        Some((
+            vec![
+                Identifier(String::from("x")),
+            ],
+            ""
+        )),
+        tokenize("x/*/*y*/*/")
+    );
+}
+
+#[test]
+fn multiline_comment_lexes_complex_nesting() {
+    assert_eq!(
+        Some((
+            vec![
+                Identifier(String::from("x")),
+            ],
+            ""
+        )),
+        tokenize("x/*/*y*/z/*w*/*/")
+    );
+}
+
+#[test]
+fn identifiers_lex() {
+    assert_eq!(
+        Some((
+            vec![
+                Identifier(String::from("x")),
+            ],
+            ""
+        )),
+        tokenize("x")
+    );
+    assert_eq!(
+        Some((
+            vec![
+                Identifier(String::from("föö")),
+            ],
+            ""
+        )),
+        tokenize("föö")
+    );
+    assert_eq!(
+        Some((
+            vec![
+                Identifier(String::from("l33t")),
+            ],
+            ""
+        )),
+        tokenize("l33t")
+    );
+    assert_eq!(
+        Some((
+            vec![
+                Identifier(String::from("l_l")),
+            ],
+            ""
+        )),
+        tokenize("l_l")
+    );
+}
+
+#[test]
 fn operators_lex() {
     assert_eq!(
         Some((
@@ -51,12 +156,12 @@ fn example1_lexes() {
                 Punctuation(Colon),
                 Keyword(Int),
                 Operator(Assignment),
-                Literal(Integer(4)),
+                Literal(Integer(4.into())),
                 Operator(Addition),
                 Punctuation(Parenthesis(Open)),
-                Literal(Integer(6)),
+                Literal(Integer(6.into())),
                 Operator(Multiplication),
-                Literal(Integer(2)),
+                Literal(Integer(2.into())),
                 Punctuation(Parenthesis(Close)),
                 Punctuation(Semicolon),
                 Keyword(Print),
@@ -82,7 +187,7 @@ fn example2_lexes() {
                 Punctuation(Colon),
                 Keyword(Int),
                 Operator(Assignment),
-                Literal(Integer(0)),
+                Literal(Integer(0.into())),
                 Punctuation(Semicolon),
                 Keyword(Print),
                 Literal(StringLit(String::from("How many times?"))),
@@ -98,11 +203,11 @@ fn example2_lexes() {
                 Keyword(For),
                 Identifier(String::from("x")),
                 Keyword(In),
-                Literal(Integer(0)),
+                Literal(Integer(0.into())),
                 Operator(Range),
                 Identifier(String::from("nTimes")),
                 Operator(Substraction),
-                Literal(Integer(1)),
+                Literal(Integer(1.into())),
                 Keyword(Do),
                 Keyword(Print),
                 Identifier(String::from("x")),
@@ -158,7 +263,7 @@ fn example3_lexes() {
                 Punctuation(Colon),
                 Keyword(Int),
                 Operator(Assignment),
-                Literal(Integer(1)),
+                Literal(Integer(1.into())),
                 Punctuation(Semicolon),
                 Keyword(Var),
                 Identifier(String::from("i")),
@@ -168,7 +273,7 @@ fn example3_lexes() {
                 Keyword(For),
                 Identifier(String::from("i")),
                 Keyword(In),
-                Literal(Integer(1)),
+                Literal(Integer(1.into())),
                 Operator(Range),
                 Identifier(String::from("n")),
                 Keyword(Do),

@@ -1,3 +1,5 @@
+use num_bigint::BigInt;
+
 use Ident;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -11,7 +13,7 @@ pub enum Token {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Literal {
-    Integer(i64),
+    Integer(BigInt),
     StringLit(String),
 }
 

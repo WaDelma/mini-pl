@@ -1,4 +1,6 @@
 extern crate parsco;
+extern crate num_traits;
+extern crate num_bigint;
 
 #[cfg(test)]
 macro_rules! assert_eq {

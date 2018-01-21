@@ -4,7 +4,9 @@ pub struct TakeWhile<F> {
     predicate: F,
 }
 
-impl<'b, F: Fn(char) -> bool> Parser<&'b str> for TakeWhile<F> {
+impl<'b, F> Parser<&'b str> for TakeWhile<F>
+    where F: Fn(char) -> bool,
+{
     type Res = String;
     fn parse<'a>(&self, s: &'a str) -> Option<(Self::Res, &'a str)> {
         if s.len() == 0 {
@@ -27,12 +29,47 @@ pub fn take_while<F>(predicate: F) -> TakeWhile<F> {
     }
 }
 
+pub struct TakeUntil<P> {
+    parser: P,
+}
+
+impl<'b, P, S> Parser<S> for TakeUntil<P>
+    where S: Parseable,
+          P: Parser<S>,
+{
+    type Res = (S, P::Res);
+    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+        let mut cur = s;
+        let mut n = 0;
+        loop {
+            if let Some((res, ss)) = self.parser.parse(cur) {
+                return Some(((s.split_at(n).unwrap().0, res), ss));
+            }
+            if let Some((_, rest)) = take(1).parse(cur) {
+                n += 1;
+                cur = rest;
+            } else {
+                return None;
+            }
+        }
+    }
+}
+
+pub fn take_until<P>(parser: P) -> TakeUntil<P> {
+    TakeUntil {
+        parser
+    }
+}
+
 pub struct Many0<P> {
     parser: P,
 }
 
-impl<P: Parser<S, Res=T>, T, S: Parseable> Parser<S> for Many0<P> {
-    type Res = Vec<T>;
+impl<P, S> Parser<S> for Many0<P>
+    where S: Parseable,
+          P: Parser<S>,
+{
+    type Res = Vec<P::Res>;
     fn parse(&self, mut s: S) -> Option<(Self::Res, S)> {
         let mut result = Vec::new();
         while let Some((t, rest)) = self.parser.parse(s) {
@@ -53,8 +90,11 @@ pub struct Many1<P> {
     parser: P,
 }
 
-impl<P: Parser<S, Res=T>, T, S: Parseable> Parser<S> for Many1<P> {
-    type Res = Vec<T>;
+impl<P, S> Parser<S> for Many1<P>
+    where S: Parseable,
+          P: Parser<S>,
+{
+    type Res = Vec<P::Res>;
     fn parse(&self, s: S) -> Option<(Self::Res, S)> {
         many0(&self.parser).parse(s)
             .and_then(|(t, s)|
@@ -77,8 +117,11 @@ pub struct List0<P, S> {
     parser: P,
 }
 
-impl<P: Parser<S, Res=T>, T, S: Parseable> Parser<S> for List0<P, S> {
-    type Res = Vec<T>;
+impl<P, S> Parser<S> for List0<P, S>
+    where S: Parseable,
+          P: Parser<S>,
+{
+    type Res = Vec<P::Res>;
     fn parse<'a>(&self, s: S) -> Option<(Self::Res, S)> {
         many0(
             terminated(&self.parser, &self.separator)
@@ -97,7 +140,9 @@ pub struct Whitespace<P> {
     parser: P,   
 }
 
-impl<'b, P: Parser<&'b str>> Parser<&'b str> for Whitespace<P> {
+impl<'b, P> Parser<&'b str> for Whitespace<P>
+    where P: Parser<&'b str>,
+{
     type Res = P::Res;
     fn parse(&self, s: &'b str) -> Option<(Self::Res, &'b str)> {
         preceded(
@@ -117,7 +162,9 @@ pub struct Take {
     amount: usize,
 }
 
-impl<S: Parseable> Parser<S> for Take {
+impl<S> Parser<S> for Take
+    where S: Parseable,
+{
     type Res = S;
     fn parse(&self, s: S) -> Option<(Self::Res, S)> {
         s.split_at(self.amount)

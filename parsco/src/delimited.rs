@@ -5,8 +5,12 @@ pub struct Preceded<P1, P2> {
     precedator: P2,
 }
 
-impl<P1: Parser<S, Res=T1>, P2: Parser<S, Res=T2>, T1, T2, S: Parseable> Parser<S> for Preceded<P1, P2> {
-    type Res = T1;
+impl<P1, P2, S> Parser<S> for Preceded<P1, P2>
+    where S: Parseable,
+          P1: Parser<S>,
+          P2: Parser<S>,
+{
+    type Res = P1::Res;
     fn parse(&self, s: S) -> Option<(Self::Res, S)> {
         (&self.precedator, &self.parser).parse(s)
             .map(|((_, r), s)| (r, s))
@@ -25,8 +29,12 @@ pub struct Terminated<P1, P2> {
     terminator: P2,
 }
 
-impl<P1: Parser<S, Res=T1>, P2: Parser<S, Res=T2>, T1, T2, S: Parseable> Parser<S> for Terminated<P1, P2> {
-    type Res = T1;
+impl<P1, P2, S> Parser<S> for Terminated<P1, P2>
+    where S: Parseable,
+          P1: Parser<S>,
+          P2: Parser<S>,
+{
+    type Res = P1::Res;
     fn parse(&self, s: S) -> Option<(Self::Res, S)> {
         (&self.parser, &self.terminator).parse(s)
             .map(|((r, _), s)|(r, s))
@@ -46,8 +54,13 @@ pub struct Delimited<P1, P2, P3> {
     terminator: P3,
 }
 
-impl<P1: Parser<S, Res=T1>, P2: Parser<S, Res=T2>, P3: Parser<S, Res=T3>, T1, T2, T3, S: Parseable> Parser<S> for Delimited<P1, P2, P3> {
-    type Res = T2;
+impl<P1, P2, P3, S> Parser<S> for Delimited<P1, P2, P3>
+    where S: Parseable,
+          P1: Parser<S>,
+          P2: Parser<S>,
+          P3: Parser<S>,
+{
+    type Res = P2::Res;
     fn parse<'a>(&self, s: S) -> Option<(Self::Res, S)> {
         (&self.precedator, &self.parser, &self.terminator).parse(s)
             .map(|((_, r, _), s)| (r, s))
