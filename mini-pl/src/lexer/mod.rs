@@ -1,6 +1,8 @@
+use std::char;
+
 use num_bigint::BigInt;
 
-use parsco::{Parser, tag, many0, alt, fun, preceded, terminated, delimited, take_while, take_until, ws, fst, opt, map, eat};
+use parsco::{Parser, tag, many0, alt, fun, preceded, terminated, delimited, take_while, take_until, ws, fst, opt, map, eat, take};
 
 use self::tokens::Token;
 use self::tokens::Punctuation::*;
@@ -121,31 +123,55 @@ fn identifier(s: &str) -> Option<(Token, &str)> {
         .map(|(p, s)| (Token::Identifier(p), s))
 }
 
+fn hex_as_string(x: &str) -> String {
+    char::from_u32(
+        u32::from_str_radix(&x, 16).unwrap()
+    ).unwrap().to_string()
+}
+
 fn str_literal(s: &str) -> Option<(Token, &str)> {
     fn parse_str(s: &str) -> Option<(String, &str)> {
         take_until(
             alt()
-                | eat(tag(r#"\a"#), "\x07")
-                | eat(tag(r#"\b"#), "\x08")
-                | eat(tag(r#"\f"#), "\x0C")
-                | eat(tag(r#"\n"#), "\n")
-                | eat(tag(r#"\t"#), "\t")
-                | eat(tag(r#"\v"#), "\x0B")
-                | eat(tag(r#"\'"#), "\'")
-                | eat(tag(r#"\""#), "\"")
-                | eat(tag(r#"\\"#), "\\")
-                | eat(tag(r#"\?"#), "?")
+                | eat(tag(r#"\a"#), "\x07".to_owned())
+                | eat(tag(r#"\b"#), "\x08".to_owned())
+                | eat(tag(r#"\f"#), "\x0C".to_owned())
+                | eat(tag(r#"\n"#), "\n".to_owned())
+                | eat(tag(r#"\t"#), "\t".to_owned())
+                | eat(tag(r#"\v"#), "\x0B".to_owned())
+                | eat(tag(r#"\'"#), "\'".to_owned())
+                | eat(tag(r#"\""#), "\"".to_owned())
+                | eat(tag(r#"\\"#), "\\".to_owned())
+                | eat(tag(r#"\?"#), "?".to_owned())
                 // TODO: \nnnn The byte whose numerical value is given by nnn interpreted as an octal number
-                // TODO: \xhh…  The byte whose numerical value is given by hh… interpreted as a hexadecimal number (NOTE: More that 2 is implementation defined... Assuming 8 bit wide chars...)
-                // TODO: \Uhhhhhhhh	Unicode code point where h is a hexadecimal digit
-                // TODO: \uhhhh Unicode code point below 10000 hexadecimal
-                // TODO: Diagnose unknown escapes..
-                | eat(tag(r#"""#), "")
+                | map(
+                    preceded(
+                        tag(r#"\x"#),
+                        take(2)
+                    ),
+                    |x| String::from_utf8(vec![u8::from_str_radix(x, 16).unwrap()]).unwrap()
+                )
+                | map(
+                    preceded(
+                        tag(r#"\U"#),
+                        take(8)
+                    ),
+                    hex_as_string
+                )
+                | map(
+                    preceded(
+                        tag(r#"\u"#),
+                        take(4)
+                    ),
+                    hex_as_string
+                )
+                | map(tag(r#"\"#), |_| panic!("Unknown escape sequence."))
+                | eat(tag(r#"""#), "".to_owned())
         ).parse(s)
             .and_then(|((b, t), s)| if t.is_empty() {
                 Some((b.to_string(), s))
             } else if let Some((a, s)) = parse_str(s) {
-                Some((b.to_string() + t + &a, s))
+                Some((b.to_string() + &t + &a, s))
             } else {
                 None
             })
