@@ -1,3 +1,5 @@
+use std::fmt;
+
 pub use delimited::*;
 pub use repeating::*;
 pub use control::*;
@@ -86,8 +88,9 @@ impl<S: Parseable> Parser<S> for () {
 
 pub struct Wrapper<P>(P);
 
-impl<F, T, S: Parseable> Parser<S> for Wrapper<F>
-    where F: for<'a> Fn(S) -> Option<(T, S)>
+impl<F, T, S> Parser<S> for Wrapper<F>
+    where S: Parseable,
+          F: for<'a> Fn(S) -> Option<(T, S)>,
 {
     type Res = T;
     fn parse(&self, s: S) -> Option<(Self::Res, S)> {
@@ -95,7 +98,10 @@ impl<F, T, S: Parseable> Parser<S> for Wrapper<F>
     }
 }
 
-pub fn fun<F>(f: F) -> Wrapper<F> {
+pub fn fun<F, S, T>(f: F) -> Wrapper<F>
+    where S: Parseable,
+          F: for<'a> Fn(S) -> Option<(T, S)>,
+{
     Wrapper(f)
 }
 
@@ -114,7 +120,9 @@ impl<S: Parseable> Parser<S> for Tag<S> {
     }
 }
 
-pub fn tag<S>(tag: S) -> Tag<S> {
+pub fn tag<S>(tag: S) -> Tag<S>
+    where S: Parseable
+{
     Tag {
         tag,
     }
@@ -124,8 +132,9 @@ pub struct One<S> {
     symbol: S,
 }
 
-impl<S: Parseable> Parser<S> for One<<S as Parseable>::Symbol>
-    where <S as Parseable>::Symbol: PartialEq + Clone
+impl<S> Parser<S> for One<S::Symbol>
+    where S: Parseable,
+          S::Symbol: PartialEq + Clone
 {
     type Res = S::Symbol;
     fn parse(&self, s: S) -> Option<(Self::Res, S)> {
@@ -138,7 +147,9 @@ impl<S: Parseable> Parser<S> for One<<S as Parseable>::Symbol>
     }
 }
 
-pub fn one<S>(symbol: S) -> One<S> {
+pub fn one<S>(symbol: S) -> One<S>
+    where S: PartialEq + Clone
+{
     One {
         symbol
     }
@@ -156,4 +167,19 @@ impl<S: Parseable> Parser<S> for Fst {
 
 pub fn fst() -> Fst {
     Fst
+}
+
+pub struct Dbg<P>(P);
+
+impl<P: Parser<S>, S: Parseable + fmt::Debug> Parser<S> for Dbg<P> {
+    type Res = P::Res;
+    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+        eprintln!("DBG: {:#?}", s);
+        self.0.parse(s)
+    }
+}
+
+
+pub fn dbg<P: Parser<S>, S: Parseable>(parser: P) -> Dbg<P> {
+    Dbg(parser)
 }

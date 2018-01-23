@@ -123,9 +123,15 @@ fn identifier(s: &str) -> Option<(Token, &str)> {
         .map(|(p, s)| (Token::Identifier(p), s))
 }
 
+fn integer(s: &str) -> Option<(Token, &str)> {
+    take_while(|c| char::is_digit(c, 10))
+        .parse(s)
+        .map(|(p, s)| (Token::Literal(Integer(p.parse::<BigInt>().unwrap())), s))
+}
+
 fn hex_as_string(x: &str) -> String {
     char::from_u32(
-        u32::from_str_radix(&x, 16).unwrap()
+        u32::from_str_radix(x, 16).unwrap()
     ).unwrap().to_string()
 }
 
@@ -143,25 +149,24 @@ fn str_literal(s: &str) -> Option<(Token, &str)> {
                 | eat(tag(r#"\""#), "\"".to_owned())
                 | eat(tag(r#"\\"#), "\\".to_owned())
                 | eat(tag(r#"\?"#), "?".to_owned())
-                // TODO: Refactor octal escape
                 | map(
                     preceded(
                         tag(r#"\"#),
                         alt()
                             | flat_map(
                                 take(3),
-                                |x: &str| -> Option<u8> {u8::from_str_radix(x, 8).ok()}
+                                |x| u8::from_str_radix(x, 8).ok()
                             )
                             | flat_map(
                                 take(2),
-                                |x: &str| -> Option<u8> {u8::from_str_radix(x, 8).ok()}
+                                |x| u8::from_str_radix(x, 8).ok()
                             )
                             | flat_map(
                                 take(1),
-                                |x: &str| -> Option<u8> {u8::from_str_radix(x, 8).ok()}
+                                |x| u8::from_str_radix(x, 8).ok()
                             )
                     ),
-                    |x: u8| String::from_utf8(vec![x])
+                    |x| String::from_utf8(vec![x]).unwrap()
                 )
                 | map(
                     preceded(
@@ -201,10 +206,4 @@ fn str_literal(s: &str) -> Option<(Token, &str)> {
         fun(parse_str),
     ).parse(s)
         .map(|(p, s)| (Token::Literal(StringLit(p)), s))
-}
-
-fn integer(s: &str) -> Option<(Token, &str)> {
-    take_while(|c| char::is_digit(c, 10))
-        .parse(s)
-        .map(|(p, s)| (Token::Literal(Integer(p.parse::<BigInt>().unwrap())), s))
 }

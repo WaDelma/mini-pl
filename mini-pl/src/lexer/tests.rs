@@ -145,7 +145,7 @@ fn string_literal_with_unicode_escape_lexes() {
             ],
             ""
         )),
-        tokenize(r#""\U0001F44C \U0001F914 \U0001F63D \u2E19 \U0001D745 \u226A \U0001D749 \u2E0E"#)
+        tokenize(r#""\U0001F44C \U0001F914 \U0001F63D \u2E19 \U0001D745 \u226A \U0001D749 \u2E0E""#)
     );
 }
 

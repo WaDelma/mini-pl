@@ -23,7 +23,9 @@ impl<'b, F> Parser<&'b str> for TakeWhile<F>
     }
 }
 
-pub fn take_while<F>(predicate: F) -> TakeWhile<F> {
+pub fn take_while<F>(predicate: F) -> TakeWhile<F>
+    where F: Fn(char) -> bool,
+{
     TakeWhile {
         predicate
     }
@@ -55,7 +57,10 @@ impl<'b, P, S> Parser<S> for TakeUntil<P>
     }
 }
 
-pub fn take_until<P>(parser: P) -> TakeUntil<P> {
+pub fn take_until<P, S>(parser: P) -> TakeUntil<P>
+    where S: Parseable,
+          P: Parser<S>,
+{
     TakeUntil {
         parser
     }
@@ -80,7 +85,10 @@ impl<P, S> Parser<S> for Many0<P>
     }
 }
 
-pub fn many0<P>(parser: P) -> Many0<P> {
+pub fn many0<P, S>(parser: P) -> Many0<P>
+    where S: Parseable,
+          P: Parser<S>,
+{
     Many0 {
         parser
     }
@@ -106,7 +114,10 @@ impl<P, S> Parser<S> for Many1<P>
     }
 }
 
-pub fn many1<P>(parser: P) -> Many1<P> {
+pub fn many1<P, S>(parser: P) -> Many1<P>
+    where S: Parseable,
+          P: Parser<S>,
+{
     Many1 {
         parser
     }
@@ -129,7 +140,10 @@ impl<P, S> Parser<S> for List0<P, S>
     }
 }
 
-pub fn list0<P, S>(separator: S, parser: P) -> List0<P, S> {
+pub fn list0<P, S>(separator: S, parser: P) -> List0<P, S>
+    where S: Parseable,
+          P: Parser<S>,
+{
     List0 {
         separator: tag(separator),
         parser
@@ -152,7 +166,9 @@ impl<'b, P> Parser<&'b str> for Whitespace<P>
     }
 }
 
-pub fn ws<P>(parser: P) -> Whitespace<P> {
+pub fn ws<'b, P>(parser: P) -> Whitespace<P>
+    where P: Parser<&'b str>,
+{
     Whitespace {
         parser
     }

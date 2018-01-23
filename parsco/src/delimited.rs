@@ -17,7 +17,11 @@ impl<P1, P2, S> Parser<S> for Preceded<P1, P2>
     }
 }
 
-pub fn preceded<P1, P2>(precedator: P2, parser: P1) -> Preceded<P1, P2> {
+pub fn preceded<P1, P2, S>(precedator: P2, parser: P1) -> Preceded<P1, P2>
+    where S: Parseable,
+          P1: Parser<S>,
+          P2: Parser<S>,
+{
     Preceded {
         parser,
         precedator
@@ -41,7 +45,11 @@ impl<P1, P2, S> Parser<S> for Terminated<P1, P2>
     }
 }
 
-pub fn terminated<P1, P2>(parser: P1, terminator: P2) -> Terminated<P1, P2> {
+pub fn terminated<P1, P2, S>(parser: P1, terminator: P2) -> Terminated<P1, P2>
+    where S: Parseable,
+          P1: Parser<S>,
+          P2: Parser<S>,
+{
     Terminated {
         parser,
         terminator
@@ -67,7 +75,12 @@ impl<P1, P2, P3, S> Parser<S> for Delimited<P1, P2, P3>
     }
 }
 
-pub fn delimited<P1, P2, P3>(precedator: P1, parser: P2, terminator: P3) -> Delimited<P1, P2, P3> {
+pub fn delimited<P1, P2, P3, S>(precedator: P1, parser: P2, terminator: P3) -> Delimited<P1, P2, P3>
+    where S: Parseable,
+          P1: Parser<S>,
+          P2: Parser<S>,
+          P3: Parser<S>,
+{
     Delimited {
         precedator,
         parser,
