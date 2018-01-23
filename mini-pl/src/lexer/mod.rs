@@ -2,7 +2,7 @@ use std::char;
 
 use num_bigint::BigInt;
 
-use parsco::{Parser, tag, many0, alt, fun, preceded, terminated, delimited, take_while, take_until, ws, fst, opt, map, eat, take};
+use parsco::{Parser, tag, many0, alt, fun, preceded, terminated, delimited, take_while, take_until, ws, fst, opt, map, eat, take, flat_map};
 
 use self::tokens::Token;
 use self::tokens::Punctuation::*;
@@ -114,7 +114,7 @@ fn identifier(s: &str) -> Option<(Token, &str)> {
                 None
             })
         .map(|(t1, s)|
-            if let Some((t2, s)) = take_while(|c| char::is_alphabetic(c) || char::is_digit(c, 10) || c == '_').parse(s) {
+            if let Some((t2, s)) = take_while(|c| char::is_alphanumeric(c) || c == '_').parse(s) {
                 (format!("{}{}", t1, t2), s)
             } else {
                 (t1.to_string(), s)
@@ -143,7 +143,26 @@ fn str_literal(s: &str) -> Option<(Token, &str)> {
                 | eat(tag(r#"\""#), "\"".to_owned())
                 | eat(tag(r#"\\"#), "\\".to_owned())
                 | eat(tag(r#"\?"#), "?".to_owned())
-                // TODO: \nnnn The byte whose numerical value is given by nnn interpreted as an octal number
+                // TODO: Refactor octal escape
+                | map(
+                    preceded(
+                        tag(r#"\"#),
+                        alt()
+                            | flat_map(
+                                take(3),
+                                |x: &str| -> Option<u8> {u8::from_str_radix(x, 8).ok()}
+                            )
+                            | flat_map(
+                                take(2),
+                                |x: &str| -> Option<u8> {u8::from_str_radix(x, 8).ok()}
+                            )
+                            | flat_map(
+                                take(1),
+                                |x: &str| -> Option<u8> {u8::from_str_radix(x, 8).ok()}
+                            )
+                    ),
+                    |x: u8| String::from_utf8(vec![x])
+                )
                 | map(
                     preceded(
                         tag(r#"\x"#),

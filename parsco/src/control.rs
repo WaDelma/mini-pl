@@ -102,6 +102,34 @@ pub fn map<P, F>(parser: P, map: F) -> Map<P, F> {
     }
 }
 
+pub struct FlatMap<P, F> {
+    parser: P,
+    map: F
+}
+
+impl<P, S, F, T> Parser<S> for FlatMap<P, F>
+    where P: Parser<S>,
+          S: Parseable,
+          F: Fn(P::Res) -> Option<T>
+          
+{
+    type Res = T;
+    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+        self.parser.parse(s)
+            .and_then(|(res, s)|
+                (self.map)(res)
+                    .map(|res| (res, s))
+            )
+    }
+}
+
+pub fn flat_map<P, F>(parser: P, map: F) -> FlatMap<P, F> {
+    FlatMap {
+        parser,
+        map
+    }
+}
+
 pub struct Eat<P, T> {
     parser: P,
     substitute: T

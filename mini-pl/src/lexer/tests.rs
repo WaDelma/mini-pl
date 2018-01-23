@@ -141,11 +141,24 @@ fn string_literal_with_unicode_escape_lexes() {
     assert_eq!(
         Some((
             vec![
-                Literal(StringLit(String::from("👌 🤔 😽 ⸙ 𝝅 ≪ 𝝉"))),
+                Literal(StringLit(String::from("👌 🤔 😽 ⸙ 𝝅 ≪ 𝝉 ⸎"))),
             ],
             ""
         )),
-        tokenize(r#""\U0001F44C \U0001F914 \U0001F63D \u2E19 \U0001D745 \u226A \U0001D749""#)
+        tokenize(r#""\U0001F44C \U0001F914 \U0001F63D \u2E19 \U0001D745 \u226A \U0001D749 \u2E0E"#)
+    );
+}
+
+#[test]
+fn string_literal_with_octal_escape_lexes() {
+    assert_eq!(
+        Some((
+            vec![
+                Literal(StringLit(String::from_utf8(vec![0o0, 0o10, 0o100, 0o2, 0o12, 0o102]).unwrap())),
+            ],
+            ""
+        )),
+        tokenize(r#""\0\10\100\2\12\102""#)
     );
 }
 
