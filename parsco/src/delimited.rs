@@ -1,4 +1,4 @@
-use {Parser, Parseable};
+use {Parser, Parseable, Result};
 
 pub struct Preceded<P1, P2> {
     parser: P1,
@@ -9,9 +9,11 @@ impl<P1, P2, S> Parser<S> for Preceded<P1, P2>
     where S: Parseable,
           P1: Parser<S>,
           P2: Parser<S>,
+          P2::Err: From<P1::Err>,
 {
     type Res = P1::Res;
-    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+    type Err = P2::Err;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         (&self.precedator, &self.parser).parse(s)
             .map(|((_, r), s)| (r, s))
     }
@@ -37,9 +39,11 @@ impl<P1, P2, S> Parser<S> for Terminated<P1, P2>
     where S: Parseable,
           P1: Parser<S>,
           P2: Parser<S>,
+          P1::Err: From<P2::Err>,
 {
     type Res = P1::Res;
-    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+    type Err = P1::Err;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         (&self.parser, &self.terminator).parse(s)
             .map(|((r, _), s)|(r, s))
     }
@@ -67,9 +71,12 @@ impl<P1, P2, P3, S> Parser<S> for Delimited<P1, P2, P3>
           P1: Parser<S>,
           P2: Parser<S>,
           P3: Parser<S>,
+          P1::Err: From<P2::Err>,
+          P1::Err: From<P3::Err>,
 {
     type Res = P2::Res;
-    fn parse<'a>(&self, s: S) -> Option<(Self::Res, S)> {
+    type Err = P1::Err;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         (&self.precedator, &self.parser, &self.terminator).parse(s)
             .map(|((_, r, _), s)| (r, s))
     }
@@ -92,15 +99,18 @@ impl<P1, P2, S> Parser<S> for (P1, P2)
     where S: Parseable,
           P1: Parser<S>,
           P2: Parser<S>,
+          P1::Err: From<P2::Err>,
 {
     type Res = (P1::Res, P2::Res);
-    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+    type Err = P1::Err;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         self.0
             .parse(s)
             .and_then(|(r1, s)|
                 self.1
                     .parse(s)
                     .map(|(r2, s)| ((r1, r2), s))
+                    .map_err(|(e, s)| (e.into(), s))
             )
     }
 }
@@ -110,9 +120,12 @@ impl<P1, P2, P3, S> Parser<S> for (P1, P2, P3)
           P1: Parser<S>,
           P2: Parser<S>,
           P3: Parser<S>,
+          P1::Err: From<P2::Err>,
+          P1::Err: From<P3::Err>,
 {
     type Res = (P1::Res, P2::Res, P3::Res);
-    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+    type Err = P1::Err;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         let (ref p1, ref p2, ref p3) = *self;
         ((p1, p2), p3)
             .parse(s)
@@ -126,9 +139,13 @@ impl<P1, P2, P3, P4, S> Parser<S> for (P1, P2, P3, P4)
           P2: Parser<S>,
           P3: Parser<S>,
           P4: Parser<S>,
+          P1::Err: From<P2::Err>,
+          P1::Err: From<P3::Err>,
+          P1::Err: From<P4::Err>,
 {
     type Res = (P1::Res, P2::Res, P3::Res, P4::Res);
-    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+    type Err = P1::Err;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         let (ref p1, ref p2, ref p3, ref p4) = *self;
         ((p1, p2, p3), p4)
             .parse(s)
@@ -143,9 +160,14 @@ impl<P1, P2, P3, P4, P5, S> Parser<S> for (P1, P2, P3, P4, P5)
           P3: Parser<S>,
           P4: Parser<S>,
           P5: Parser<S>,
+          P1::Err: From<P2::Err>,
+          P1::Err: From<P3::Err>,
+          P1::Err: From<P4::Err>,
+          P1::Err: From<P5::Err>,
 {
     type Res = (P1::Res, P2::Res, P3::Res, P4::Res, P5::Res);
-    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+    type Err = P1::Err;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         let (ref p1, ref p2, ref p3, ref p4, ref p5) = *self;
         ((p1, p2, p3, p4), p5)
             .parse(s)

@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use std::ops::BitOr;
 
-use {Parser, Parseable};
+use {Parser, Parseable, Result};
 
 pub struct Alt<P1, P2, S> {
     parser: P1,
@@ -31,9 +31,12 @@ impl<P1, P2, T, S> Parser<S> for Alt<P1, P2, S>
           P2: Parser<S, Res=T>,
 {
     type Res = T;
-    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+    type Err = P2::Err;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         self.parser.parse(s)
-            .or_else(|| self.rest.parse(s))
+            .or_else(|_|
+                self.rest.parse(s)
+            )
     }
 }
 
@@ -57,8 +60,9 @@ impl<T, S> Parser<S> for Empty<T, S>
     where S: Parseable,
 {
     type Res = T;
-    fn parse(&self, _: S) -> Option<(Self::Res, S)> {
-        None
+    type Err = ();
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
+        Err(((), s))
     }
 }
 
@@ -75,10 +79,11 @@ impl<P, S> Parser<S> for Opt<P>
           P: Parser<S>,
 {
     type Res = Option<P::Res>;
-    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+    type Err = ();
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         self.parser.parse(s)
             .map(|(r, s)| (Some(r), s))
-            .or_else(|| Some((None, s)))
+            .or_else(|_| Ok((None, s)))
     }
 }
 
@@ -102,7 +107,8 @@ impl<P, S, F, T> Parser<S> for Map<P, F>
           F: Fn(P::Res) -> T       
 {
     type Res = T;
-    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+    type Err = P::Err;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         self.parser.parse(s)
             .map(|(res, s)| ((self.map)(res), s))
     }
@@ -130,11 +136,14 @@ impl<P, S, F, T> Parser<S> for FlatMap<P, F>
           F: Fn(P::Res) -> Option<T>
 {
     type Res = T;
-    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+    type Err = ::std::result::Result<P::Err, ()>;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         self.parser.parse(s)
+            .map_err(|(e, s)| (Ok(e), s))
             .and_then(|(res, s)|
                 (self.map)(res)
                     .map(|res| (res, s))
+                    .ok_or((Err(()), s))
             )
     }
 }
@@ -161,7 +170,8 @@ impl<P, S, T> Parser<S> for Eat<P, T>
           T: Clone,
 {
     type Res = T;
-    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+    type Err = P::Err;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         self.parser.parse(s)
             .map(|(_, s)| (self.substitute.clone(), s))
     }

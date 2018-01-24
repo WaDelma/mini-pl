@@ -1,4 +1,6 @@
 use std::char;
+use std::num::ParseIntError;
+use std::string::FromUtf8Error;
 
 use num_bigint::BigInt;
 
@@ -14,6 +16,33 @@ use self::tokens::Literal::*;
 pub mod tokens;
 #[cfg(test)]
 mod tests;
+
+pub enum LexError {
+    HexadecimalLexError(HexadecimalLexError),
+}
+
+impl From<HexadecimalLexError> for LexError {
+    fn from(e: HexadecimalLexError) -> Self {
+        LexError::HexadecimalLexError(e)
+    }
+}
+
+pub enum HexadecimalLexError {
+    ParseIntError(ParseIntError),
+    FromUtf8Error(FromUtf8Error),
+}
+
+impl From<ParseIntError> for HexadecimalLexError {
+    fn from(e: ParseIntError) -> Self {
+        HexadecimalLexError::ParseIntError(e)
+    }
+}
+
+impl From<FromUtf8Error> for HexadecimalLexError {
+    fn from(e: FromUtf8Error) -> Self {
+        HexadecimalLexError::FromUtf8Error(e)
+    }
+}
 
 pub fn tokenize(s: &str) -> Option<(Vec<Token>, &str)> {
     terminated(many0(preceded(

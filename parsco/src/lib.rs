@@ -8,6 +8,10 @@ mod control;
 mod delimited;
 mod repeating;
 
+type Result<S, T, E> = ::std::result::Result<(T, S), (E, S)>;
+
+enum Void {}
+
 pub trait Parseable: Copy {
     type Symbol;
     fn len(self) -> usize;
@@ -69,31 +73,35 @@ impl<'a, T: PartialEq + Clone> Parseable for &'a [T] {
 
 pub trait Parser<S: Parseable> {
     type Res;
-    fn parse(&self, s: S) -> Option<(Self::Res, S)>;
+    type Err;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err>;
 }
 
 impl<'b, T: Parser<S>, S: Parseable> Parser<S> for &'b T {
     type Res = T::Res;
-    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+    type Err = T::Err;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         (*self).parse(s)
     }
 }
 
 impl<S: Parseable> Parser<S> for () {
     type Res = ();
-    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
-        Some(((), s))
+    type Err = Void;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
+        Ok(((), s))
     }
 }
 
 pub struct Wrapper<P>(P);
 
-impl<F, T, S> Parser<S> for Wrapper<F>
+impl<F, S, T, E> Parser<S> for Wrapper<F>
     where S: Parseable,
-          F: for<'a> Fn(S) -> Option<(T, S)>,
+          F: for<'a> Fn(S) -> Result<S, T, E>,
 {
     type Res = T;
-    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+    type Err = E;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         self.0(s)
     }
 }
@@ -111,11 +119,12 @@ pub struct Tag<S> {
 
 impl<S: Parseable> Parser<S> for Tag<S> {
     type Res = S;
-    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+    type Err = ();
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         if s.starts_with(&self.tag) {
-            Some((self.tag, s.split_at(self.tag.len()).unwrap().1))
+            Ok((self.tag, s.split_at(self.tag.len()).expect("There should be tag at the start").1))
         } else {
-            None
+            Err(((), s))
         }
     }
 }
@@ -137,12 +146,14 @@ impl<S> Parser<S> for One<S::Symbol>
           S::Symbol: PartialEq + Clone
 {
     type Res = S::Symbol;
-    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+    type Err = ();
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         s.first()
+            .ok_or(((), s))
             .and_then(|f| if f == self.symbol {
-                Some((self.symbol.clone(), s.split_at(1).unwrap().1))
+                Ok((self.symbol.clone(), s.split_at(1).expect("There is first").1))
             } else {
-                None
+                Err(((), s))
             })
     }
 }
@@ -159,9 +170,14 @@ pub struct Fst;
 
 impl<S: Parseable> Parser<S> for Fst {
     type Res = S::Symbol;
-    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+    type Err = ();
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         take(1).parse(s)
-            .and_then(|(t, s)| t.first().map(|t| (t, s)))
+            .and_then(|(t, s)|
+                t.first()
+                    .map(|t| (t, s))
+                    .ok_or(((), s))
+            )
     }
 }
 
@@ -173,7 +189,8 @@ pub struct Dbg<P>(P);
 
 impl<P: Parser<S>, S: Parseable + fmt::Debug> Parser<S> for Dbg<P> {
     type Res = P::Res;
-    fn parse(&self, s: S) -> Option<(Self::Res, S)> {
+    type Err = P::Err;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         eprintln!("DBG: {:#?}", s);
         self.0.parse(s)
     }
