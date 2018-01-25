@@ -4,7 +4,7 @@ use parsco::{Parser, tag, many0, many1, list0, take_while, take_until};
 #[test]
 fn many0_parses_none() {
     assert_eq!(
-        Some((vec![], "ca")),
+        Ok((vec![], "ca")),
         many0(tag("a")).parse("ca")
     );
 }
@@ -12,7 +12,7 @@ fn many0_parses_none() {
 #[test]
 fn many0_parses_one() {
     assert_eq!(
-        Some((vec!["a"], "c")),
+        Ok((vec!["a"], "c")),
         many0(tag("a")).parse("ac")
     );
 }
@@ -20,7 +20,7 @@ fn many0_parses_one() {
 #[test]
 fn many0_parses_many() {
     assert_eq!(
-        Some((vec!["a", "a", "a"], "c")),
+        Ok((vec!["a", "a", "a"], "c")),
         many0(tag("a")).parse("aaac")
     );
 }
@@ -28,7 +28,7 @@ fn many0_parses_many() {
 #[test]
 fn many1_doesnt_parse_none() {
     assert_eq!(
-        None,
+        Err(()),
         many1(tag("a")).parse("ca")
     );
 }
@@ -36,7 +36,7 @@ fn many1_doesnt_parse_none() {
 #[test]
 fn many1_parses_one() {
     assert_eq!(
-        Some((vec!["a"], "c")),
+        Ok((vec!["a"], "c")),
         many1(tag("a")).parse("ac")
     );
 }
@@ -44,7 +44,7 @@ fn many1_parses_one() {
 #[test]
 fn many1_parses_many() {
     assert_eq!(
-        Some((vec!["a", "a", "a"], "c")),
+        Ok((vec!["a", "a", "a"], "c")),
         many1(tag("a")).parse("aaac")
     );
 }
@@ -52,7 +52,7 @@ fn many1_parses_many() {
 #[test]
 fn list0_parses_none() {
     assert_eq!(
-        Some((vec![], "c,a")),
+        Ok((vec![], "c,a")),
         list0(",", tag("a")).parse("c,a")
     );
 }
@@ -60,7 +60,7 @@ fn list0_parses_none() {
 #[test]
 fn list0_parses_one() {
     assert_eq!(
-        Some((vec!["a"], "c")),
+        Ok((vec!["a"], "c")),
         list0(",", tag("a")).parse("a,c")
     );
 }
@@ -68,7 +68,7 @@ fn list0_parses_one() {
 #[test]
 fn list0_parses_many() {
     assert_eq!(
-        Some((vec!["a", "a", "a"], "c")),
+        Ok((vec!["a", "a", "a"], "c")),
         list0(",", tag("a")).parse("a,a,a,c")
     );
 }
@@ -84,7 +84,7 @@ fn list0_parses_many() {
 // #[test]
 // fn list1_parses_one() {
 //     assert_eq!(
-//         Some((vec![A], "c")),
+//         Ok((vec![A], "c")),
 //         list1(",", tag("a", A)).parse("a,c")
 //     );
 // }
@@ -92,7 +92,7 @@ fn list0_parses_many() {
 // #[test]
 // fn list1_parses_many() {
 //     assert_eq!(
-//         Some((vec![A, A, A], "c")),
+//         Ok((vec![A, A, A], "c")),
 //         list1(",", tag("a", A)).parse("a,a,a,c")
 //     );
 // }
@@ -100,7 +100,7 @@ fn list0_parses_many() {
 #[test]
 fn take_while_zero() {
     assert_eq!(
-        None,
+        Err(()),
         take_while(|c| c == 'a').parse("c")
     );
 }
@@ -108,7 +108,7 @@ fn take_while_zero() {
 #[test]
 fn take_while_one() {
     assert_eq!(
-        Some((String::from("a"), "c")),
+        Ok((String::from("a"), "c")),
         take_while(|c| c == 'a').parse("ac")
     );
 }
@@ -116,7 +116,7 @@ fn take_while_one() {
 #[test]
 fn take_while_many() {
     assert_eq!(
-        Some((String::from("aaa"), "c")),
+        Ok((String::from("aaa"), "c")),
         take_while(|c| c == 'a').parse("aaac")
     );
 }
@@ -124,14 +124,14 @@ fn take_while_many() {
 #[test]
 fn take_while_end() {
     assert_eq!(
-        Some((String::from("a"), "")),
+        Ok((String::from("a"), "")),
         take_while(|c| c == 'a').parse("a")
     );
 }
 #[test]
 fn take_until_simple() {
     assert_eq!(
-        Some((("ab", "cd"), "e")),
+        Ok((("ab", "cd"), "e")),
         take_until(tag("cd")).parse("abcde")
     );
 }

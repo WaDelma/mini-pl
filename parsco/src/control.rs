@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use std::ops::BitOr;
 
-use {Parser, Parseable, Result};
+use {Parser, Parseable, Result, Err2};
 
 pub struct Alt<P1, P2, S> {
     parser: P1,
@@ -61,7 +61,7 @@ impl<T, S> Parser<S> for Empty<T, S>
 {
     type Res = T;
     type Err = ();
-    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
+    fn parse(&self, _: S) -> Result<S, Self::Res, Self::Err> {
         Err(())
     }
 }
@@ -136,14 +136,14 @@ impl<P, S, F, T> Parser<S> for FlatMap<P, F>
           F: Fn(P::Res) -> Option<T>
 {
     type Res = T;
-    type Err = ::std::result::Result<P::Err, ()>;
+    type Err = Err2<P::Err, ()>;
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         self.parser.parse(s)
-            .map_err(|e| Ok(e))
+            .map_err(Err2::V1)
             .and_then(|(res, s)|
                 (self.map)(res)
                     .map(|res| (res, s))
-                    .ok_or(Err(()))
+                    .ok_or(Err2::V2(()))
             )
     }
 }

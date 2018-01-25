@@ -1,4 +1,4 @@
-use {Parser, Parseable, Result, Tag, tag, terminated, preceded, opt};
+use {Parser, Parseable, Result, Tag, tag, terminated, preceded, opt, Err2};
 
 pub struct TakeWhile<F> {
     predicate: F,
@@ -135,7 +135,6 @@ pub struct List0<P, S> {
 impl<P, S> Parser<S> for List0<P, S>
     where S: Parseable,
           P: Parser<S>,
-          <P as Parser<S>>::Err: ::std::convert::From<()>
 {
     type Res = Vec<P::Res>;
     type Err = ();
@@ -164,12 +163,16 @@ impl<'b, P> Parser<&'b str> for Whitespace<P>
     where P: Parser<&'b str>,
 {
     type Res = P::Res;
-    type Err = P::Err;
+    type Err = Err2<(), P::Err>;
     fn parse(&self, s: &'b str) ->  Result<&'b str, Self::Res, Self::Err> {
         preceded(
             opt(take_while(char::is_whitespace)),
             &self.parser
         ).parse(s)
+        .map_err(|e| match e {
+            Err2::V1(_) => Err2::V1(()),
+            Err2::V2(e) => Err2::V2(e),
+        })
     }
 }
 
