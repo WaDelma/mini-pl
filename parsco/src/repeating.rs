@@ -11,10 +11,10 @@ impl<'b, F> Parser<&'b str> for TakeWhile<F>
     type Err = ();
     fn parse<'a>(&self, s: &'a str) -> Result<&'a str, Self::Res, Self::Err> {
         if s.len() == 0 {
-            Err(((), s))
+            Err(())
         } else if let Some(i) = s.char_indices().skip_while(|&(_, c)| (self.predicate)(c)).map(|c| c.0).next() {
             if i == 0 {
-                Err(((), s))
+                Err(())
             } else {
                 Ok((s[..i].to_string(), &&s[i..]))
             }
@@ -53,7 +53,7 @@ impl<'b, P, S> Parser<S> for TakeUntil<P>
                 n += 1;
                 cur = rest;
             } else {
-                return Err(((), s));
+                return Err(());
             }
         }
     }
@@ -78,7 +78,7 @@ impl<P, S> Parser<S> for Many0<P>
 {
     type Res = Vec<P::Res>;
     type Err = ();
-    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
+    fn parse(&self, mut s: S) -> Result<S, Self::Res, Self::Err> {
         let mut result = Vec::new();
         while let Ok((t, rest)) = self.parser.parse(s) {
             s = rest;
@@ -111,7 +111,7 @@ impl<P, S> Parser<S> for Many1<P>
         many0(&self.parser).parse(s)
             .and_then(|(t, s)|
                 if t.is_empty() {
-                    Err(((), s))
+                    Err(())
                 } else {
                     Ok((t, s))
                 })
@@ -135,6 +135,7 @@ pub struct List0<P, S> {
 impl<P, S> Parser<S> for List0<P, S>
     where S: Parseable,
           P: Parser<S>,
+          <P as Parser<S>>::Err: ::std::convert::From<()>
 {
     type Res = Vec<P::Res>;
     type Err = ();
@@ -190,7 +191,7 @@ impl<S> Parser<S> for Take
     type Res = S;
     type Err = ();
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
-        s.split_at(self.amount).ok_or(((), s))
+        s.split_at(self.amount).ok_or(())
     }
 }
 

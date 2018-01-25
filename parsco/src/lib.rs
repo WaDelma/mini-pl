@@ -8,9 +8,9 @@ mod control;
 mod delimited;
 mod repeating;
 
-type Result<S, T, E> = ::std::result::Result<(T, S), (E, S)>;
+type Result<S, T, E> = ::std::result::Result<(T, S), E>;
 
-enum Void {}
+pub enum Void {}
 
 pub trait Parseable: Copy {
     type Symbol;
@@ -124,7 +124,7 @@ impl<S: Parseable> Parser<S> for Tag<S> {
         if s.starts_with(&self.tag) {
             Ok((self.tag, s.split_at(self.tag.len()).expect("There should be tag at the start").1))
         } else {
-            Err(((), s))
+            Err(())
         }
     }
 }
@@ -149,11 +149,11 @@ impl<S> Parser<S> for One<S::Symbol>
     type Err = ();
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         s.first()
-            .ok_or(((), s))
+            .ok_or(())
             .and_then(|f| if f == self.symbol {
                 Ok((self.symbol.clone(), s.split_at(1).expect("There is first").1))
             } else {
-                Err(((), s))
+                Err(())
             })
     }
 }
@@ -176,7 +176,7 @@ impl<S: Parseable> Parser<S> for Fst {
             .and_then(|(t, s)|
                 t.first()
                     .map(|t| (t, s))
-                    .ok_or(((), s))
+                    .ok_or(())
             )
     }
 }

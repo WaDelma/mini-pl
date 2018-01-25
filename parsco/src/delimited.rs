@@ -110,7 +110,7 @@ impl<P1, P2, S> Parser<S> for (P1, P2)
                 self.1
                     .parse(s)
                     .map(|(r2, s)| ((r1, r2), s))
-                    .map_err(|(e, s)| (e.into(), s))
+                    .map_err(Into::into)
             )
     }
 }

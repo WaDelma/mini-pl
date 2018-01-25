@@ -62,7 +62,7 @@ impl<T, S> Parser<S> for Empty<T, S>
     type Res = T;
     type Err = ();
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
-        Err(((), s))
+        Err(())
     }
 }
 
@@ -139,11 +139,11 @@ impl<P, S, F, T> Parser<S> for FlatMap<P, F>
     type Err = ::std::result::Result<P::Err, ()>;
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         self.parser.parse(s)
-            .map_err(|(e, s)| (Ok(e), s))
+            .map_err(|e| Ok(e))
             .and_then(|(res, s)|
                 (self.map)(res)
                     .map(|res| (res, s))
-                    .ok_or((Err(()), s))
+                    .ok_or(Err(()))
             )
     }
 }
