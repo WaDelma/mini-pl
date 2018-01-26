@@ -1,4 +1,4 @@
-use {Parser, Parseable, Result};
+use {Parser, Parseable, Result, FromErr};
 
 pub struct Preceded<P1, P2> {
     parser: P1,
@@ -97,6 +97,19 @@ pub enum Err2<E1, E2> {
     V2(E2),
 }
 
+impl<E1, E2, E> FromErr<Err2<E1, E2>> for E
+    where E: FromErr<E1>,
+          E: FromErr<E2>,
+{
+    fn from(e: Err2<E1, E2>) -> Self {
+        use self::Err2::*;
+        match e {
+            V1(e) => Self::from(e),
+            V2(e) => Self::from(e),
+        }
+    }
+}
+
 impl<P1, P2, S> Parser<S> for (P1, P2)
     where S: Parseable,
           P1: Parser<S>,
@@ -122,6 +135,21 @@ pub enum Err3<E1, E2, E3> {
     V1(E1),
     V2(E2),
     V3(E3),
+}
+
+impl<E1, E2, E3, E> FromErr<Err3<E1, E2, E3>> for E
+    where E: FromErr<E1>,
+          E: FromErr<E2>,
+          E: FromErr<E3>,
+{
+    fn from(e: Err3<E1, E2, E3>) -> Self {
+        use self::Err3::*;
+        match e {
+            V1(e) => Self::from(e),
+            V2(e) => Self::from(e),
+            V3(e) => Self::from(e),
+        }
+    }
 }
 
 impl<P1, P2, P3, S> Parser<S> for (P1, P2, P3)
@@ -154,6 +182,23 @@ pub enum Err4<E1, E2, E3, E4> {
     V2(E2),
     V3(E3),
     V4(E4),
+}
+
+impl<E1, E2, E3, E4, E> FromErr<Err4<E1, E2, E3, E4>> for E
+    where E: FromErr<E1>,
+          E: FromErr<E2>,
+          E: FromErr<E3>,
+          E: FromErr<E4>,
+{
+    fn from(e: Err4<E1, E2, E3, E4>) -> Self {
+        use self::Err4::*;
+        match e {
+            V1(e) => Self::from(e),
+            V2(e) => Self::from(e),
+            V3(e) => Self::from(e),
+            V4(e) => Self::from(e),
+        }
+    }
 }
 
 impl<P1, P2, P3, P4, S> Parser<S> for (P1, P2, P3, P4)
@@ -189,6 +234,25 @@ pub enum Err5<E1, E2, E3, E4, E5> {
     V3(E3),
     V4(E4),
     V5(E5),
+}
+
+impl<E1, E2, E3, E4, E5, E> FromErr<Err5<E1, E2, E3, E4, E5>> for E
+    where E: FromErr<E1>,
+          E: FromErr<E2>,
+          E: FromErr<E3>,
+          E: FromErr<E4>,
+          E: FromErr<E5>,
+{
+    fn from(e: Err5<E1, E2, E3, E4, E5>) -> Self {
+        use self::Err5::*;
+        match e {
+            V1(e) => Self::from(e),
+            V2(e) => Self::from(e),
+            V3(e) => Self::from(e),
+            V4(e) => Self::from(e),
+            V5(e) => Self::from(e),
+        }
+    }
 }
 
 impl<P1, P2, P3, P4, P5, S> Parser<S> for (P1, P2, P3, P4, P5)

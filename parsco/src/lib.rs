@@ -8,9 +8,29 @@ mod control;
 mod delimited;
 mod repeating;
 
-type Result<S, T, E> = ::std::result::Result<(T, S), E>;
+pub type Result<S, T, E> = ::std::result::Result<(T, S), E>;
 
 pub enum Void {}
+
+pub trait FromErr<E> {
+    fn from(e: E) -> Self;
+}
+
+impl<T> FromErr<T> for T {
+    fn from(t: T) -> T { t }
+}
+
+pub trait IntoErr<E> {
+    fn into(e: Self) -> E;
+}
+
+impl<T, U> IntoErr<U> for T
+    where U: FromErr<T>
+{
+    fn into(self) -> U {
+        U::from(self)
+    }
+}
 
 pub trait Parseable: Copy {
     type Symbol;
@@ -106,9 +126,9 @@ impl<F, S, T, E> Parser<S> for Wrapper<F>
     }
 }
 
-pub fn fun<F, S, T>(f: F) -> Wrapper<F>
+pub fn fun<F, S, T, E>(f: F) -> Wrapper<F>
     where S: Parseable,
-          F: for<'a> Fn(S) -> Option<(T, S)>,
+          F: for<'a> Fn(S) -> Result<S, T, E>,
 {
     Wrapper(f)
 }
