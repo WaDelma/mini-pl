@@ -104,8 +104,8 @@ impl<E1, E2, E> FromErr<Err2<E1, E2>> for E
     fn from(e: Err2<E1, E2>) -> Self {
         use self::Err2::*;
         match e {
-            V1(e) => Self::from(e),
-            V2(e) => Self::from(e),
+            V1(e) => FromErr::from(e),
+            V2(e) => FromErr::from(e),
         }
     }
 }
@@ -145,12 +145,13 @@ impl<E1, E2, E3, E> FromErr<Err3<E1, E2, E3>> for E
     fn from(e: Err3<E1, E2, E3>) -> Self {
         use self::Err3::*;
         match e {
-            V1(e) => Self::from(e),
-            V2(e) => Self::from(e),
-            V3(e) => Self::from(e),
+            V1(e) => FromErr::from(e),
+            V2(e) => FromErr::from(e),
+            V3(e) => FromErr::from(e),
         }
     }
 }
+
 
 impl<P1, P2, P3, S> Parser<S> for (P1, P2, P3)
     where S: Parseable,
@@ -193,10 +194,10 @@ impl<E1, E2, E3, E4, E> FromErr<Err4<E1, E2, E3, E4>> for E
     fn from(e: Err4<E1, E2, E3, E4>) -> Self {
         use self::Err4::*;
         match e {
-            V1(e) => Self::from(e),
-            V2(e) => Self::from(e),
-            V3(e) => Self::from(e),
-            V4(e) => Self::from(e),
+            V1(e) => FromErr::from(e),
+            V2(e) => FromErr::from(e),
+            V3(e) => FromErr::from(e),
+            V4(e) => FromErr::from(e),
         }
     }
 }
@@ -246,11 +247,11 @@ impl<E1, E2, E3, E4, E5, E> FromErr<Err5<E1, E2, E3, E4, E5>> for E
     fn from(e: Err5<E1, E2, E3, E4, E5>) -> Self {
         use self::Err5::*;
         match e {
-            V1(e) => Self::from(e),
-            V2(e) => Self::from(e),
-            V3(e) => Self::from(e),
-            V4(e) => Self::from(e),
-            V5(e) => Self::from(e),
+            V1(e) => FromErr::from(e),
+            V2(e) => FromErr::from(e),
+            V3(e) => FromErr::from(e),
+            V4(e) => FromErr::from(e),
+            V5(e) => FromErr::from(e),
         }
     }
 }

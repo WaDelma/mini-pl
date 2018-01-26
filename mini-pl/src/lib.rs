@@ -19,7 +19,7 @@ macro_rules! assert_eq {
 }
 
 pub mod lexer;
-//pub mod parser;
+pub mod parser;
 //pub mod interpreter;
 
 pub type Ident = String;

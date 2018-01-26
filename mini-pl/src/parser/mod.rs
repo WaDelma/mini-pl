@@ -9,12 +9,19 @@ use lexer::tokens::Operator::*;
 use lexer::tokens::Literal::*;
 use lexer::tokens::Token;
 use self::ast::{Stmt, Expr, Type, Opnd, BinOp, UnaOp};
+use self::ParseError::*;
+
+type Result<'a, T> = ::parsco::Result<&'a [Token], T, ParseError>;
 
 pub mod ast;
 #[cfg(test)]
 mod tests;
 
-pub fn parse(ts: &[Token]) -> Option<(Vec<Stmt>, &[Token])> {
+pub enum ParseError {
+    Unknown,
+}
+
+pub fn parse(ts: &[Token]) -> Result<Vec<Stmt>> {
     many1(
         terminated(
             fun(stmt),
@@ -23,7 +30,7 @@ pub fn parse(ts: &[Token]) -> Option<(Vec<Stmt>, &[Token])> {
     ).parse(ts)
 }
 
-pub fn stmt(ts: &[Token]) -> Option<(Stmt, &[Token])> {
+pub fn stmt(ts: &[Token]) -> Result<Stmt> {
     (alt()
         | map(
             (
@@ -37,12 +44,10 @@ pub fn stmt(ts: &[Token]) -> Option<(Stmt, &[Token])> {
                     one(Operator(Assignment)), fun(expr)
                 ))
             ),
-            |(ident, ty, value)| {
-                Stmt::Declaration {
-                    ident,
-                    ty,
-                    value
-                }
+            |(ident, ty, value)| Stmt::Declaration {
+                ident,
+                ty,
+                value
             }
         )
         | map(
@@ -117,7 +122,7 @@ pub fn stmt(ts: &[Token]) -> Option<(Stmt, &[Token])> {
     ).parse(ts)
 }
 
-pub fn expr(ts: &[Token]) -> Option<(Expr, &[Token])> {
+pub fn expr(ts: &[Token]) -> Result<Expr> {
     (alt()
         | map(
             (fun(opnd), fun(binop), fun(opnd)),
@@ -141,7 +146,7 @@ pub fn expr(ts: &[Token]) -> Option<(Expr, &[Token])> {
     ).parse(ts)
 }
 
-pub fn opnd(ts: &[Token]) -> Option<(Opnd, &[Token])> {
+pub fn opnd(ts: &[Token]) -> Result<Opnd> {
     (alt()
         | fun(int)
         | fun(string)
@@ -157,61 +162,61 @@ pub fn opnd(ts: &[Token]) -> Option<(Opnd, &[Token])> {
     ).parse(ts)
 }
 
-pub fn ident(ts: &[Token]) -> Option<(Ident, &[Token])> {
+pub fn ident(ts: &[Token]) -> Result<Ident> {
     fst().parse(ts)
         .and_then(|(t, s)| if let Identifier(ref t) = t {
-            Some((t.clone(), s))
+            Ok((t.clone(), s))
         } else {
-            None
+            Err(Unknown)
         })
 }
 
-pub fn ty(ts: &[Token]) -> Option<(Type, &[Token])> {
+pub fn ty(ts: &[Token]) -> Result<Type> {
     fst().parse(ts)
         .and_then(|(t, s)| if let Keyword(ref t) = t {
-            Some((match *t {
+            Ok((match *t {
                 Int => Type::Integer,
                 Bool => Type::Bool,
                 Str => Type::Str,
-                _ => None?,
+                _ => Err(Unknown)?,
             }, s))
         } else {
-            None
+            Err(Unknown)
         })
 }
 
-pub fn int(ts: &[Token]) -> Option<(Opnd, &[Token])> {
+pub fn int(ts: &[Token]) -> Result<Opnd> {
     fst().parse(ts)
         .and_then(|(t, s)| if let Literal(Integer(ref i)) = t {
-            Some((Opnd::Int(i.clone()), s))
+            Ok((Opnd::Int(i.clone()), s))
         } else {
-            None
+            Err(Unknown)
         })
 }
 
-pub fn string(ts: &[Token]) -> Option<(Opnd, &[Token])> {
+pub fn string(ts: &[Token]) -> Result<Opnd> {
     fst().parse(ts)
         .and_then(|(t, s)| if let Literal(StringLit(ref t)) = t {
-            Some((Opnd::StrLit(t.clone()), s))
+            Ok((Opnd::StrLit(t.clone()), s))
         } else {
-            None
+            Err(Unknown)
         })
 }
 
-pub fn binop(ts: &[Token]) -> Option<(BinOp, &[Token])> {
+pub fn binop(ts: &[Token]) -> Result<BinOp> {
     fst().parse(ts)
         .and_then(|(t, s)| if let Operator(ref o) = t {
-            Some((BinOp::from_oper(o)?, s))
+            Ok((BinOp::from_oper(o)?, s))
         } else {
-            None
+            Err(Unknown)
         })
 }
 
-pub fn unaop(ts: &[Token]) -> Option<(UnaOp, &[Token])> {
+pub fn unaop(ts: &[Token]) -> Result<UnaOp> {
     fst().parse(ts)
         .and_then(|(t, s)| if let Operator(ref o) = t {
-            Some((UnaOp::from_oper(o)?, s))
+            Ok((UnaOp::from_oper(o)?, s))
         } else {
-            None
+            Err(Unknown)
         })
 }
