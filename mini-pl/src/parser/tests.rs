@@ -12,7 +12,7 @@ use super::parse;
 fn complex_expr() {
     let bop = |lhs, op, rhs| Expr(Box::new(BinOper { lhs, op, rhs }));
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Print {
                     expr: BinOper {
@@ -75,7 +75,7 @@ fn complex_expr() {
 #[test]
 fn example1_parses() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Declaration {
                     ident: String::from("X"),
@@ -108,7 +108,7 @@ fn example1_parses() {
 #[test]
 fn example2_parses() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Declaration {
                     ident: String::from("nTimes"),
@@ -172,7 +172,7 @@ fn example2_parses() {
 #[test]
 fn example3_parses() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Print {
                     expr: Opnd(StrLit(String::from("Give a number"))),

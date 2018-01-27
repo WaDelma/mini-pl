@@ -1,6 +1,7 @@
 use std::char;
 use std::num::ParseIntError;
 use std::string::FromUtf8Error;
+use std::str::Utf8Error;
 
 use num_bigint::BigInt;
 
@@ -20,6 +21,7 @@ pub mod tokens;
 #[cfg(test)]
 mod tests;
 
+#[derive(Debug, PartialEq)]
 pub enum LexError {
     HexadecimalLexError(HexadecimalLexError),
     Unknown,
@@ -43,9 +45,10 @@ impl From<HexadecimalLexError> for LexError {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub enum HexadecimalLexError {
     ParseIntError(ParseIntError),
-    FromUtf8Error(FromUtf8Error),
+    FromUtf8Error(Utf8Error),
 }
 
 impl From<ParseIntError> for HexadecimalLexError {
@@ -56,7 +59,7 @@ impl From<ParseIntError> for HexadecimalLexError {
 
 impl From<FromUtf8Error> for HexadecimalLexError {
     fn from(e: FromUtf8Error) -> Self {
-        HexadecimalLexError::FromUtf8Error(e)
+        HexadecimalLexError::FromUtf8Error(e.utf8_error())
     }
 }
 

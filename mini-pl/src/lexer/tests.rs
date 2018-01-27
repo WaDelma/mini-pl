@@ -9,7 +9,7 @@ use super::tokenize;
 #[test]
 fn string_literal_lexes() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Literal(StringLit(String::from("Hello, World!"))),
             ],
@@ -22,7 +22,7 @@ fn string_literal_lexes() {
 #[test]
 fn string_literal_with_escaped_quote_lexes() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Literal(StringLit(String::from("Hello, \"World!\""))),
             ],
@@ -35,7 +35,7 @@ fn string_literal_with_escaped_quote_lexes() {
 #[test]
 fn string_literal_with_escaped_linebreak_lexes() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Literal(StringLit(String::from("Hello\n World!"))),
             ],
@@ -48,7 +48,7 @@ fn string_literal_with_escaped_linebreak_lexes() {
 #[test]
 fn string_literal_with_escaped_tab_lexes() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Literal(StringLit(String::from("Hello\t World!"))),
             ],
@@ -61,7 +61,7 @@ fn string_literal_with_escaped_tab_lexes() {
 #[test]
 fn string_literal_with_escaped_backslash_lexes() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Literal(StringLit(String::from("Hello\\ World!"))),
             ],
@@ -74,7 +74,7 @@ fn string_literal_with_escaped_backslash_lexes() {
 #[test]
 fn string_literal_with_alert_lexes() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Literal(StringLit(String::from("Hello, World\x07"))),
             ],
@@ -87,7 +87,7 @@ fn string_literal_with_alert_lexes() {
 #[test]
 fn string_literal_with_backspace_lexes() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Literal(StringLit(String::from("Hello,\x08 World!"))),
             ],
@@ -100,7 +100,7 @@ fn string_literal_with_backspace_lexes() {
 #[test]
 fn string_literal_with_formfeed_lexes() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Literal(StringLit(String::from("Hello, World!\x0C"))),
             ],
@@ -113,7 +113,7 @@ fn string_literal_with_formfeed_lexes() {
 #[test]
 fn string_literal_with_vertical_tab_lexes() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Literal(StringLit(String::from("Hello\x0BWorld!"))),
             ],
@@ -125,21 +125,21 @@ fn string_literal_with_vertical_tab_lexes() {
 
 #[test]
 fn string_literal_with_hexadecimal_escape_lexes() {
-        assert_eq!(
-            Some((
-                vec![
-                    Literal(StringLit(String::from("\x1B\x07\x0C"))),
-                ],
-                ""
-            )),
-            tokenize(r#""\x1B\x07\x0C""#)
-        );
+    assert_eq!(
+        Ok((
+            vec![
+                Literal(StringLit(String::from("\x1B\x07\x0C"))),
+            ],
+            ""
+        )),
+        tokenize(r#""\x1B\x07\x0C""#)
+    );
 }
 
 #[test]
 fn string_literal_with_unicode_escape_lexes() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Literal(StringLit(String::from("👌 🤔 😽 ⸙ 𝝅 ≪ 𝝉 ⸎"))),
             ],
@@ -152,7 +152,7 @@ fn string_literal_with_unicode_escape_lexes() {
 #[test]
 fn string_literal_with_octal_escape_lexes() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Literal(StringLit(String::from_utf8(vec![0o0, 0o10, 0o100, 0o2, 0o12, 0o102]).unwrap())),
             ],
@@ -165,7 +165,7 @@ fn string_literal_with_octal_escape_lexes() {
 #[test]
 fn line_comment_lexes() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Identifier(String::from("x")),
             ],
@@ -178,8 +178,8 @@ fn line_comment_lexes() {
 #[test]
 fn multiline_comment_simple_lexes() {
     assert_eq!(
-        Some(
-            (vec![
+        Ok((
+            vec![
                 Identifier(String::from("x")),
             ],
             ""
@@ -191,8 +191,8 @@ fn multiline_comment_simple_lexes() {
 #[test]
 fn multiline_comment_star_lexes() {
     assert_eq!(
-        Some(
-            (vec![
+        Ok((
+            vec![
                 Identifier(String::from("x")),
             ],
             ""
@@ -204,7 +204,7 @@ fn multiline_comment_star_lexes() {
 #[test]
 fn multiline_comment_nested_lexes() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Identifier(String::from("x")),
             ],
@@ -217,7 +217,7 @@ fn multiline_comment_nested_lexes() {
 #[test]
 fn multiline_comment_complex_nesting_lexes() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Identifier(String::from("x")),
             ],
@@ -230,7 +230,7 @@ fn multiline_comment_complex_nesting_lexes() {
 #[test]
 fn identifiers_lex() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Identifier(String::from("x")),
             ],
@@ -239,7 +239,7 @@ fn identifiers_lex() {
         tokenize("x")
     );
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Identifier(String::from("föö")),
             ],
@@ -248,7 +248,7 @@ fn identifiers_lex() {
         tokenize("föö")
     );
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Identifier(String::from("l33t")),
             ],
@@ -257,7 +257,7 @@ fn identifiers_lex() {
         tokenize("l33t")
     );
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Identifier(String::from("l_l")),
             ],
@@ -270,7 +270,7 @@ fn identifiers_lex() {
 #[test]
 fn operators_lex() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Operator(Addition),
                 Operator(Substraction),
@@ -291,7 +291,7 @@ fn operators_lex() {
 #[ignore] // TODO: To fix this, the lexer needs to be switched to use grapheme clusters
 fn punctuation_lexes() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Punctuation(Parenthesis(Open)),
                 Punctuation(Semicolon),
@@ -306,7 +306,7 @@ fn punctuation_lexes() {
 #[test]
 fn example1_lexes() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Keyword(Var),
                 Identifier(String::from("X")),
@@ -337,7 +337,7 @@ fn example1_lexes() {
 #[test]
 fn example2_lexes() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Keyword(Var),
                 Identifier(String::from("nTimes")),
@@ -402,7 +402,7 @@ fn example2_lexes() {
 #[test]
 fn example3_lexes() {
     assert_eq!(
-        Some((
+        Ok((
             vec![
                 Keyword(Print),
                 Literal(StringLit(String::from("Give a number"))),
