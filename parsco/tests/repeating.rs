@@ -4,72 +4,72 @@ use parsco::{Parser, tag, many0, many1, list0, take_while, take_until};
 #[test]
 fn many0_parses_none() {
     assert_eq!(
-        Ok((vec![], "ca")),
-        many0(tag("a")).parse("ca")
+        Ok((vec![], "ca", 0)),
+        many0(tag("a")).parse("ca", 0)
     );
 }
 
 #[test]
 fn many0_parses_one() {
     assert_eq!(
-        Ok((vec!["a"], "c")),
-        many0(tag("a")).parse("ac")
+        Ok((vec!["a"], "c", 1)),
+        many0(tag("a")).parse("ac", 0)
     );
 }
 
 #[test]
 fn many0_parses_many() {
     assert_eq!(
-        Ok((vec!["a", "a", "a"], "c")),
-        many0(tag("a")).parse("aaac")
+        Ok((vec!["a", "a", "a"], "c", 4)),
+        many0(tag("a")).parse("aaac", 0)
     );
 }
 
 #[test]
 fn many1_doesnt_parse_none() {
     assert_eq!(
-        Err(()),
-        many1(tag("a")).parse("ca")
+        Err(((), 0..1)),
+        many1(tag("a")).parse("ca", 0)
     );
 }
 
 #[test]
 fn many1_parses_one() {
     assert_eq!(
-        Ok((vec!["a"], "c")),
-        many1(tag("a")).parse("ac")
+        Ok((vec!["a"], "c", 1)),
+        many1(tag("a")).parse("ac", 0)
     );
 }
 
 #[test]
 fn many1_parses_many() {
     assert_eq!(
-        Ok((vec!["a", "a", "a"], "c")),
-        many1(tag("a")).parse("aaac")
+        Ok((vec!["a", "a", "a"], "c", 4)),
+        many1(tag("a")).parse("aaac", 0)
     );
 }
 
 #[test]
 fn list0_parses_none() {
     assert_eq!(
-        Ok((vec![], "c,a")),
-        list0(",", tag("a")).parse("c,a")
+        Ok((vec![], "c,a", 0)),
+        list0(",", tag("a")).parse("c,a", 0)
     );
 }
 
 #[test]
 fn list0_parses_one() {
     assert_eq!(
-        Ok((vec!["a"], "c")),
-        list0(",", tag("a")).parse("a,c")
+        Ok((vec!["a"], "c", 3)),
+        list0(",", tag("a")).parse("a,c", 0)
     );
 }
 
 #[test]
 fn list0_parses_many() {
     assert_eq!(
-        Ok((vec!["a", "a", "a"], "c")),
-        list0(",", tag("a")).parse("a,a,a,c")
+        Ok((vec!["a", "a", "a"], "c", 7)),
+        list0(",", tag("a")).parse("a,a,a,c", 0)
     );
 }
 
@@ -100,38 +100,38 @@ fn list0_parses_many() {
 #[test]
 fn take_while_zero() {
     assert_eq!(
-        Err(()),
-        take_while(|c| c == 'a').parse("c")
+        Err(((), 0..1)),
+        take_while(|c| c == 'a').parse("c", 0)
     );
 }
 
 #[test]
 fn take_while_one() {
     assert_eq!(
-        Ok((String::from("a"), "c")),
-        take_while(|c| c == 'a').parse("ac")
+        Ok((String::from("a"), "c", 1)),
+        take_while(|c| c == 'a').parse("ac", 0)
     );
 }
 
 #[test]
 fn take_while_many() {
     assert_eq!(
-        Ok((String::from("aaa"), "c")),
-        take_while(|c| c == 'a').parse("aaac")
+        Ok((String::from("aaa"), "c", 4)),
+        take_while(|c| c == 'a').parse("aaac", 0)
     );
 }
 
 #[test]
 fn take_while_end() {
     assert_eq!(
-        Ok((String::from("a"), "")),
-        take_while(|c| c == 'a').parse("a")
+        Ok((String::from("a"), "", 1)),
+        take_while(|c| c == 'a').parse("a", 0)
     );
 }
 #[test]
 fn take_until_simple() {
     assert_eq!(
-        Ok((("ab", "cd"), "e")),
-        take_until(tag("cd")).parse("abcde")
+        Ok((("ab", "cd"), "e", 5)),
+        take_until(tag("cd")).parse("abcde", 0)
     );
 }
