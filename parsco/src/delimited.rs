@@ -1,4 +1,4 @@
-use {Parser, Parseable, Place, Result, FromErr};
+use {Parser, Parseable, Result, FromErr};
 
 pub struct Preceded<P1, P2> {
     parser: P1,
@@ -12,8 +12,8 @@ impl<P1, P2, S> Parser<S> for Preceded<P1, P2>
 {
     type Res = P1::Res;
     type Err = Err2<P2::Err, P1::Err>;
-    fn parse(&self, s: S, p: Place) -> Result<S, Self::Res, Self::Err> {
-        (&self.precedator, &self.parser).parse(s, p)
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
+        (&self.precedator, &self.parser).parse(s)
             .map(|((_, r), s, p)| (r, s, p))
     }
 }
@@ -41,8 +41,8 @@ impl<P1, P2, S> Parser<S> for Terminated<P1, P2>
 {
     type Res = P1::Res;
     type Err = Err2<P1::Err, P2::Err>;
-    fn parse(&self, s: S, p: Place) -> Result<S, Self::Res, Self::Err> {
-        (&self.parser, &self.terminator).parse(s, p)
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
+        (&self.parser, &self.terminator).parse(s)
             .map(|((r, _), s, p)|(r, s, p))
     }
 }
@@ -72,8 +72,8 @@ impl<P1, P2, P3, S> Parser<S> for Delimited<P1, P2, P3>
 {
     type Res = P2::Res;
     type Err = Err3<P1::Err, P2::Err, P3::Err>;
-    fn parse(&self, s: S, p: Place) -> Result<S, Self::Res, Self::Err> {
-        (&self.precedator, &self.parser, &self.terminator).parse(s, p)
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
+        (&self.precedator, &self.parser, &self.terminator).parse(s)
             .map(|((_, r, _), s, p)| (r, s, p))
     }
 }
@@ -117,15 +117,15 @@ impl<P1, P2, S> Parser<S> for (P1, P2)
 {
     type Res = (P1::Res, P2::Res);
     type Err = Err2<P1::Err, P2::Err>;
-    fn parse(&self, s: S, p: Place) -> Result<S, Self::Res, Self::Err> {
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         self.0
-            .parse(s, p)
+            .parse(s)
             .map_err(|(e, p)| (Err2::V1(e), p))
             .and_then(|(r1, s, pp)|
                 self.1
-                    .parse(s, pp)
-                    .map(|(r2, s, pp)| ((r1, r2), s, pp))
-                    .map_err(|(e, p)| (Err2::V2(e), p))
+                    .parse(s)
+                    .map(|(r2, s, p)| ((r1, r2), s, pp + p))
+                    .map_err(|(e, p)| (Err2::V2(e), pp..(pp + p.end)))
             )
     }
 }
@@ -161,13 +161,13 @@ impl<P1, P2, P3, S> Parser<S> for (P1, P2, P3)
 {
     type Res = (P1::Res, P2::Res, P3::Res);
     type Err = Err3<P1::Err, P2::Err, P3::Err>;
-    fn parse(&self, s: S, p: Place) -> Result<S, Self::Res, Self::Err> {
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         use self::Err2::*;
         use self::Err2 as E2;
         use self::Err3 as E3;
         let (ref p1, ref p2, ref p3) = *self;
         ((p1, p2), p3)
-            .parse(s, p)
+            .parse(s)
             .map_err(|(e, p)| (match e {
                 E2::V1(V1(e1)) => E3::V1(e1),
                 E2::V1(V2(e2)) => E3::V2(e2),
@@ -211,13 +211,13 @@ impl<P1, P2, P3, P4, S> Parser<S> for (P1, P2, P3, P4)
 {
     type Res = (P1::Res, P2::Res, P3::Res, P4::Res);
     type Err = Err4<P1::Err, P2::Err, P3::Err, P4::Err>;
-    fn parse(&self, s: S, p: Place) -> Result<S, Self::Res, Self::Err> {
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         use self::Err3::*;
         use self::Err2 as E2;
         use self::Err4 as E4;
         let (ref p1, ref p2, ref p3, ref p4) = *self;
         ((p1, p2, p3), p4)
-            .parse(s, p)
+            .parse(s)
             .map_err(|(e, p)| (match e {
                 E2::V1(V1(e1)) => E4::V1(e1),
                 E2::V1(V2(e2)) => E4::V2(e2),
@@ -266,13 +266,13 @@ impl<P1, P2, P3, P4, P5, S> Parser<S> for (P1, P2, P3, P4, P5)
 {
     type Res = (P1::Res, P2::Res, P3::Res, P4::Res, P5::Res);
     type Err = Err5<P1::Err, P2::Err, P3::Err, P4::Err, P5::Err>;
-    fn parse(&self, s: S, p: Place) -> Result<S, Self::Res, Self::Err> {
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         use self::Err4::*;
         use self::Err2 as E2;
         use self::Err5 as E5;
         let (ref p1, ref p2, ref p3, ref p4, ref p5) = *self;
         ((p1, p2, p3, p4), p5)
-            .parse(s, p)
+            .parse(s)
             .map_err(|(e, p)| (match e {
                 E2::V1(V1(e1)) => E5::V1(e1),
                 E2::V1(V2(e2)) => E5::V2(e2),

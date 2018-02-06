@@ -4,33 +4,34 @@ use parsco::{Parser, ws, tag, Err2};
 #[test]
 fn tag_parses() {
     assert_eq!(
-        Ok(("ab", "c", 3)),
-        tag("ab").parse("abc", 0)
+        Ok(("ab", "c", 2)),
+        tag("ab").parse("abc")
     );
 }
 
 #[test]
 fn tag_doesnt_parse() {
     assert_eq!(
-        Err(((), 0..3)),
-        tag("ab").parse("acb", 0)
+        Err(((), 0..1)),
+        tag("ab").parse("acb")
     );
 }
 
 #[test]
 fn tag_unicode() {
+    let t = "áàäåö";
     assert_eq!(
-        Ok(("áàäåö", "a", 6)),
-        tag("áàäåö").parse("áàäåöa", 0)
+        Ok((t, "a", t.len())),
+        tag(t).parse("áàäåöa")
     );
 }
 
 #[test]
 fn whitespace_parse() {
     assert_eq!(
-        Ok(("a", "c", 15)),
+        Ok(("a", "c", 14)),
         ws(tag("a")).parse("    
-        ac", 0)
+        ac")
     );
 }
 
@@ -38,14 +39,14 @@ fn whitespace_parse() {
 fn whitespace_none() {
     assert_eq!(
         Ok(("a", "c", 1)),
-        ws(tag("a")).parse("ac", 0)
+        ws(tag("a")).parse("ac")
     );
 }
 
 #[test]
 fn whitespace_empty() {
     assert_eq!(
-        Err((Err2::V2(()), 0..1)),
-        ws(tag("a")).parse("c", 0)
+        Err((Err2::V2(()), 0..0)),
+        ws(tag("a")).parse("c")
     );
 }
