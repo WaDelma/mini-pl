@@ -75,22 +75,34 @@ mod repeating;
 
 type Place = usize;
 
+/// Type alias for the result that parsers return.
 pub type Result<S, T, E> = ::std::result::Result<(T, S, Place), (E, Range<Place>)>;
 
+/// Never type. This is workaround while ! is not stable. It's used to indicate imposibility of certain errors.
 pub enum Void {}
 
 pub trait FromErr<E> {
     fn from(e: E) -> Self;
 }
 
+/// Type that can be parsed by `Parser`.
+/// 
+/// It's `Copy`, because it's supposed to be implemented on shared references which are always `Copy`.
 pub trait Parseable: Copy {
+    /// Symbol contained inside the parseable type.
     type Symbol;
+    /// Returns how many symbols there are inside.
     fn len(self) -> usize;
+    /// Returns true if there are no symbols inside.
     fn is_empty(self) -> bool {
         self.len() == 0
     }
+    /// Returns the first symbol inside or `None` if there are no symbols.
     fn first(self) -> Option<Self::Symbol>;
+    /// Checks if contained symbols have pattern as prefix.
     fn starts_with(self, pat: &Self) -> bool;
+    /// Splits the symbols at the index and returns both left and right side.
+    /// If empty this method returns None.
     fn split_at(self, i: usize) -> Option<(Self, Self)>;
 }
 
@@ -142,9 +154,47 @@ impl<'a, T: PartialEq + Clone> Parseable for &'a [T] {
     }
 }
 
+/// Trait implemented on all parsers.
+/// 
+/// It's generic over the input `Parseable` type, result and error it returns.
+/// 
+/// # Examples
+/// ```rust
+/// extern crate parsco;
+/// 
+/// use parsco::{Parser, Parseable, Result};
+/// 
+/// struct TakeDigit;
+/// 
+/// impl<'a> Parser<&'a str> for TakeDigit {
+///     type Res = u8;
+///     type Err = ();
+///     fn parse<'b>(&self, s: &'b str) -> Result<&'b str, Self::Res, Self::Err> {
+///         if let Some(i) = s.first().and_then(|c| c.to_digit(10)) {
+///             Ok((i as u8, s.split_at(1).1, 1))
+///         } else {
+///             Err(((), 0..0))
+///         }
+///     }
+/// }
+/// 
+/// fn main() {
+///     assert_eq!(
+///         Ok((1, "2", 1)),
+///         TakeDigit.parse("12")
+///     );
+///     assert_eq!(
+///         Err(((), 0..0)),
+///         TakeDigit.parse("a2")
+///     );
+/// }
+/// ```
 pub trait Parser<S: Parseable> {
+    /// The result that the parser parses the input to.
     type Res;
+    /// The error that parser returns if it fails.
     type Err;
+    /// Method used to parse input to output.
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err>;
 }
 
