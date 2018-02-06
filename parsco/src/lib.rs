@@ -11,6 +11,11 @@
 //! the parser can return. To be able to be parsed `Parseable` trait has to be implement
 //! for the input type.
 //! 
+//! To chain multiple parsers together, the `Parser` trait is implemented for tuples.
+//! Currently tuples upto 5 elements are supported.
+//! When variadic generics or equivalent feature exists
+//! and there are anonymous enums this restriction will be lifted.
+//! 
 //! # Examples
 //! ```rust
 //! extern crate parsco;
@@ -78,7 +83,7 @@ type Place = usize;
 /// Type alias for the result that parsers return.
 pub type Result<S, T, E> = ::std::result::Result<(T, S, Place), (E, Range<Place>)>;
 
-/// Never type. This is workaround while ! is not stable. It's used to indicate imposibility of certain errors.
+/// Never type. This is workaround while `!` is not stable. It's used to indicate imposibility of certain errors.
 pub enum Void {}
 
 pub trait FromErr<E> {
@@ -214,9 +219,9 @@ impl<S: Parseable> Parser<S> for () {
     }
 }
 
-pub struct Wrapper<P>(P);
+pub struct Fun<P>(P);
 
-impl<F, S, T, E> Parser<S> for Wrapper<F>
+impl<F, S, T, E> Parser<S> for Fun<F>
     where S: Parseable,
           F: for<'a> Fn(S) -> Result<S, T, E>,
 {
@@ -227,11 +232,14 @@ impl<F, S, T, E> Parser<S> for Wrapper<F>
     }
 }
 
-pub fn fun<F, S, T, E>(f: F) -> Wrapper<F>
+/// Constructs parser that uses function or closure with right signature as one.
+/// 
+/// This is a workaround as direct `Parser` implementation conflicts with `Parser` implementation for reference.
+pub fn fun<F, S, T, E>(f: F) -> Fun<F>
     where S: Parseable,
           F: for<'a> Fn(S) -> Result<S, T, E>,
 {
-    Wrapper(f)
+    Fun(f)
 }
 
 pub struct Tag<S> {
@@ -254,6 +262,16 @@ impl<S: Parseable> Parser<S> for Tag<S> {
     }
 }
 
+/// Constructs parser that recognises tag at the start of the input.
+/// 
+/// # Examples
+/// ```rust
+/// # use parsco::{Parser, tag};
+/// assert_eq!(
+///     Ok(("return", " foo;", 6)),
+///     tag("return").parse("return foo;")
+/// );
+/// ```
 pub fn tag<S>(tag: S) -> Tag<S>
     where S: Parseable
 {
@@ -321,7 +339,7 @@ impl<P: Parser<S>, S: Parseable + fmt::Debug> Parser<S> for Dbg<P> {
     }
 }
 
-
+/// Constructs parser that debug prints the state of the input.
 pub fn dbg<P: Parser<S>, S: Parseable>(parser: P) -> Dbg<P> {
     Dbg(parser)
 }

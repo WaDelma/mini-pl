@@ -18,6 +18,16 @@ impl<P1, P2, S> Parser<S> for Preceded<P1, P2>
     }
 }
 
+/// Constructs parser that precedes given parser with another.
+/// 
+/// # Examples
+/// ```rust
+/// # use parsco::{Parser, preceded, tag, take};
+/// assert_eq!(
+///     Ok(("foo", "", 4)),
+///     preceded(tag("#"), take(3)).parse("#foo")
+/// );
+/// ```
 pub fn preceded<P1, P2, S>(precedator: P2, parser: P1) -> Preceded<P1, P2>
     where S: Parseable,
           P1: Parser<S>,
@@ -47,6 +57,16 @@ impl<P1, P2, S> Parser<S> for Terminated<P1, P2>
     }
 }
 
+/// Constructs parser that terminates given parser with another.
+/// 
+/// # Examples
+/// ```rust
+/// # use parsco::{Parser, terminated, tag, take};
+/// assert_eq!(
+///     Ok(("foo", "", 4)),
+///     terminated(take(3), tag(";")).parse("foo;")
+/// );
+/// ```
 pub fn terminated<P1, P2, S>(parser: P1, terminator: P2) -> Terminated<P1, P2>
     where S: Parseable,
           P1: Parser<S>,
@@ -78,6 +98,16 @@ impl<P1, P2, P3, S> Parser<S> for Delimited<P1, P2, P3>
     }
 }
 
+/// Constructs parser that delimites given parser with two other parsers.
+/// 
+/// # Examples
+/// ```rust
+/// # use parsco::{Parser, delimited, tag, take};
+/// assert_eq!(
+///     Ok(("foo", "", 5)),
+///     delimited(tag("("), take(3), tag(")")).parse("(foo)")
+/// );
+/// ```
 pub fn delimited<P1, P2, P3, S>(precedator: P1, parser: P2, terminator: P3) -> Delimited<P1, P2, P3>
     where S: Parseable,
           P1: Parser<S>,
@@ -91,6 +121,7 @@ pub fn delimited<P1, P2, P3, S>(precedator: P1, parser: P2, terminator: P3) -> D
     }
 }
 
+/// Two variant enum. This is workaround to the lack of anonymous enums. It's used as an error for tuple of parsers.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Err2<E1, E2> {
     V1(E1),
@@ -130,6 +161,7 @@ impl<P1, P2, S> Parser<S> for (P1, P2)
     }
 }
 
+/// Three variant enum. This is workaround to the lack of anonymous enums. It's used as an error for tuple of parsers.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Err3<E1, E2, E3> {
     V1(E1),
@@ -151,7 +183,6 @@ impl<E1, E2, E3, E> FromErr<Err3<E1, E2, E3>> for E
         }
     }
 }
-
 
 impl<P1, P2, P3, S> Parser<S> for (P1, P2, P3)
     where S: Parseable,
@@ -177,6 +208,7 @@ impl<P1, P2, P3, S> Parser<S> for (P1, P2, P3)
     }
 }
 
+/// Four variant enum. This is workaround to the lack of anonymous enums. It's used as an error for tuple of parsers.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Err4<E1, E2, E3, E4> {
     V1(E1),
@@ -228,6 +260,7 @@ impl<P1, P2, P3, P4, S> Parser<S> for (P1, P2, P3, P4)
     }
 }
 
+/// Five variant enum. This is workaround to the lack of anonymous enums. It's used as an error for tuple of parsers.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Err5<E1, E2, E3, E4, E5> {
     V1(E1),

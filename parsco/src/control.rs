@@ -66,6 +66,23 @@ impl<T, S> Parser<S> for Empty<T, S>
     }
 }
 
+/// Constructs parser that can be used to try multiple alternative parsers.
+/// 
+/// # Examples
+/// ```rust
+/// # use parsco::{Parser, alt, tag};
+/// let parser = alt()
+///     | tag("foo")
+///     | tag("bar");
+/// assert_eq!(
+///     Ok(("foo", "", 3)),
+///     parser.parse("foo")
+/// );
+/// assert_eq!(
+///     Ok(("bar", "", 3)),
+///     parser.parse("bar")
+/// );
+/// ```
 pub fn alt<P, S>() -> Empty<P, S> {
     Empty(PhantomData)
 }
@@ -87,6 +104,21 @@ impl<P, S> Parser<S> for Opt<P>
     }
 }
 
+/// Constructs parser that makes input parser optional ignoring it's failure.
+/// 
+/// # Examples
+/// ```rust
+/// # use parsco::{Parser, opt, tag};
+/// let parser = opt(tag("foo"));
+/// assert_eq!(
+///     Ok((Some("foo"), "", 3)),
+///     parser.parse("foo")
+/// );
+/// assert_eq!(
+///     Ok((None, "bar", 0)),
+///     parser.parse("bar")
+/// );
+/// ```
 pub fn opt<P, S>(parser: P) -> Opt<P>
     where S: Parseable,
           P: Parser<S>,
@@ -114,6 +146,18 @@ impl<P, S, F, T> Parser<S> for Map<P, F>
     }
 }
 
+/// Constructs parser that maps input parsers output using closure or function.
+/// 
+/// # Examples
+/// ```rust
+/// # use parsco::{Parser, map, tag};
+/// #[derive(Debug, PartialEq)]
+/// struct Foo;
+/// assert_eq!(
+///     Ok((Foo, "", 3)),
+///     map(tag("foo"), |_| Foo).parse("foo")
+/// );
+/// ```
 pub fn map<P, F, S, T>(parser: P, map: F) -> Map<P, F>
     where P: Parser<S>,
           S: Parseable,
