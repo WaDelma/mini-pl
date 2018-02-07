@@ -1,34 +1,45 @@
 use {Parser, Parseable, Result, Tag, tag, terminated, preceded, opt, Err2};
 
-pub struct TakeWhile<F> {
+use std::marker::PhantomData;
+
+pub struct TakeWhile<F, P> {
     predicate: F,
+    _marker: PhantomData<P>,
 }
 
-impl<'b, F> Parser<&'b str> for TakeWhile<F>
-    where F: Fn(char) -> bool,
+impl<F, S> Parser<S> for TakeWhile<F, S>
+    where S: Parseable,
+          F: Fn(<S as Parseable>::Symbol) -> bool,
 {
-    type Res = String;
+    type Res = S;
     type Err = ();
-    fn parse<'a>(&self, s: &'a str) -> Result<&'a str, Self::Res, Self::Err> {
-        if s.len() == 0 {
-            Err(((), 0..0))
-        } else if let Some(i) = s.char_indices().skip_while(|&(_, c)| (self.predicate)(c)).map(|c| c.0).next() {
-            if i == 0 {
-                Err(((), 0..0))
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
+        let mut n = 0;
+        let mut cur = s;
+        while let Some((start, end)) = cur.split_at(1) {
+            if (self.predicate)(start.first().expect("Split should ensure that there is first.")) {
+                cur = end;
+                n += 1;
             } else {
-                Ok((s[..i].to_string(), &&s[i..], i))
+                break;
             }
+        }
+        if n == 0 {
+            Err(((), 0..0))
         } else {
-            Ok((s.to_string(), &&s[..0], s.len()))
+            let (start, end) = s.split_at(n).expect("This index should be already split at.");
+            Ok((start, end, n))
         }
     }
 }
 
-pub fn take_while<F>(predicate: F) -> TakeWhile<F>
+pub fn take_while<F, S>(predicate: F) -> TakeWhile<F, S>
     where F: Fn(char) -> bool,
+          S: Parseable
 {
     TakeWhile {
-        predicate
+        predicate,
+        _marker: PhantomData,
     }
 }
 
@@ -37,7 +48,7 @@ pub struct TakeUntil<P> {
 }
 
 impl<'b, P, S> Parser<S> for TakeUntil<P>
-    where S: Parseable + ::std::fmt::Debug,
+    where S: Parseable,
           P: Parser<S>,
 {
     type Res = (S, P::Res);

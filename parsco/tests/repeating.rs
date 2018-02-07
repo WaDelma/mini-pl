@@ -108,7 +108,7 @@ fn take_while_zero() {
 #[test]
 fn take_while_one() {
     assert_eq!(
-        Ok((String::from("a"), "c", 1)),
+        Ok(("a", "c", 1)),
         take_while(|c| c == 'a').parse("ac")
     );
 }
@@ -116,7 +116,7 @@ fn take_while_one() {
 #[test]
 fn take_while_many() {
     assert_eq!(
-        Ok((String::from("aaa"), "c", 3)),
+        Ok(("aaa", "c", 3)),
         take_while(|c| c == 'a').parse("aaac")
     );
 }
@@ -124,7 +124,7 @@ fn take_while_many() {
 #[test]
 fn take_while_end() {
     assert_eq!(
-        Ok((String::from("a"), "", 1)),
+        Ok(("a", "", 1)),
         take_while(|c| c == 'a').parse("a")
     );
 }

@@ -41,7 +41,7 @@
 //!         )
 //!     ),
 //!     |(name, value)| Res {
-//!         name,
+//!         name: name.into(),
 //!         value
 //!     }).parse(s)
 //!         .map_err(|(_, r)| ((), r))
