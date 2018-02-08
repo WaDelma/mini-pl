@@ -66,7 +66,7 @@ impl<T, S> Parser<S> for Empty<T, S>
     }
 }
 
-/// Constructs parser that can be used to try multiple alternative parsers.
+/// Allows to try multiple alternative parsers in a sequence.
 /// 
 /// # Examples
 /// ```rust
@@ -104,7 +104,7 @@ impl<P, S> Parser<S> for Opt<P>
     }
 }
 
-/// Constructs parser that makes input parser optional ignoring it's failure.
+/// Makes input parser optional ignoring it's failure.
 /// 
 /// # Examples
 /// ```rust
@@ -146,7 +146,7 @@ impl<P, S, F, T> Parser<S> for Map<P, F>
     }
 }
 
-/// Constructs parser that maps input parsers output using closure or function.
+/// Maps input parsers output using closure or function.
 /// 
 /// # Examples
 /// ```rust
@@ -192,6 +192,27 @@ impl<P, S, F, T> Parser<S> for FlatMap<P, F>
     }
 }
 
+/// Flat maps input parsers output using closure or function.
+/// 
+/// # Examples
+/// ```rust
+/// # use parsco::{Parser, flat_map, tag};
+/// #[derive(Debug, PartialEq)]
+/// struct Foo;
+/// assert_eq!(
+///     Ok((Foo, "", 3)),
+///     flat_map(tag("foo"), |_| Some(Foo)).parse("foo")
+/// );
+/// ```
+/// ```rust
+/// # use parsco::{Parser, Err2, flat_map, tag};
+/// #[derive(Debug, PartialEq)]
+/// struct Foo;
+/// assert_eq!(
+///     Err((Err2::V2(()), 0..3)),
+///     flat_map(tag("foo"), |_| None::<u8>).parse("foo")
+/// );
+/// ```
 pub fn flat_map<P, F, S, T>(parser: P, map: F) -> FlatMap<P, F>
     where P: Parser<S>,
           S: Parseable,
@@ -221,6 +242,16 @@ impl<P, S, T> Parser<S> for Eat<P, T>
     }
 }
 
+/// Eats parsers return value and substitutes it with predefined value.
+/// 
+/// # Examples
+/// ```rust
+/// # use parsco::{Parser, eat, tag};
+/// assert_eq!(
+///     Ok(("+", "", 3)),
+///     eat(tag("add"), "+").parse("add")
+/// );
+/// ```
 pub fn eat<P, T, S>(parser: P, substitute: T) -> Eat<P, T>
     where P: Parser<S>,
           S: Parseable,

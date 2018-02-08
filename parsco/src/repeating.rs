@@ -33,6 +33,18 @@ impl<F, S> Parser<S> for TakeWhile<F, S>
     }
 }
 
+// TODO: Transform this use parser instead of closure?
+/// Takes symbols from the source while given predicate returns true.
+/// 
+/// # Example
+/// ```rust
+/// # use parsco::{Parser, take_while};
+/// # use std::char;
+/// assert_eq!(
+///     Ok(("foo", "123", 3)),
+///     take_while(char::is_alphabetic).parse("foo123")
+/// );
+/// ```
 pub fn take_while<F, S>(predicate: F) -> TakeWhile<F, S>
     where F: Fn(char) -> bool,
           S: Parseable
@@ -70,6 +82,18 @@ impl<'b, P, S> Parser<S> for TakeUntil<P>
     }
 }
 
+/// Takes symbols from the source until given parser succeeds.
+/// 
+/// # Example
+/// ```rust
+/// # use parsco::{Parser, tag, take_until, preceded};
+/// assert_eq!(
+///     Ok((("Hello, World!", "'"), "", 15)),
+///     preceded(
+///         tag("'"),
+///         take_until(tag("'"))
+///     ).parse("'Hello, World!'")
+/// );
 pub fn take_until<P, S>(parser: P) -> TakeUntil<P>
     where S: Parseable,
           P: Parser<S>,
@@ -101,6 +125,23 @@ impl<P, S> Parser<S> for Many0<P>
     }
 }
 
+/// Tries to apply given parser multiple times. Succeeds if it doesn't match.
+/// 
+/// # Examples
+/// ```rust
+/// # use parsco::{Parser, tag, many0};
+/// assert_eq!(
+///     Ok((vec!["foo", "foo"], "bar", 6)),
+///     many0(tag("foo")).parse("foofoobar")
+/// );
+/// ```
+/// ```rust
+/// # use parsco::{Parser, tag, many0};
+/// assert_eq!(
+///     Ok((vec![], "goofoobar", 0)),
+///     many0(tag("foo")).parse("goofoobar")
+/// );
+/// ```
 pub fn many0<P, S>(parser: P) -> Many0<P>
     where S: Parseable,
           P: Parser<S>,
@@ -131,6 +172,23 @@ impl<P, S> Parser<S> for Many1<P>
     }
 }
 
+/// Tries to apply given parser multiple times. Succeeds if it matches at least one time.
+/// 
+/// # Examples
+/// ```rust
+/// # use parsco::{Parser, tag, many1};
+/// assert_eq!(
+///     Ok((vec!["foo", "foo"], "bar", 6)),
+///     many1(tag("foo")).parse("foofoobar")
+/// );
+/// ```
+/// ```rust
+/// # use parsco::{Parser, tag, many1};
+/// assert_eq!(
+///     Err(((), 0..0)),
+///     many1(tag("foo")).parse("goofoobar")
+/// );
+/// ```
 pub fn many1<P, S>(parser: P) -> Many1<P>
     where S: Parseable,
           P: Parser<S>,

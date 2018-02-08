@@ -232,9 +232,30 @@ impl<F, S, T, E> Parser<S> for Fun<F>
     }
 }
 
-/// Constructs parser that uses function or closure with right signature as one.
+/// Makes function or closure with right signature to parser.
 /// 
 /// This is a workaround as direct `Parser` implementation conflicts with `Parser` implementation for reference.
+/// 
+/// # Examples
+/// ```rust
+/// # use parsco::{Parser, Result, alt, fun};
+/// fn my_parser(s: &str) -> Result<&str, usize, ()> {
+///     if s.is_empty() {
+///         Err(((), 0..0))
+///     } else {
+///         Ok((1, s, 0))
+///     }
+/// }
+/// 
+/// (alt()
+///     | fun(my_parser)
+///     | fun(|s: &str| if s.is_empty() {
+///         Err(((), 0..0))
+///     } else {
+///         Ok((1, s, 0))
+///     })
+/// ).parse("lol");
+/// ```
 pub fn fun<F, S, T, E>(f: F) -> Fun<F>
     where S: Parseable,
           F: for<'a> Fn(S) -> Result<S, T, E>,
@@ -262,7 +283,7 @@ impl<S: Parseable> Parser<S> for Tag<S> {
     }
 }
 
-/// Constructs parser that recognises tag at the start of the input.
+/// Recognises tag at the start of the input.
 /// 
 /// # Examples
 /// ```rust
@@ -339,7 +360,7 @@ impl<P: Parser<S>, S: Parseable + fmt::Debug> Parser<S> for Dbg<P> {
     }
 }
 
-/// Constructs parser that debug prints the state of the input.
+/// Debug prints the state of the input.
 pub fn dbg<P: Parser<S>, S: Parseable>(parser: P) -> Dbg<P> {
     Dbg(parser)
 }

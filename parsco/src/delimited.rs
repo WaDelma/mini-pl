@@ -18,14 +18,17 @@ impl<P1, P2, S> Parser<S> for Preceded<P1, P2>
     }
 }
 
-/// Constructs parser that precedes given parser with another.
+/// Precedes given parser with another.
 /// 
 /// # Examples
 /// ```rust
 /// # use parsco::{Parser, preceded, tag, take};
 /// assert_eq!(
 ///     Ok(("foo", "", 4)),
-///     preceded(tag("#"), take(3)).parse("#foo")
+///     preceded(
+///         tag("#"),
+///         take(3)
+///     ).parse("#foo")
 /// );
 /// ```
 pub fn preceded<P1, P2, S>(precedator: P2, parser: P1) -> Preceded<P1, P2>
@@ -57,14 +60,17 @@ impl<P1, P2, S> Parser<S> for Terminated<P1, P2>
     }
 }
 
-/// Constructs parser that terminates given parser with another.
+/// Terminates given parser with another.
 /// 
 /// # Examples
 /// ```rust
 /// # use parsco::{Parser, terminated, tag, take};
 /// assert_eq!(
 ///     Ok(("foo", "", 4)),
-///     terminated(take(3), tag(";")).parse("foo;")
+///     terminated(
+///         take(3),
+///         tag(";")
+///     ).parse("foo;")
 /// );
 /// ```
 pub fn terminated<P1, P2, S>(parser: P1, terminator: P2) -> Terminated<P1, P2>
@@ -98,14 +104,18 @@ impl<P1, P2, P3, S> Parser<S> for Delimited<P1, P2, P3>
     }
 }
 
-/// Constructs parser that delimites given parser with two other parsers.
+/// Delimites given parser with two other parsers.
 /// 
 /// # Examples
 /// ```rust
 /// # use parsco::{Parser, delimited, tag, take};
 /// assert_eq!(
 ///     Ok(("foo", "", 5)),
-///     delimited(tag("("), take(3), tag(")")).parse("(foo)")
+///     delimited(
+///         tag("("),
+///         take(3),
+///         tag(")")
+///     ).parse("(foo)")
 /// );
 /// ```
 pub fn delimited<P1, P2, P3, S>(precedator: P1, parser: P2, terminator: P3) -> Delimited<P1, P2, P3>
