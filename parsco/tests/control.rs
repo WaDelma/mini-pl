@@ -1,5 +1,6 @@
 extern crate parsco;
-use parsco::{Parser, tag, flat_map, Err2};
+use parsco::{Parser, tag, flat_map};
+use parsco::common::Err2;
 
 #[test]
 fn flat_map_none_doesnt_parse() {

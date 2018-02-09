@@ -1,5 +1,6 @@
 extern crate parsco;
-use parsco::{Parser, tag, preceded, terminated, Err2};
+use parsco::{Parser, tag, preceded, terminated};
+use parsco::common::Err2;
 
 #[test]
 fn preceded_parses() {

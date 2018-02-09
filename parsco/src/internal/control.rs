@@ -1,22 +1,29 @@
 use std::marker::PhantomData;
 use std::ops::BitOr;
 
-use {Parser, Parseable, Result, Err2};
+use {Parser, Parseable, Result};
+use common::Err2;
 
-pub struct Alt<P1, P2, S> {
-    parser: P1,
-    rest: P2,
+/// Allows to try multiple alternative parsers in a sequence. Used via `parsco::alt` function.
+/// 
+/// Chaining multiple parsers using `BitOr` implementation creates type based list that ends with `Empty`.
+/// When parsing it first tries the parser in the head of the list
+/// and if it fails it recursively calls parsers in the rest of the list.
+/// If none of the parsers succeed, the recursion ends with `Empty` which just fails.
+pub struct Alt<P, R, S> {
+    parser: P,
+    rest: R,
     _marker: PhantomData<S>,
 }
 
-impl<P1, P2, P3, S, T> BitOr<P3> for Alt<P1, P2, S>
+impl<P, R, N, S, T> BitOr<N> for Alt<P, R, S>
     where S: Parseable,
-          P1: Parser<S, Res=T>,
-          P2: Parser<S, Res=T>,
-          P3: Parser<S, Res=T>,
+          P: Parser<S, Res=T>,
+          R: Parser<S, Res=T>,
+          N: Parser<S, Res=T>,
 {
-    type Output = Alt<Self, P3, S>;
-    fn bitor(self, lhs: P3) -> Self::Output {
+    type Output = Alt<Self, N, S>;
+    fn bitor(self, lhs: N) -> Self::Output {
         Alt {
             parser: self,
             rest: lhs,
@@ -25,13 +32,13 @@ impl<P1, P2, P3, S, T> BitOr<P3> for Alt<P1, P2, S>
     }
 }
 
-impl<P1, P2, T, S> Parser<S> for Alt<P1, P2, S>
+impl<P, R, T, S> Parser<S> for Alt<P, R, S>
     where S: Parseable,
-          P1: Parser<S, Res=T>,
-          P2: Parser<S, Res=T>,
+          P: Parser<S, Res=T>,
+          R: Parser<S, Res=T>,
 {
     type Res = T;
-    type Err = P2::Err;
+    type Err = R::Err;
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         self.parser.parse(s)
             .or_else(|_|
@@ -40,14 +47,16 @@ impl<P1, P2, T, S> Parser<S> for Alt<P1, P2, S>
     }
 }
 
+// TODO: Remove P when `!` becomes stable.
+/// End of type type based list of `Alt`s. Used via `parsco::alt` function.
 pub struct Empty<P, S>(PhantomData<(P, S)>);
 
-impl<P1, P2, S, T> BitOr<P2> for Empty<P1, S>
+impl<P, N, S, T> BitOr<N> for Empty<P, S>
     where S: Parseable,
-          P2: Parser<S, Res=T>,
+          N: Parser<S, Res=T>,
 {
-    type Output = Alt<Self, P2, S>;
-    fn bitor(self, lhs: P2) -> Self::Output {
+    type Output = Alt<Self, N, S>;
+    fn bitor(self, lhs: N) -> Self::Output {
         Alt {
             parser: self,
             rest: lhs,
@@ -87,6 +96,7 @@ pub fn alt<P, S>() -> Empty<P, S> {
     Empty(PhantomData)
 }
 
+/// Allows turning parsers into optional ones. Used via `parsco::opt` function.
 pub struct Opt<P> {
     parser: P,
 }
@@ -128,6 +138,7 @@ pub fn opt<P, S>(parser: P) -> Opt<P>
     }
 }
 
+/// Allows mapping parser return type to different one. Used via `parsco::map` function.
 pub struct Map<P, F> {
     parser: P,
     map: F
@@ -169,6 +180,7 @@ pub fn map<P, F, S, T>(parser: P, map: F) -> Map<P, F>
     }
 }
 
+/// Allows flat mapping parser return type to different one. Used via `parsco::flat_map` function.
 pub struct FlatMap<P, F> {
     parser: P,
     map: F
@@ -205,7 +217,8 @@ impl<P, S, F, T> Parser<S> for FlatMap<P, F>
 /// );
 /// ```
 /// ```rust
-/// # use parsco::{Parser, Err2, flat_map, tag};
+/// # use parsco::{Parser, flat_map, tag};
+/// # use parsco::common::Err2;
 /// #[derive(Debug, PartialEq)]
 /// struct Foo;
 /// assert_eq!(
@@ -224,6 +237,7 @@ pub fn flat_map<P, F, S, T>(parser: P, map: F) -> FlatMap<P, F>
     }
 }
 
+/// Allows replacing parsers return value with different one. Used via `parsco::eat` function.
 pub struct Eat<P, T> {
     parser: P,
     substitute: T

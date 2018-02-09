@@ -1,5 +1,6 @@
 extern crate parsco;
-use parsco::{Parser, ws, tag, Err2};
+use parsco::{Parser, ws, tag};
+use parsco::common::Err2;
 
 #[test]
 fn tag_parses() {

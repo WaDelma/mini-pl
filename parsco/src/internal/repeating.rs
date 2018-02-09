@@ -1,4 +1,8 @@
-use {Parser, Parseable, Result, Tag, tag, terminated, preceded, opt, Err2};
+//! Parsers that are used to repeat other parsers.
+
+use {Parser, Parseable, Result, tag, terminated, preceded, opt};
+use parsers::Tag;
+use common::Err2;
 
 use std::marker::PhantomData;
 
@@ -247,6 +251,16 @@ impl<'b, P> Parser<&'b str> for Whitespace<P>
     }
 }
 
+/// Eats whitespace before parser.
+/// 
+/// # Examples
+/// ```rust
+/// # use parsco::{Parser, tag, ws};
+/// assert_eq!(
+///     Ok(("foo", " bar", 6)),
+///     ws(tag("foo")).parse(" \n\tfoo bar")
+/// );
+/// ```
 pub fn ws<'b, P>(parser: P) -> Whitespace<P>
     where P: Parser<&'b str>,
 {
@@ -271,6 +285,23 @@ impl<S> Parser<S> for Take
     }
 }
 
+/// Takes set amount of tokens.
+/// 
+/// # Examples
+/// ```rust
+/// # use parsco::{Parser, take};
+/// assert_eq!(
+///     Ok(("123", "bar", 3)),
+///     take(3).parse("123bar")
+/// );
+/// ```
+/// ```rust
+/// # use parsco::{Parser, take};
+/// assert_eq!(
+///     Err(((), 0..3)),
+///     take(3).parse("12")
+/// );
+/// ```
 pub fn take(amount: usize) -> Take {
     Take {
         amount
