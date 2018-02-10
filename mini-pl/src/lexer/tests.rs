@@ -280,15 +280,21 @@ fn identifiers_lex() {
 
 #[test]
 fn keyword_starting_identifier_lexes() {
+    let string = "foray into reading independent dodo endofunctors";
     assert_eq!(
         Ok((
             vec![
-                Identifier(String::from("ifs")),
+                Identifier(String::from("foray")),
+                Identifier(String::from("into")),
+                Identifier(String::from("reading")),
+                Identifier(String::from("independent")),
+                Identifier(String::from("dodo")),
+                Identifier(String::from("endofunctors")),
             ],
             "",
-            3
+            string.len()
         )),
-        tokenize("ifs")
+        tokenize(string)
     );
 }
 
@@ -348,6 +354,10 @@ fn punctuation_lexes() {
 
 #[test]
 fn example1_lexes() {
+    let string = r#"
+        var X : int := 4 + (6 * 2);
+        print X;
+    "#;
     assert_eq!(
         Ok((
             vec![
@@ -369,17 +379,25 @@ fn example1_lexes() {
                 Punctuation(Semicolon),
             ],
             "",
-            70
+            string.len()
         )),
-        tokenize("
-            var X : int := 4 + (6 * 2);
-            print X;
-        ")
+        tokenize(string)
     );
 }
 
 #[test]
 fn example2_lexes() {
+    let string = r#"
+        var nTimes : int := 0;
+        print "How many times?"; 
+        read nTimes; 
+        var x : int;
+        for x in 0..nTimes-1 do 
+            print x;
+            print " : Hello, World!\n";
+        end for;
+        assert (x = nTimes);
+    "#;
     assert_eq!(
         Ok((
             vec![
@@ -428,24 +446,26 @@ fn example2_lexes() {
                 Punctuation(Semicolon),
             ],
             "",
-            293
+            string.len()
         )),
-        tokenize(r#"
-            var nTimes : int := 0;
-            print "How many times?"; 
-            read nTimes; 
-            var x : int;
-            for x in 0..nTimes-1 do 
-                print x;
-                print " : Hello, World!\n";
-            end for;
-            assert (x = nTimes);
-        "#)
+        tokenize(string)
     );
 }
 
 #[test]
 fn example3_lexes() {
+    let string = r#"
+        print "Give a number"; 
+        var n : int;
+        read n;
+        var v : int := 1;
+        var i : int;
+        for i in 1..n do 
+            v := v * i;
+        end for;
+        print "The result is: ";
+        print v; 
+    "#;
     assert_eq!(
         Ok((
             vec![
@@ -496,19 +516,8 @@ fn example3_lexes() {
                 Punctuation(Semicolon),
             ],
             "",
-            283
+            string.len()
         )),
-        tokenize(r#"
-            print "Give a number"; 
-            var n : int;
-            read n;
-            var v : int := 1;
-            var i : int;
-            for i in 1..n do 
-                v := v * i;
-            end for;
-            print "The result is: ";
-            print v; 
-        "#)
+        tokenize(string)
     );
 }

@@ -70,8 +70,7 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>> {
             alt()
                 | fun(operator)
                 | fun(punctuation)
-                | fun(keyword)
-                | fun(identifier)
+                | fun(keyword_or_identifier)
                 | fun(integer)
                 | fun(str_literal)
         )
@@ -143,7 +142,6 @@ fn punctuation(s: &str) -> Result<Token> {
         .map(|(t, s, p)| (Token::Punctuation(t), s, p))
 }
 
-// TODO: This doesn't allow identifiers that start with keyword
 fn keyword(s: &str) -> Result<Token> {
     (alt()
         | eat(tag("var"), Var)
@@ -162,7 +160,7 @@ fn keyword(s: &str) -> Result<Token> {
         .map(|(t, s, p)| (Token::Keyword(t), s, p))
 }
 
-fn identifier(s: &str) -> Result<Token> {
+fn keyword_or_identifier(s: &str) -> Result<Token> {
     fst()
         .parse(s)
         .map_err(|(e, r)| (FromErr::from(e), r))
@@ -179,7 +177,14 @@ fn identifier(s: &str) -> Result<Token> {
                 (t1.to_string(), s, p)
             }
         )
-        .map(|(t, s, p)| (Token::Identifier(t), s, p))
+        .map(|(t, s, p)| {
+            if let Ok((k, ss, p)) = keyword(&t) {
+                if ss.is_empty() {
+                    return (k, s, p);
+                }
+            }
+            (Token::Identifier(t), s, p)
+        })
 }
 
 fn integer(s: &str) -> Result<Token> {
