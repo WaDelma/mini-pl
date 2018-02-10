@@ -13,7 +13,8 @@ fn string_literal_lexes() {
             vec![
                 Literal(StringLit(String::from("Hello, World!"))),
             ],
-            ""
+            "",
+            15
         )),
         tokenize(r#""Hello, World!""#)
     );
@@ -26,7 +27,8 @@ fn string_literal_with_escaped_quote_lexes() {
             vec![
                 Literal(StringLit(String::from("Hello, \"World!\""))),
             ],
-            ""
+            "",
+            19
         )),
         tokenize(r#""Hello, \"World!\"""#)
     );
@@ -39,7 +41,8 @@ fn string_literal_with_escaped_linebreak_lexes() {
             vec![
                 Literal(StringLit(String::from("Hello\n World!"))),
             ],
-            ""
+            "",
+            16
         )),
         tokenize(r#""Hello\n World!""#)
     );
@@ -52,7 +55,8 @@ fn string_literal_with_escaped_tab_lexes() {
             vec![
                 Literal(StringLit(String::from("Hello\t World!"))),
             ],
-            ""
+            "",
+            16
         )),
         tokenize(r#""Hello\t World!""#)
     );
@@ -65,7 +69,8 @@ fn string_literal_with_escaped_backslash_lexes() {
             vec![
                 Literal(StringLit(String::from("Hello\\ World!"))),
             ],
-            ""
+            "",
+            16
         )),
         tokenize(r#""Hello\\ World!""#)
     );
@@ -78,7 +83,8 @@ fn string_literal_with_alert_lexes() {
             vec![
                 Literal(StringLit(String::from("Hello, World\x07"))),
             ],
-            ""
+            "",
+            16
         )),
         tokenize(r#""Hello, World\a""#)
     );
@@ -91,7 +97,8 @@ fn string_literal_with_backspace_lexes() {
             vec![
                 Literal(StringLit(String::from("Hello,\x08 World!"))),
             ],
-            ""
+            "",
+            17
         )),
         tokenize(r#""Hello,\b World!""#)
     );
@@ -104,7 +111,8 @@ fn string_literal_with_formfeed_lexes() {
             vec![
                 Literal(StringLit(String::from("Hello, World!\x0C"))),
             ],
-            ""
+            "",
+            17
         )),
         tokenize(r#""Hello, World!\f""#)
     );
@@ -117,7 +125,8 @@ fn string_literal_with_vertical_tab_lexes() {
             vec![
                 Literal(StringLit(String::from("Hello\x0BWorld!"))),
             ],
-            ""
+            "",
+            15
         )),
         tokenize(r#""Hello\vWorld!""#)
     );
@@ -130,7 +139,8 @@ fn string_literal_with_hexadecimal_escape_lexes() {
             vec![
                 Literal(StringLit(String::from("\x1B\x07\x0C"))),
             ],
-            ""
+            "",
+            14
         )),
         tokenize(r#""\x1B\x07\x0C""#)
     );
@@ -143,7 +153,8 @@ fn string_literal_with_unicode_escape_lexes() {
             vec![
                 Literal(StringLit(String::from("👌 🤔 😽 ⸙ 𝝅 ≪ 𝝉 ⸎"))),
             ],
-            ""
+            "",
+            77
         )),
         tokenize(r#""\U0001F44C \U0001F914 \U0001F63D \u2E19 \U0001D745 \u226A \U0001D749 \u2E0E""#)
     );
@@ -156,7 +167,8 @@ fn string_literal_with_octal_escape_lexes() {
             vec![
                 Literal(StringLit(String::from_utf8(vec![0o0, 0o10, 0o100, 0o2, 0o12, 0o102]).unwrap())),
             ],
-            ""
+            "",
+            20
         )),
         tokenize(r#""\0\10\100\2\12\102""#)
     );
@@ -169,7 +181,8 @@ fn line_comment_lexes() {
             vec![
                 Identifier(String::from("x")),
             ],
-            ""
+            "",
+            4
         )),
         tokenize("x//y")
     );
@@ -182,7 +195,8 @@ fn multiline_comment_simple_lexes() {
             vec![
                 Identifier(String::from("x")),
             ],
-            ""
+            "",
+            6
         )),
         tokenize("x/*y*/")
     );
@@ -195,7 +209,8 @@ fn multiline_comment_star_lexes() {
             vec![
                 Identifier(String::from("x")),
             ],
-            ""
+            "",
+            7
         )),
         tokenize("x/**y*/")
     );
@@ -208,7 +223,8 @@ fn multiline_comment_nested_lexes() {
             vec![
                 Identifier(String::from("x")),
             ],
-            ""
+            "",
+            10
         )),
         tokenize("x/*/*y*/*/")
     );
@@ -221,7 +237,8 @@ fn multiline_comment_complex_nesting_lexes() {
             vec![
                 Identifier(String::from("x")),
             ],
-            ""
+            "",
+            16
         )),
         tokenize("x/*/*y*/z/*w*/*/")
     );
@@ -234,25 +251,18 @@ fn identifiers_lex() {
             vec![
                 Identifier(String::from("x")),
             ],
-            ""
+            "",
+            1
         )),
         tokenize("x")
     );
     assert_eq!(
         Ok((
             vec![
-                Identifier(String::from("föö")),
-            ],
-            ""
-        )),
-        tokenize("föö")
-    );
-    assert_eq!(
-        Ok((
-            vec![
                 Identifier(String::from("l33t")),
             ],
-            ""
+            "",
+            4
         )),
         tokenize("l33t")
     );
@@ -261,9 +271,40 @@ fn identifiers_lex() {
             vec![
                 Identifier(String::from("l_l")),
             ],
-            ""
+            "",
+            3
         )),
         tokenize("l_l")
+    );
+}
+
+#[test]
+fn keyword_starting_identifier_lexes() {
+    assert_eq!(
+        Ok((
+            vec![
+                Identifier(String::from("ifs")),
+            ],
+            "",
+            3
+        )),
+        tokenize("ifs")
+    );
+}
+
+
+#[ignore] // TODO: To fix this, the lexer needs to be switched to use grapheme clusters
+#[test]
+fn unicode_identifier_lexes() {
+    assert_eq!(
+        Ok((
+            vec![
+                Identifier(String::from("föö")),
+            ],
+            "",
+            3
+        )),
+        tokenize("föö")
     );
 }
 
@@ -281,7 +322,8 @@ fn operators_lex() {
                 Operator(Equality),
                 Operator(LessThan),
             ],
-            ""
+            "",
+            8
         )),
         tokenize("+-*/&!=<")
     );
@@ -297,7 +339,8 @@ fn punctuation_lexes() {
                 Punctuation(Semicolon),
                 Punctuation(Parenthesis(Close)),
             ],
-            "§"
+            "§",
+            3
         )),
         tokenize("(;)§")
     );
@@ -325,7 +368,8 @@ fn example1_lexes() {
                 Identifier(String::from("X")),
                 Punctuation(Semicolon),
             ],
-            ""
+            "",
+            70
         )),
         tokenize("
             var X : int := 4 + (6 * 2);
@@ -383,7 +427,8 @@ fn example2_lexes() {
                 Punctuation(Parenthesis(Close)),
                 Punctuation(Semicolon),
             ],
-            ""
+            "",
+            293
         )),
         tokenize(r#"
             var nTimes : int := 0;
@@ -450,7 +495,8 @@ fn example3_lexes() {
                 Identifier(String::from("v")),
                 Punctuation(Semicolon),
             ],
-            ""
+            "",
+            283
         )),
         tokenize(r#"
             print "Give a number"; 

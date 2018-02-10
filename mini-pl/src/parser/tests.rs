@@ -49,7 +49,8 @@ fn complex_expr() {
                     },
                 },
             ],
-            &[][..]
+            &[][..],
+            32
         )),
         parse(&tokenize("
             print
@@ -96,7 +97,8 @@ fn example1_parses() {
                     expr: Opnd(Ident(String::from("X"))),
                 }
             ],
-            &[][..]
+            &[][..],
+            16
         )),
         parse(&tokenize("
             var X : int := 4 + (6 * 2);
@@ -153,7 +155,8 @@ fn example2_parses() {
                     }
                 }
             ],
-            &[][..]
+            &[][..],
+            43
         )),
         parse(&tokenize(r#"
             var nTimes : int := 0;
@@ -219,7 +222,8 @@ fn example3_parses() {
                     expr: Opnd(Ident(String::from("v")))
                 }
             ],
-            &[][..]
+            &[][..],
+            45
         )),
         parse(&tokenize(r#"
             print "Give a number"; 

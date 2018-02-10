@@ -76,7 +76,7 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>> {
                 | fun(str_literal)
         )
     )), ws(opt(fun(comment)))).parse(s)
-        .map_err(FromErr::from)
+        .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
 fn comment(s: &str) -> Result<()> {
@@ -84,7 +84,7 @@ fn comment(s: &str) -> Result<()> {
         | fun(multiline_comment)
         | map((tag("//"), take_while(|c| c != '\n')), |_| ())
     ).parse(s)
-        .map_err(FromErr::from)
+        .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
 fn multiline_comment(s: &str) -> Result<()> {
@@ -94,16 +94,17 @@ fn multiline_comment(s: &str) -> Result<()> {
                 | map(tag("*/"), |_| true)
                 | map(tag("/*"), |_| false)
         ).parse(s)
-            .map_err(FromErr::from)
-            .and_then(|((_, end), s)| if end {
-                Err(Unknown)
+            .map_err(|(e, r)| (FromErr::from(e), r))
+            .and_then(|((_, end), s, p)| if end {
+                Err((Unknown, 0..p))
             } else {
                 map((
                     opt(fun(nested_comment)),
                     take_until(tag("*/")),
                     opt(fun(nested_comment))
                 ), |_| ()).parse(s)
-                    .map_err(FromErr::from)
+                    .map(|(r, s, pp)| (r, s, p + pp))
+                    .map_err(|(e, r)| (FromErr::from(e), r))
             })
     }
     map(delimited(
@@ -111,7 +112,7 @@ fn multiline_comment(s: &str) -> Result<()> {
         opt(fun(nested_comment)),
         take_until(tag("*/"))
     ), |_| ()).parse(s)
-        .map_err(FromErr::from)
+        .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
 fn operator(s: &str) -> Result<Token> {
@@ -127,8 +128,8 @@ fn operator(s: &str) -> Result<Token> {
         | eat(tag("<"), LessThan)
         | eat(tag(".."), Range)
     ).parse(s)
-        .map_err(FromErr::from)
-        .map(|(p, s)| (Token::Operator(p), s))
+        .map_err(|(e, r)| (FromErr::from(e), r))
+        .map(|(t, s, p)| (Token::Operator(t), s, p))
 }
 
 fn punctuation(s: &str) -> Result<Token> {
@@ -138,8 +139,8 @@ fn punctuation(s: &str) -> Result<Token> {
         | eat(tag("("), Parenthesis(Open))
         | eat(tag(")"), Parenthesis(Close))
     ).parse(s)
-        .map_err(FromErr::from)
-        .map(|(p, s)| (Token::Punctuation(p), s))
+        .map_err(|(e, r)| (FromErr::from(e), r))
+        .map(|(t, s, p)| (Token::Punctuation(t), s, p))
 }
 
 // TODO: This doesn't allow identifiers that start with keyword
@@ -157,35 +158,35 @@ fn keyword(s: &str) -> Result<Token> {
         | eat(tag("bool"), Bool)
         | eat(tag("assert"), Assert)
     ).parse(s)
-        .map_err(FromErr::from)
-        .map(|(p, s)| (Token::Keyword(p), s))
+        .map_err(|(e, r)| (FromErr::from(e), r))
+        .map(|(t, s, p)| (Token::Keyword(t), s, p))
 }
 
 fn identifier(s: &str) -> Result<Token> {
     fst()
         .parse(s)
-        .map_err(FromErr::from)
-        .and_then(|(t, s)|
+        .map_err(|(e, r)| (FromErr::from(e), r))
+        .and_then(|(t, s, p)|
             if t.is_alphabetic() {
-                Ok((t, s))
+                Ok((t, s, p))
             } else {
-                Err(Unknown)
+                Err((Unknown, 0..p))
             })
-        .map(|(t1, s)|
-            if let Ok((t2, s)) = take_while(|c| char::is_alphanumeric(c) || c == '_').parse(s) {
-                (format!("{}{}", t1, t2), s)
+        .map(|(t1, s, p)|
+            if let Ok((t2, s, pp)) = take_while(|c| char::is_alphanumeric(c) || c == '_').parse(s) {
+                (format!("{}{}", t1, t2), s, p + pp)
             } else {
-                (t1.to_string(), s)
+                (t1.to_string(), s, p)
             }
         )
-        .map(|(p, s)| (Token::Identifier(p), s))
+        .map(|(t, s, p)| (Token::Identifier(t), s, p))
 }
 
 fn integer(s: &str) -> Result<Token> {
     take_while(|c| char::is_digit(c, 10))
         .parse(s)
-        .map_err(FromErr::from)
-        .map(|(p, s)| (Token::Literal(Integer(p.parse::<BigInt>().unwrap())), s))
+        .map_err(|(e, r)| (FromErr::from(e), r))
+        .map(|(t, s, p)| (Token::Literal(Integer(t.parse::<BigInt>().unwrap())), s, p))
 }
 
 fn hex_as_string(x: &str) -> String {
@@ -251,13 +252,13 @@ fn str_literal(s: &str) -> Result<Token> {
                 | map(tag(r#"\"#), |_| panic!("Unknown escape sequence."))
                 | eat(tag(r#"""#), "".to_owned())
         ).parse(s)
-            .map_err(FromErr::from)
-            .and_then(|((b, t), s)| if t.is_empty() {
-                Ok((b.to_string(), s))
-            } else if let Ok((a, s)) = parse_str(s) {
-                Ok((b.to_string() + &t + &a, s))
+            .map_err(|(e, r)| (FromErr::from(e), r))
+            .and_then(|((b, t), s, p)| if t.is_empty() {
+                Ok((b.to_string(), s, p))
+            } else if let Ok((a, s, pp)) = parse_str(s) {
+                Ok((b.to_string() + &t + &a, s, p + pp))
             } else {
-                Err(Unknown)
+                Err((Unknown, 0..p))
             })
             
     }
@@ -265,6 +266,6 @@ fn str_literal(s: &str) -> Result<Token> {
         tag("\""),
         fun(parse_str),
     ).parse(s)
-        .map_err(FromErr::from)
-        .map(|(p, s)| (Token::Literal(StringLit(p)), s))
+        .map_err(|(e, r)| (FromErr::from(e), r))
+        .map(|(t, s, p)| (Token::Literal(StringLit(t)), s, p))
 }
