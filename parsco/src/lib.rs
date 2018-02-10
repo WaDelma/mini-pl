@@ -73,7 +73,7 @@ use std::ops::Range;
 
 use common::Void;
 
-pub use internal::basic::{tag, one, fst, dbg, fun};
+pub use internal::basic::{tag, sym, fst, dbg, fun};
 pub use internal::delimited::{preceded, terminated, delimited};
 pub use internal::repeating::{many0, many1, list0, take_while, take_until, ws, take};
 pub use internal::control::{alt, map, flat_map, eat, opt};
@@ -85,7 +85,7 @@ pub mod parsers {
     pub use internal::control::{Alt, Empty, Map, FlatMap, Eat, Opt};
     pub use internal::delimited::{Preceded, Terminated, Delimited};
     pub use internal::repeating::{Many0, Many1, List0, TakeWhile, TakeUntil, Whitespace, Take};
-    pub use internal::basic::{Tag, One, Fst, Fun, Dbg};
+    pub use internal::basic::{Tag, Symbol, Fst, Fun, Dbg};
 }
 
 pub mod common;
@@ -96,10 +96,12 @@ type Place = usize;
 
 /// Type alias for the result that parsers return.
 /// 
-/// Usually when using this type alias `parsco::Result` or `use parsco::Result as ParseResult;` is recomended.
+/// To use this trait alias, it's recomended to refer it by `parsco::Result` or renaming it more specific `use parsco::Result as ParseResult;`.
 pub type Result<S, T, E> = ::std::result::Result<(T, S, Place), (E, Range<Place>)>;
 
+/// Tranforms error type to another. WIP
 pub trait FromErr<E> {
+    /// Takes error and makes it to `Self`.
     fn from(e: E) -> Self;
 }
 

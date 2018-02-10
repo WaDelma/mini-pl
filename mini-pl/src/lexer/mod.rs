@@ -142,6 +142,7 @@ fn punctuation(s: &str) -> Result<Token> {
         .map(|(p, s)| (Token::Punctuation(p), s))
 }
 
+// TODO: This doesn't allow identifiers that start with keyword
 fn keyword(s: &str) -> Result<Token> {
     (alt()
         | eat(tag("var"), Var)

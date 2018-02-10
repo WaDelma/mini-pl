@@ -2,6 +2,7 @@
 
 use {Parser, Parseable, Result};
 
+/// Allows prefixing given parser. Used via `parsco::preceded` function.
 pub struct Preceded<P1, P2> {
     parser: P1,
     precedator: P2,
@@ -44,6 +45,7 @@ pub fn preceded<P1, P2, S>(precedator: P2, parser: P1) -> Preceded<P1, P2>
     }
 }
 
+/// Allows postfixing given parser. Used via `parsco::terminated` function.
 pub struct Terminated<P1, P2> {
     parser: P1,
     terminator: P2,
@@ -86,6 +88,7 @@ pub fn terminated<P1, P2, S>(parser: P1, terminator: P2) -> Terminated<P1, P2>
     }
 }
 
+/// Allows pre- and postfixing given parser. Used via `parsco:delimited` function.
 pub struct Delimited<P1, P2, P3> {
     precedator: P1,
     parser: P2,

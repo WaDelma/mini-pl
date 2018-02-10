@@ -2,6 +2,7 @@ use {Parser, Parseable, Result, take};
 
 use std::fmt;
 
+/// Allows wrapping function as parser. Used via `parsco::fun` function.
 pub struct Fun<P>(P);
 
 impl<F, S, T, E> Parser<S> for Fun<F>
@@ -46,6 +47,7 @@ pub fn fun<F, S, T, E>(f: F) -> Fun<F>
     Fun(f)
 }
 
+/// Allows recognising given tag. Used via `parsco::tag` function.
 pub struct Tag<S> {
     tag: S,
 }
@@ -84,11 +86,11 @@ pub fn tag<S>(tag: S) -> Tag<S>
     }
 }
 
-pub struct One<S> {
+/// Allows recognising given symbol. Used via `parsco::sym` function.
+pub struct Symbol<S> {
     symbol: S,
 }
-
-impl<S> Parser<S> for One<S::Symbol>
+impl<S> Parser<S> for Symbol<S::Symbol>
     where S: Parseable,
           S::Symbol: PartialEq + Clone
 {
@@ -105,14 +107,25 @@ impl<S> Parser<S> for One<S::Symbol>
     }
 }
 
-pub fn one<S>(symbol: S) -> One<S>
+/// Recognises symbol at the start of the input.
+/// 
+/// # Examples
+/// ```rust
+/// # use parsco::{Parser, sym};
+/// assert_eq!(
+///     Ok(('f', "function", 1)),
+///     sym('f').parse("ffunction")
+/// );
+/// ```
+pub fn sym<S>(symbol: S) -> Symbol<S>
     where S: PartialEq + Clone
 {
-    One {
+    Symbol {
         symbol
     }
 }
 
+/// Allows taking first symbol. Used via `parsco::fst` function.
 pub struct Fst;
 
 impl<S: Parseable> Parser<S> for Fst {
@@ -128,10 +141,21 @@ impl<S: Parseable> Parser<S> for Fst {
     }
 }
 
+/// Takes first symbol from the input.
+/// 
+/// # Examples
+/// ```rust
+/// # use parsco::{Parser, fst};
+/// assert_eq!(
+///     Ok(('f', "unction", 1)),
+///     fst().parse("function")
+/// );
+/// ```
 pub fn fst() -> Fst {
     Fst
 }
 
+/// Allows printing debug information. Used via `parsco::dbg` function.
 pub struct Dbg<P>(P);
 
 impl<P: Parser<S>, S: Parseable + fmt::Debug> Parser<S> for Dbg<P> {
