@@ -2,6 +2,17 @@ use num_bigint::BigInt;
 
 use Ident;
 
+pub struct Position {
+    line: usize,
+    column: usize,
+}
+
+pub struct Tok {
+    token: Token,
+    from: Position,
+    to: Position,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
     Identifier(Ident),

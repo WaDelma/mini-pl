@@ -6,6 +6,7 @@ use {FromErr, Parser, Parseable, Result};
 /// 
 /// This is workaround while `!` is not stable.
 /// It's used to indicate imposibility of certain return values.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Void {}
 
 impl<S: Parseable> Parser<S> for Void {

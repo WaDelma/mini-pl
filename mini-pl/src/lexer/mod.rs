@@ -7,7 +7,7 @@ use num_bigint::BigInt;
 
 use parsco::{Parser, FromErr, tag, many0, alt, fun, preceded, terminated, delimited, take_while, take_until, ws, fst, opt, map, eat, take, flat_map};
 
-use self::tokens::Token;
+use self::tokens::{Token, Tok, Position};
 use self::tokens::Punctuation::*;
 use self::tokens::Side::*;
 use self::tokens::Keyword::*;
@@ -30,6 +30,12 @@ pub enum LexError {
 impl FromErr<()> for LexError {
     fn from(_: ()) -> Self {
         LexError::Unknown
+    }
+}
+
+impl FromErr<::parsco::common::Void> for LexError {
+    fn from(_: ::parsco::common::Void) -> Self {
+        unreachable!("Void is never type.")
     }
 }
 
@@ -63,7 +69,7 @@ impl From<FromUtf8Error> for HexadecimalLexError {
     }
 }
 
-pub fn tokenize(s: &str) -> Result<Vec<Token>> {
+pub fn tokenize(s: &str) -> Result<Vec<Tok>> {
     terminated(many0(preceded(
         ws(opt(fun(comment))),
         ws(

@@ -1,8 +1,8 @@
 //! Parsers that are used to repeat other parsers.
 
-use {Parser, Parseable, Result, tag, terminated, preceded, opt, map};
+use {Parser, Parseable, Result, tag, terminated, opt, map};
 use parsers::Tag;
-use common::Err2;
+use common::{Err2, Void};
 
 use std::marker::PhantomData;
 
@@ -17,7 +17,7 @@ impl<F, S> Parser<S> for TakeWhile<F, S>
           F: Fn(<S as Parseable>::Symbol) -> bool,
 {
     type Res = S;
-    type Err = ();
+    type Err = Void;
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         let mut n = 0;
         let mut cur = s;
@@ -29,12 +29,8 @@ impl<F, S> Parser<S> for TakeWhile<F, S>
                 break;
             }
         }
-        if n == 0 {
-            Err(((), 0..0))
-        } else {
-            let (start, end) = s.split_at(n).expect("This index should be already split at.");
-            Ok((start, end, n))
-        }
+        let (start, end) = s.split_at(n).expect("This index should be already split at.");
+        Ok((start, end, n))
     }
 }
 
@@ -48,6 +44,14 @@ impl<F, S> Parser<S> for TakeWhile<F, S>
 /// assert_eq!(
 ///     Ok(("foo", "123", 3)),
 ///     take_while(char::is_alphabetic).parse("foo123")
+/// );
+/// ```
+/// ```rust
+/// # use parsco::{Parser, take_while};
+/// # use std::char;
+/// assert_eq!(
+///     Ok(("", "foo123", 0)),
+///     take_while(char::is_numeric).parse("foo123")
 /// );
 /// ```
 pub fn take_while<F, S>(predicate: F) -> TakeWhile<F, S>
@@ -290,28 +294,47 @@ pub struct Whitespace<P> {
 impl<'b, P> Parser<&'b str> for Whitespace<P>
     where P: Parser<&'b str>,
 {
-    type Res = P::Res;
-    type Err = Err2<(), P::Err>;
-    fn parse(&self, s: &'b str) ->  Result<&'b str, Self::Res, Self::Err> {
-        preceded(
-            opt(take_while(char::is_whitespace)),
-            &self.parser
-        ).parse(s)
-        .map_err(|(e, p)| (match e {
-            Err2::V1(_) => Err2::V1(()),
-            Err2::V2(e) => Err2::V2(e),
-        }, p))
+    type Res = (P::Res, usize, usize);
+    type Err = P::Err;
+    fn parse(&self, mut s: &'b str) ->  Result<&'b str, Self::Res, Self::Err> {
+        let mut lines = 0;
+        let mut parsed = 0;
+        loop {
+            match take_while(|c| c != '\n' && c.is_whitespace()).parse(s) {
+                Ok((_, ss, p)) => {
+                    s = ss;
+                    parsed += p;
+                    if let Some(f) = s.first() {
+                        if f == '\n' {
+                            s = s.split_at(1).1;
+                            lines += 1;
+                        } else if !f.is_whitespace() {
+                            return self.parser.parse(s)
+                                .map(|(t, s, pp)|((t, lines, p), s, pp + parsed));
+                        }
+                    } else {
+                        return self.parser.parse(s)
+                            .map(|(t, s, pp)|((t, lines, p), s, pp + parsed));
+                    }
+                },
+                Err(_) => {
+                    unreachable!("Void is uninhabited");
+                }
+            }
+        }
     }
 }
 
 /// Eats whitespace before parser.
 /// 
+/// Returns result of parser, how many lines were eaten and how much whitespace after last line has been eaten.
+/// 
 /// # Examples
 /// ```rust
 /// # use parsco::{Parser, tag, ws};
 /// assert_eq!(
-///     Ok(("foo", " bar", 6)),
-///     ws(tag("foo")).parse(" \n\tfoo bar")
+///     Ok((("foo", 3, 2), " bar", 6)),
+///     ws(tag("foo")).parse(" \n\n\n\t\tfoo bar")
 /// );
 /// ```
 pub fn ws<'b, P>(parser: P) -> Whitespace<P>
