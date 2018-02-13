@@ -7,8 +7,8 @@ use self::repr::Value::*;
 
 pub mod context;
 mod repr;
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;
 
 pub fn interpret<IO: Io>(stmts: &[Stmt], ctx: &mut Context<TypedValue>, stdio: &mut IO) {
     for stmt in stmts {

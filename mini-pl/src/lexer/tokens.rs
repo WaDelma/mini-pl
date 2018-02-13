@@ -2,15 +2,36 @@ use num_bigint::BigInt;
 
 use Ident;
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct Position {
     pub line: usize,
     pub column: usize,
 }
 
+impl Position {
+    pub fn new(line: usize, column: usize) -> Self {
+        Position {
+            line,
+            column
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct Tok {
     pub token: Token,
     pub from: Position,
     pub to: Position,
+}
+
+impl Tok {
+    pub fn new(token: Token, from: Position, to: Position) -> Self {
+        Tok {
+            token,
+            from,
+            to
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

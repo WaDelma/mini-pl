@@ -74,13 +74,12 @@ pub fn tokenize(s: &str) -> Result<Vec<Tok>> {
         map(
             (
                 ws(opt(fun(comment))),
-                ws(
-                    alt()
-                        | fun(operator)
-                        | fun(punctuation)
-                        | fun(keyword_or_identifier)
-                        | fun(integer)
-                        | fun(str_literal)
+                ws(alt()
+                    | fun(operator)
+                    | fun(punctuation)
+                    | fun(keyword_or_identifier)
+                    | fun(integer)
+                    | fun(str_literal)
                 )
             ),
             |((_, l1, c1), (r, l2, c2))| Tok {
@@ -186,19 +185,16 @@ fn keyword_or_identifier(s: &str) -> Result<Token> {
     fst()
         .parse(s)
         .map_err(|(e, r)| (FromErr::from(e), r))
-        .and_then(|(t, s, p)|
-            if t.is_alphabetic() {
-                Ok((t, s, p))
-            } else {
-                Err((Unknown, 0..p))
-            })
-        .map(|(t1, s, p)|
-            if let Ok((t2, s, pp)) = take_while(|c| char::is_alphanumeric(c) || c == '_').parse(s) {
-                (format!("{}{}", t1, t2), s, p + pp)
-            } else {
-                (t1.to_string(), s, p)
-            }
-        )
+        .and_then(|(t, s, p)| if t.is_alphabetic() {
+            Ok((t, s, p))
+        } else {
+            Err((Unknown, 0..p))
+        })
+        .map(|(t1, s, p)| if let Ok((t2, s, pp)) = take_while(|c| char::is_alphanumeric(c) || c == '_').parse(s) {
+            (format!("{}{}", t1, t2), s, p + pp)
+        } else {
+            (t1.to_string(), s, p)
+        })
         .map(|(t, s, p)| {
             if let Ok((k, ss, p)) = keyword(&t) {
                 if ss.is_empty() {
@@ -210,10 +206,22 @@ fn keyword_or_identifier(s: &str) -> Result<Token> {
 }
 
 fn integer(s: &str) -> Result<Token> {
-    take_while(|c| char::is_digit(c, 10))
+    fst()
         .parse(s)
         .map_err(|(e, r)| (FromErr::from(e), r))
-        .map(|(t, s, p)| (Token::Literal(Integer(t.parse::<BigInt>().unwrap())), s, p))
+        .and_then(|(t, s, p)| if t.is_digit(10) {
+            Ok((t, s, p))
+        } else {
+            Err((Unknown, 0..p))
+        })
+        .map(|(t1, s, p)| {
+            let (t, s, p) = if let Ok((t2, s, pp)) = take_while(|c| char::is_digit(c, 10)).parse(s) {
+                (format!("{}{}", t1, t2), s, p + pp)
+            } else {
+                (t1.to_string(), s, p)
+            };
+            (Token::Literal(Integer(t.parse::<BigInt>().unwrap())), s, p)
+        })
 }
 
 fn hex_as_string(x: &str) -> String {

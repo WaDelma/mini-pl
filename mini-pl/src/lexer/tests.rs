@@ -1,3 +1,4 @@
+use super::{Tok, Token, Position};
 use super::tokens::Token::*;
 use super::tokens::Punctuation::*;
 use super::tokens::Side::*;
@@ -6,12 +7,16 @@ use super::tokens::Operator::*;
 use super::tokens::Literal::*;
 use super::tokenize;
 
+fn tok(token: Token, (from_line, from_column): (usize, usize), (to_line, to_column): (usize, usize)) -> Tok {
+    Tok::new(token, Position::new(from_line, from_column), Position::new(to_line, to_column))
+}
+
 #[test]
 fn string_literal_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Literal(StringLit(String::from("Hello, World!"))),
+                tok(Literal(StringLit(String::from("Hello, World!"))), (0, 0), (0, 15)),
             ],
             "",
             15
@@ -25,7 +30,7 @@ fn string_literal_with_escaped_quote_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Literal(StringLit(String::from("Hello, \"World!\""))),
+                tok(Literal(StringLit(String::from("Hello, \"World!\""))), (0, 0), (0, 19)),
             ],
             "",
             19
@@ -39,7 +44,7 @@ fn string_literal_with_escaped_linebreak_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Literal(StringLit(String::from("Hello\n World!"))),
+                tok(Literal(StringLit(String::from("Hello\n World!"))), (0, 0), (0, 16)),
             ],
             "",
             16
@@ -53,7 +58,7 @@ fn string_literal_with_escaped_tab_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Literal(StringLit(String::from("Hello\t World!"))),
+                tok(Literal(StringLit(String::from("Hello\t World!"))), (0, 0), (0, 16)),
             ],
             "",
             16
@@ -67,7 +72,7 @@ fn string_literal_with_escaped_backslash_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Literal(StringLit(String::from("Hello\\ World!"))),
+                tok(Literal(StringLit(String::from("Hello\\ World!"))), (0, 0), (0, 16)),
             ],
             "",
             16
@@ -81,7 +86,7 @@ fn string_literal_with_alert_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Literal(StringLit(String::from("Hello, World\x07"))),
+                tok(Literal(StringLit(String::from("Hello, World\x07"))), (0, 0), (0, 16)),
             ],
             "",
             16
@@ -95,7 +100,7 @@ fn string_literal_with_backspace_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Literal(StringLit(String::from("Hello,\x08 World!"))),
+                tok(Literal(StringLit(String::from("Hello,\x08 World!"))), (0, 0), (0, 17)),
             ],
             "",
             17
@@ -109,7 +114,7 @@ fn string_literal_with_formfeed_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Literal(StringLit(String::from("Hello, World!\x0C"))),
+                tok(Literal(StringLit(String::from("Hello, World!\x0C"))), (0, 0), (0, 17)),
             ],
             "",
             17
@@ -123,7 +128,7 @@ fn string_literal_with_vertical_tab_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Literal(StringLit(String::from("Hello\x0BWorld!"))),
+                tok(Literal(StringLit(String::from("Hello\x0BWorld!"))), (0, 0), (0, 15)),
             ],
             "",
             15
@@ -137,7 +142,7 @@ fn string_literal_with_hexadecimal_escape_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Literal(StringLit(String::from("\x1B\x07\x0C"))),
+                tok(Literal(StringLit(String::from("\x1B\x07\x0C"))), (0, 0), (0, 14)),
             ],
             "",
             14
@@ -151,7 +156,7 @@ fn string_literal_with_unicode_escape_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Literal(StringLit(String::from("👌 🤔 😽 ⸙ 𝝅 ≪ 𝝉 ⸎"))),
+                tok(Literal(StringLit(String::from("👌 🤔 😽 ⸙ 𝝅 ≪ 𝝉 ⸎"))), (0, 0), (0, 77)),
             ],
             "",
             77
@@ -165,7 +170,7 @@ fn string_literal_with_octal_escape_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Literal(StringLit(String::from_utf8(vec![0o0, 0o10, 0o100, 0o2, 0o12, 0o102]).unwrap())),
+                tok(Literal(StringLit(String::from_utf8(vec![0o0, 0o10, 0o100, 0o2, 0o12, 0o102]).unwrap())), (0, 0), (0, 20)),
             ],
             "",
             20
@@ -179,7 +184,7 @@ fn line_comment_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Identifier(String::from("x")),
+                tok(Identifier(String::from("x")), (0, 0), (0, 1)),
             ],
             "",
             4
@@ -193,7 +198,7 @@ fn multiline_comment_simple_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Identifier(String::from("x")),
+                tok(Identifier(String::from("x")), (0, 0), (0, 1)),
             ],
             "",
             6
@@ -207,7 +212,7 @@ fn multiline_comment_star_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Identifier(String::from("x")),
+                tok(Identifier(String::from("x")), (0, 0), (0, 1)),
             ],
             "",
             7
@@ -221,7 +226,7 @@ fn multiline_comment_nested_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Identifier(String::from("x")),
+                tok(Identifier(String::from("x")), (0, 0), (0, 1)),
             ],
             "",
             10
@@ -235,7 +240,7 @@ fn multiline_comment_complex_nesting_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Identifier(String::from("x")),
+                tok(Identifier(String::from("x")), (0, 0), (0, 1)),
             ],
             "",
             16
@@ -249,7 +254,7 @@ fn identifiers_lex() {
     assert_eq!(
         Ok((
             vec![
-                Identifier(String::from("x")),
+                tok(Identifier(String::from("x")), (0, 0), (0, 1)),
             ],
             "",
             1
@@ -259,7 +264,7 @@ fn identifiers_lex() {
     assert_eq!(
         Ok((
             vec![
-                Identifier(String::from("l33t")),
+                tok(Identifier(String::from("l33t")), (0, 0), (0, 4)),
             ],
             "",
             4
@@ -269,7 +274,7 @@ fn identifiers_lex() {
     assert_eq!(
         Ok((
             vec![
-                Identifier(String::from("l_l")),
+                tok(Identifier(String::from("l_l")), (0, 0), (0, 3)),
             ],
             "",
             3
@@ -284,12 +289,12 @@ fn keyword_starting_identifier_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Identifier(String::from("foray")),
-                Identifier(String::from("into")),
-                Identifier(String::from("reading")),
-                Identifier(String::from("independent")),
-                Identifier(String::from("dodo")),
-                Identifier(String::from("endofunctors")),
+                tok(Identifier(String::from("foray")), (0, 0), (0, 5)),
+                tok(Identifier(String::from("into")), (0, 6), (0, 10)),
+                tok(Identifier(String::from("reading")), (0, 11), (0, 18)),
+                tok(Identifier(String::from("independent")), (0, 19), (0, 30)),
+                tok(Identifier(String::from("dodo")), (0, 31), (0, 35)),
+                tok(Identifier(String::from("endofunctors")), (0, 36), (0, 48)),
             ],
             "",
             string.len()
@@ -305,7 +310,7 @@ fn unicode_identifier_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Identifier(String::from("föö")),
+                tok(Identifier(String::from("föö")), (0, 0), (0, 3)),
             ],
             "",
             3
@@ -319,14 +324,14 @@ fn operators_lex() {
     assert_eq!(
         Ok((
             vec![
-                Operator(Addition),
-                Operator(Substraction),
-                Operator(Multiplication),
-                Operator(Division),
-                Operator(And),
-                Operator(Not),
-                Operator(Equality),
-                Operator(LessThan),
+                tok(Operator(Addition), (0, 0), (0, 1)),
+                tok(Operator(Substraction), (0, 1), (0, 2)),
+                tok(Operator(Multiplication), (0, 2), (0, 3)),
+                tok(Operator(Division), (0, 3), (0, 4)),
+                tok(Operator(And), (0, 4), (0, 5)),
+                tok(Operator(Not), (0, 5), (0, 6)),
+                tok(Operator(Equality), (0, 6), (0, 7)),
+                tok(Operator(LessThan), (0, 7), (0, 8)),
             ],
             "",
             8
@@ -341,9 +346,9 @@ fn punctuation_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Punctuation(Parenthesis(Open)),
-                Punctuation(Semicolon),
-                Punctuation(Parenthesis(Close)),
+                tok(Punctuation(Parenthesis(Open)), (0, 0), (0, 1)),
+                tok(Punctuation(Semicolon), (0, 1), (0, 2)),
+                tok(Punctuation(Parenthesis(Close)), (0, 2), (0, 3)),
             ],
             "§",
             3
@@ -361,22 +366,22 @@ fn example1_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Keyword(Var),
-                Identifier(String::from("X")),
-                Punctuation(Colon),
-                Keyword(Int),
-                Operator(Assignment),
-                Literal(Integer(4.into())),
-                Operator(Addition),
-                Punctuation(Parenthesis(Open)),
-                Literal(Integer(6.into())),
-                Operator(Multiplication),
-                Literal(Integer(2.into())),
-                Punctuation(Parenthesis(Close)),
-                Punctuation(Semicolon),
-                Keyword(Print),
-                Identifier(String::from("X")),
-                Punctuation(Semicolon),
+                tok(Keyword(Var), (0, 0), (0, 0)),
+                tok(Identifier(String::from("X")), (0, 0), (0, 0)),
+                tok(Punctuation(Colon), (0, 0), (0, 0)),
+                tok(Keyword(Int), (0, 0), (0, 0)),
+                tok(Operator(Assignment), (0, 0), (0, 0)),
+                tok(Literal(Integer(4.into())), (0, 0), (0, 0)),
+                tok(Operator(Addition), (0, 0), (0, 0)),
+                tok(Punctuation(Parenthesis(Open)), (0, 0), (0, 0)),
+                tok(Literal(Integer(6.into())), (0, 0), (0, 0)),
+                tok(Operator(Multiplication), (0, 0), (0, 0)),
+                tok(Literal(Integer(2.into())), (0, 0), (0, 0)),
+                tok(Punctuation(Parenthesis(Close)), (0, 0), (0, 0)),
+                tok(Punctuation(Semicolon), (0, 0), (0, 0)),
+                tok(Keyword(Print), (0, 0), (0, 0)),
+                tok(Identifier(String::from("X")), (0, 0), (0, 0)),
+                tok(Punctuation(Semicolon), (0, 0), (0, 0)),
             ],
             "",
             string.len()
@@ -401,49 +406,49 @@ fn example2_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Keyword(Var),
-                Identifier(String::from("nTimes")),
-                Punctuation(Colon),
-                Keyword(Int),
-                Operator(Assignment),
-                Literal(Integer(0.into())),
-                Punctuation(Semicolon),
-                Keyword(Print),
-                Literal(StringLit(String::from("How many times?"))),
-                Punctuation(Semicolon),
-                Keyword(Read),
-                Identifier(String::from("nTimes")),
-                Punctuation(Semicolon),
-                Keyword(Var),
-                Identifier(String::from("x")),
-                Punctuation(Colon),
-                Keyword(Int),
-                Punctuation(Semicolon),
-                Keyword(For),
-                Identifier(String::from("x")),
-                Keyword(In),
-                Literal(Integer(0.into())),
-                Operator(Range),
-                Identifier(String::from("nTimes")),
-                Operator(Substraction),
-                Literal(Integer(1.into())),
-                Keyword(Do),
-                Keyword(Print),
-                Identifier(String::from("x")),
-                Punctuation(Semicolon),
-                Keyword(Print),
-                Literal(StringLit(String::from(" : Hello, World!\n"))),
-                Punctuation(Semicolon),
-                Keyword(End),
-                Keyword(For),
-                Punctuation(Semicolon),
-                Keyword(Assert),
-                Punctuation(Parenthesis(Open)),
-                Identifier(String::from("x")),
-                Operator(Equality),
-                Identifier(String::from("nTimes")),
-                Punctuation(Parenthesis(Close)),
-                Punctuation(Semicolon),
+                tok(Keyword(Var), (0, 0), (0, 0)),
+                tok(Identifier(String::from("nTimes")), (0, 0), (0, 0)),
+                tok(Punctuation(Colon), (0, 0), (0, 0)),
+                tok(Keyword(Int), (0, 0), (0, 0)),
+                tok(Operator(Assignment), (0, 0), (0, 0)),
+                tok(Literal(Integer(0.into())), (0, 0), (0, 0)),
+                tok(Punctuation(Semicolon), (0, 0), (0, 0)),
+                tok(Keyword(Print), (0, 0), (0, 0)),
+                tok(Literal(StringLit(String::from("How many times?"))), (0, 0), (0, 0)),
+                tok(Punctuation(Semicolon), (0, 0), (0, 0)),
+                tok(Keyword(Read), (0, 0), (0, 0)),
+                tok(Identifier(String::from("nTimes")), (0, 0), (0, 0)),
+                tok(Punctuation(Semicolon), (0, 0), (0, 0)),
+                tok(Keyword(Var), (0, 0), (0, 0)),
+                tok(Identifier(String::from("x")), (0, 0), (0, 0)),
+                tok(Punctuation(Colon), (0, 0), (0, 0)),
+                tok(Keyword(Int), (0, 0), (0, 0)),
+                tok(Punctuation(Semicolon), (0, 0), (0, 0)),
+                tok(Keyword(For), (0, 0), (0, 0)),
+                tok(Identifier(String::from("x")), (0, 0), (0, 0)),
+                tok(Keyword(In), (0, 0), (0, 0)),
+                tok(Literal(Integer(0.into())), (0, 0), (0, 0)),
+                tok(Operator(Range), (0, 0), (0, 0)),
+                tok(Identifier(String::from("nTimes")), (0, 0), (0, 0)),
+                tok(Operator(Substraction), (0, 0), (0, 0)),
+                tok(Literal(Integer(1.into())), (0, 0), (0, 0)),
+                tok(Keyword(Do), (0, 0), (0, 0)),
+                tok(Keyword(Print), (0, 0), (0, 0)),
+                tok(Identifier(String::from("x")), (0, 0), (0, 0)),
+                tok(Punctuation(Semicolon), (0, 0), (0, 0)),
+                tok(Keyword(Print), (0, 0), (0, 0)),
+                tok(Literal(StringLit(String::from(" : Hello, World!\n"))), (0, 0), (0, 0)),
+                tok(Punctuation(Semicolon), (0, 0), (0, 0)),
+                tok(Keyword(End), (0, 0), (0, 0)),
+                tok(Keyword(For), (0, 0), (0, 0)),
+                tok(Punctuation(Semicolon), (0, 0), (0, 0)),
+                tok(Keyword(Assert), (0, 0), (0, 0)),
+                tok(Punctuation(Parenthesis(Open)), (0, 0), (0, 0)),
+                tok(Identifier(String::from("x")), (0, 0), (0, 0)),
+                tok(Operator(Equality), (0, 0), (0, 0)),
+                tok(Identifier(String::from("nTimes")), (0, 0), (0, 0)),
+                tok(Punctuation(Parenthesis(Close)), (0, 0), (0, 0)),
+                tok(Punctuation(Semicolon), (0, 0), (0, 0)),
             ],
             "",
             string.len()
@@ -469,51 +474,51 @@ fn example3_lexes() {
     assert_eq!(
         Ok((
             vec![
-                Keyword(Print),
-                Literal(StringLit(String::from("Give a number"))),
-                Punctuation(Semicolon),
-                Keyword(Var),
-                Identifier(String::from("n")),
-                Punctuation(Colon),
-                Keyword(Int),
-                Punctuation(Semicolon),
-                Keyword(Read),
-                Identifier(String::from("n")),
-                Punctuation(Semicolon),
-                Keyword(Var),
-                Identifier(String::from("v")),
-                Punctuation(Colon),
-                Keyword(Int),
-                Operator(Assignment),
-                Literal(Integer(1.into())),
-                Punctuation(Semicolon),
-                Keyword(Var),
-                Identifier(String::from("i")),
-                Punctuation(Colon),
-                Keyword(Int),
-                Punctuation(Semicolon),
-                Keyword(For),
-                Identifier(String::from("i")),
-                Keyword(In),
-                Literal(Integer(1.into())),
-                Operator(Range),
-                Identifier(String::from("n")),
-                Keyword(Do),
-                Identifier(String::from("v")),
-                Operator(Assignment),
-                Identifier(String::from("v")),
-                Operator(Multiplication),
-                Identifier(String::from("i")),
-                Punctuation(Semicolon),
-                Keyword(End),
-                Keyword(For),
-                Punctuation(Semicolon),
-                Keyword(Print),
-                Literal(StringLit(String::from("The result is: "))),
-                Punctuation(Semicolon),
-                Keyword(Print),
-                Identifier(String::from("v")),
-                Punctuation(Semicolon),
+                tok(Keyword(Print), (0, 0), (0, 0)),
+                tok(Literal(StringLit(String::from("Give a number"))), (0, 0), (0, 0)),
+                tok(Punctuation(Semicolon), (0, 0), (0, 0)),
+                tok(Keyword(Var), (0, 0), (0, 0)),
+                tok(Identifier(String::from("n")), (0, 0), (0, 0)),
+                tok(Punctuation(Colon), (0, 0), (0, 0)),
+                tok(Keyword(Int), (0, 0), (0, 0)),
+                tok(Punctuation(Semicolon), (0, 0), (0, 0)),
+                tok(Keyword(Read), (0, 0), (0, 0)),
+                tok(Identifier(String::from("n")), (0, 0), (0, 0)),
+                tok(Punctuation(Semicolon), (0, 0), (0, 0)),
+                tok(Keyword(Var), (0, 0), (0, 0)),
+                tok(Identifier(String::from("v")), (0, 0), (0, 0)),
+                tok(Punctuation(Colon), (0, 0), (0, 0)),
+                tok(Keyword(Int), (0, 0), (0, 0)),
+                tok(Operator(Assignment), (0, 0), (0, 0)),
+                tok(Literal(Integer(1.into())), (0, 0), (0, 0)),
+                tok(Punctuation(Semicolon), (0, 0), (0, 0)),
+                tok(Keyword(Var), (0, 0), (0, 0)),
+                tok(Identifier(String::from("i")), (0, 0), (0, 0)),
+                tok(Punctuation(Colon), (0, 0), (0, 0)),
+                tok(Keyword(Int), (0, 0), (0, 0)),
+                tok(Punctuation(Semicolon), (0, 0), (0, 0)),
+                tok(Keyword(For), (0, 0), (0, 0)),
+                tok(Identifier(String::from("i")), (0, 0), (0, 0)),
+                tok(Keyword(In), (0, 0), (0, 0)),
+                tok(Literal(Integer(1.into())), (0, 0), (0, 0)),
+                tok(Operator(Range), (0, 0), (0, 0)),
+                tok(Identifier(String::from("n")), (0, 0), (0, 0)),
+                tok(Keyword(Do), (0, 0), (0, 0)),
+                tok(Identifier(String::from("v")), (0, 0), (0, 0)),
+                tok(Operator(Assignment), (0, 0), (0, 0)),
+                tok(Identifier(String::from("v")), (0, 0), (0, 0)),
+                tok(Operator(Multiplication), (0, 0), (0, 0)),
+                tok(Identifier(String::from("i")), (0, 0), (0, 0)),
+                tok(Punctuation(Semicolon), (0, 0), (0, 0)),
+                tok(Keyword(End), (0, 0), (0, 0)),
+                tok(Keyword(For), (0, 0), (0, 0)),
+                tok(Punctuation(Semicolon), (0, 0), (0, 0)),
+                tok(Keyword(Print), (0, 0), (0, 0)),
+                tok(Literal(StringLit(String::from("The result is: "))), (0, 0), (0, 0)),
+                tok(Punctuation(Semicolon), (0, 0), (0, 0)),
+                tok(Keyword(Print), (0, 0), (0, 0)),
+                tok(Identifier(String::from("v")), (0, 0), (0, 0)),
+                tok(Punctuation(Semicolon), (0, 0), (0, 0)),
             ],
             "",
             string.len()

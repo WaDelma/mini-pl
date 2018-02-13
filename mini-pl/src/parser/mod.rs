@@ -14,8 +14,8 @@ use self::ParseError::*;
 type Result<'a, T> = ::parsco::Result<&'a [Token], T, ParseError>;
 
 pub mod ast;
-#[cfg(test)]
-mod tests;
+//#[cfg(test)]
+//mod tests;
 
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
