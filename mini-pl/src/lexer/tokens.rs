@@ -1,11 +1,19 @@
+use std::fmt;
+
 use num_bigint::BigInt;
 
 use Ident;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Position {
     pub line: usize,
     pub column: usize,
+}
+
+impl fmt::Debug for Position {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(&format!("{}:{}", self.line, self.column))
+    }
 }
 
 impl Position {
@@ -17,11 +25,17 @@ impl Position {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Tok {
     pub token: Token,
     pub from: Position,
     pub to: Position,
+}
+
+impl fmt::Debug for Tok {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(&format!("{:?} at {:?}..{:?}", self.token, self.from, self.to))
+    }
 }
 
 impl Tok {

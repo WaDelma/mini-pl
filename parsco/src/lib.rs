@@ -40,7 +40,7 @@
 //!             tag("}")
 //!         )
 //!     ),
-//!     |(name, value)| Res {
+//!     |(name, value), _, _| Res {
 //!         name: name.into(),
 //!         value
 //!     }).parse(s)

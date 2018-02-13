@@ -230,7 +230,7 @@ impl<P, S> Parser<S> for List0<P, S>
                 ),
                 opt(&self.parser)
             ),
-            |(mut p, e)| {
+            |(mut p, e), _, _| {
                 p.extend(e);
                 p
             }
@@ -310,11 +310,11 @@ impl<'b, P> Parser<&'b str> for Whitespace<P>
                             lines += 1;
                         } else if !f.is_whitespace() {
                             return self.parser.parse(s)
-                                .map(|(t, s, pp)|((t, lines, p), s, pp + parsed));
+                                .map(|(t, s, pp)| ((t, lines, p), s, pp + parsed));
                         }
                     } else {
                         return self.parser.parse(s)
-                            .map(|(t, s, pp)|((t, lines, p), s, pp + parsed));
+                            .map(|(t, s, pp)| ((t, lines, p), s, pp + parsed));
                     }
                 },
                 Err(_) => {

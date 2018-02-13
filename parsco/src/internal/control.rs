@@ -147,13 +147,13 @@ pub struct Map<P, F> {
 impl<P, S, F, T> Parser<S> for Map<P, F>
     where P: Parser<S>,
           S: Parseable,
-          F: Fn(P::Res) -> T       
+          F: Fn(P::Res, S, usize) -> T       
 {
     type Res = T;
     type Err = P::Err;
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         self.parser.parse(s)
-            .map(|(res, s, p)| ((self.map)(res), s, p))
+            .map(|(res, s, p)| ((self.map)(res, s, p), s, p))
     }
 }
 
@@ -166,13 +166,13 @@ impl<P, S, F, T> Parser<S> for Map<P, F>
 /// struct Foo;
 /// assert_eq!(
 ///     Ok((Foo, "", 3)),
-///     map(tag("foo"), |_| Foo).parse("foo")
+///     map(tag("foo"), |_, _, _| Foo).parse("foo")
 /// );
 /// ```
 pub fn map<P, F, S, T>(parser: P, map: F) -> Map<P, F>
     where P: Parser<S>,
           S: Parseable,
-          F: Fn(P::Res) -> T
+          F: Fn(P::Res, S, usize) -> T    
 {
     Map {
         parser,

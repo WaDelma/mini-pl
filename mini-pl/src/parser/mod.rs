@@ -58,7 +58,7 @@ pub fn stmt(ts: &[Token]) -> Result<Stmt> {
                     sym(Operator(Assignment)), fun(expr)
                 ))
             ),
-            |(ident, ty, value)| Stmt::Declaration {
+            |(ident, ty, value), _, _| Stmt::Declaration {
                 ident,
                 ty,
                 value
@@ -72,7 +72,7 @@ pub fn stmt(ts: &[Token]) -> Result<Stmt> {
                     fun(expr)
                 )
             ),
-            |(ident, value)| Stmt::Assignment {
+            |(ident, value), _, _| Stmt::Assignment {
                 ident,
                 value
             }
@@ -95,7 +95,7 @@ pub fn stmt(ts: &[Token]) -> Result<Stmt> {
                     (sym(Keyword(End)), sym(Keyword(For)))
                 )
             ),
-            |(ident, from, to, stmts)| Stmt::Loop {
+            |(ident, from, to, stmts), _, _| Stmt::Loop {
                 ident,
                 from,
                 to,
@@ -107,7 +107,7 @@ pub fn stmt(ts: &[Token]) -> Result<Stmt> {
                 sym(Keyword(Read)),
                 fun(ident)
             ),
-            |ident| Stmt::Read {
+            |ident, _, _| Stmt::Read {
                 ident
             }
         )
@@ -116,7 +116,7 @@ pub fn stmt(ts: &[Token]) -> Result<Stmt> {
                 sym(Keyword(Print)),
                 fun(expr)
             ),
-            |expr| Stmt::Print {
+            |expr, _, _| Stmt::Print {
                 expr
             }
         )
@@ -129,7 +129,7 @@ pub fn stmt(ts: &[Token]) -> Result<Stmt> {
                     sym(Punctuation(Parenthesis(Close))),
                 )
             ),
-            |expr| Stmt::Assert {
+            |expr, _, _| Stmt::Assert {
                 expr
             }
         )
@@ -141,7 +141,7 @@ pub fn expr(ts: &[Token]) -> Result<Expr> {
     (alt()
         | map(
             (fun(opnd), fun(binop), fun(opnd)),
-            |(lhs, op, rhs)| Expr::BinOper {
+            |(lhs, op, rhs), _, _| Expr::BinOper {
                 lhs,
                 op,
                 rhs
@@ -149,14 +149,14 @@ pub fn expr(ts: &[Token]) -> Result<Expr> {
         )
         | map(
             (fun(unaop), fun(opnd)),
-            |(op, rhs)| Expr::UnaOper {
+            |(op, rhs), _, _| Expr::UnaOper {
                 op,
                 rhs
             }
         )
         | map(
             fun(opnd),
-            Expr::Opnd
+            |o, _, _| Expr::Opnd(o)
         )
     ).parse(ts)
 }
@@ -165,12 +165,12 @@ pub fn opnd(ts: &[Token]) -> Result<Opnd> {
     (alt()
         | fun(int)
         | fun(string)
-        | map(fun(ident), Opnd::Ident)
+        | map(fun(ident), |i, _, _| Opnd::Ident(i))
         | delimited(
             sym(Punctuation(Parenthesis(Open))),
             map(
                 fun(expr),
-                |expr| Opnd::Expr(Box::new(expr))
+                |expr, _, _| Opnd::Expr(Box::new(expr))
             ),
             sym(Punctuation(Parenthesis(Close)))
         )

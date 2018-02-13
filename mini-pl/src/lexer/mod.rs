@@ -2,6 +2,7 @@ use std::char;
 use std::num::ParseIntError;
 use std::string::FromUtf8Error;
 use std::str::Utf8Error;
+use std::cell::Cell;
 
 use num_bigint::BigInt;
 
@@ -70,29 +71,46 @@ impl From<FromUtf8Error> for HexadecimalLexError {
 }
 
 pub fn tokenize(s: &str) -> Result<Vec<Tok>> {
+    let line = Cell::new(0);
+    let column = Cell::new(0);
     terminated(many0(
         map(
             (
                 ws(opt(fun(comment))),
-                ws(alt()
-                    | fun(operator)
-                    | fun(punctuation)
-                    | fun(keyword_or_identifier)
-                    | fun(integer)
-                    | fun(str_literal)
-                )
+                ws(map(
+                    alt()
+                        | fun(operator)
+                        | fun(punctuation)
+                        | fun(keyword_or_identifier)
+                        | fun(integer)
+                        | fun(str_literal),
+                    |r, _, p| (r, p)
+                ))
             ),
-            |((_, l1, c1), (r, l2, c2))| Tok {
-                // TODO: How to propagate current line.
-                token: r,
-                from: Position {
-                    line: l1,
-                    column: c1,
-                },
-                to: Position {
-                    line: l1 + l2,
-                    column: c2,
-                },
+            |((_, comment_lines, comment_columns), ((token, token_size), preceding_lines, preceding_columns)), _, eaten_chars| {
+                let cur_line = line.get();
+                line.set(cur_line + comment_lines + preceding_lines);
+                let mut cur_column = column.get();
+                if comment_lines + preceding_lines == 0 {
+                    column.set(cur_column + eaten_chars);
+                } else if preceding_lines == 0 {
+                    cur_column = 0;
+                    column.set(comment_columns + token_size);
+                } else {
+                    cur_column = 0;
+                    column.set(preceding_columns + token_size);
+                }
+                Tok {
+                    token,
+                    from: Position {
+                        line: cur_line + comment_lines,
+                        column: cur_column + comment_columns,
+                    },
+                    to: Position {
+                        line: line.get(),
+                        column: column.get(),
+                    },
+                }
             }
         )
     ), ws(opt(fun(comment)))).parse(s)
@@ -102,7 +120,7 @@ pub fn tokenize(s: &str) -> Result<Vec<Tok>> {
 fn comment(s: &str) -> Result<()> {
     (alt()
         | fun(multiline_comment)
-        | map((tag("//"), take_while(|c| c != '\n')), |_| ())
+        | map((tag("//"), take_while(|c| c != '\n')), |_, _, _| ())
     ).parse(s)
         .map_err(|(e, r)| (FromErr::from(e), r))
 }
@@ -111,8 +129,8 @@ fn multiline_comment(s: &str) -> Result<()> {
     fn nested_comment(s: &str) -> Result<()> {
         take_until(
             alt()
-                | map(tag("*/"), |_| true)
-                | map(tag("/*"), |_| false)
+                | map(tag("*/"), |_, _, _| true)
+                | map(tag("/*"), |_, _, _| false)
         ).parse(s)
             .map_err(|(e, r)| (FromErr::from(e), r))
             .and_then(|((_, end), s, p)| if end {
@@ -122,7 +140,7 @@ fn multiline_comment(s: &str) -> Result<()> {
                     opt(fun(nested_comment)),
                     take_until(tag("*/")),
                     opt(fun(nested_comment))
-                ), |_| ()).parse(s)
+                ), |_, _, _| ()).parse(s)
                     .map(|(r, s, pp)| (r, s, p + pp))
                     .map_err(|(e, r)| (FromErr::from(e), r))
             })
@@ -131,7 +149,7 @@ fn multiline_comment(s: &str) -> Result<()> {
         tag("/*"),
         opt(fun(nested_comment)),
         take_until(tag("*/"))
-    ), |_| ()).parse(s)
+    ), |_, _, _| ()).parse(s)
         .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
@@ -261,30 +279,30 @@ fn str_literal(s: &str) -> Result<Token> {
                                 |x| u8::from_str_radix(x, 8).ok()
                             )
                     ),
-                    |x| String::from_utf8(vec![x]).unwrap()
+                    |x, _, _| String::from_utf8(vec![x]).unwrap()
                 )
                 | map(
                     preceded(
                         tag(r#"\x"#),
                         take(2)
                     ),
-                    |x| String::from_utf8(vec![u8::from_str_radix(x, 16).unwrap()]).unwrap()
+                    |x, _, _| String::from_utf8(vec![u8::from_str_radix(x, 16).unwrap()]).unwrap()
                 )
                 | map(
                     preceded(
                         tag(r#"\U"#),
                         take(8)
                     ),
-                    hex_as_string
+                    |r, _, _| hex_as_string(r)
                 )
                 | map(
                     preceded(
                         tag(r#"\u"#),
                         take(4)
                     ),
-                    hex_as_string
+                    |r, _, _| hex_as_string(r)
                 )
-                | map(tag(r#"\"#), |_| panic!("Unknown escape sequence."))
+                | map(tag(r#"\"#), |_, _, _| panic!("Unknown escape sequence."))
                 | eat(tag(r#"""#), "".to_owned())
         ).parse(s)
             .map_err(|(e, r)| (FromErr::from(e), r))
