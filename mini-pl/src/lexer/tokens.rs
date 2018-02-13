@@ -3,14 +3,14 @@ use num_bigint::BigInt;
 use Ident;
 
 pub struct Position {
-    line: usize,
-    column: usize,
+    pub line: usize,
+    pub column: usize,
 }
 
 pub struct Tok {
-    token: Token,
-    from: Position,
-    to: Position,
+    pub token: Token,
+    pub from: Position,
+    pub to: Position,
 }
 
 #[derive(Clone, Debug, PartialEq)]

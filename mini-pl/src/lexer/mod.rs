@@ -70,17 +70,33 @@ impl From<FromUtf8Error> for HexadecimalLexError {
 }
 
 pub fn tokenize(s: &str) -> Result<Vec<Tok>> {
-    terminated(many0(preceded(
-        ws(opt(fun(comment))),
-        ws(
-            alt()
-                | fun(operator)
-                | fun(punctuation)
-                | fun(keyword_or_identifier)
-                | fun(integer)
-                | fun(str_literal)
+    terminated(many0(
+        map(
+            (
+                ws(opt(fun(comment))),
+                ws(
+                    alt()
+                        | fun(operator)
+                        | fun(punctuation)
+                        | fun(keyword_or_identifier)
+                        | fun(integer)
+                        | fun(str_literal)
+                )
+            ),
+            |((_, l1, c1), (r, l2, c2))| Tok {
+                // TODO: How to propagate current line.
+                token: r,
+                from: Position {
+                    line: l1,
+                    column: c1,
+                },
+                to: Position {
+                    line: l1 + l2,
+                    column: c2,
+                },
+            }
         )
-    )), ws(opt(fun(comment)))).parse(s)
+    ), ws(opt(fun(comment)))).parse(s)
         .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
