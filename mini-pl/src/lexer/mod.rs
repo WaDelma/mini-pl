@@ -16,7 +16,8 @@ use self::tokens::Operator::*;
 use self::tokens::Literal::*;
 use self::LexError::*;
 
-type Result<'a, T> = ::parsco::Result<&'a str, T, LexError>;
+//TODO: Thread vector of lex errors everywhere. Remove LexError from error type?
+type Result<'a, T> = ::parsco::Result<(&'a str, Vec<LexError>), T, LexError>;
 
 pub mod tokens;
 #[cfg(test)]
@@ -25,6 +26,7 @@ mod tests;
 #[derive(Debug, PartialEq)]
 pub enum LexError {
     HexadecimalLexError(HexadecimalLexError),
+    UnknownEscape(String),
     Unknown,
 }
 
@@ -268,15 +270,21 @@ fn str_literal(s: &str) -> Result<Token> {
                         alt()
                             | flat_map(
                                 take(3),
-                                |x| u8::from_str_radix(x, 8).ok()
+                                |x, s, p| u8::from_str_radix(x, 8)
+                                    .map(|i| (i, s, p))
+                                    .map_err(|e| (e, 0..p))
                             )
                             | flat_map(
                                 take(2),
-                                |x| u8::from_str_radix(x, 8).ok()
+                                |x, s, p| u8::from_str_radix(x, 8)
+                                    .map(|i| (i, s, p))
+                                    .map_err(|e| (e, 0..p))
                             )
                             | flat_map(
                                 take(1),
-                                |x| u8::from_str_radix(x, 8).ok()
+                                |x, s, p| u8::from_str_radix(x, 8)
+                                    .map(|i| (i, s, p))
+                                    .map_err(|e| (e, 0..p))
                             )
                     ),
                     |x, _, _| String::from_utf8(vec![x]).unwrap()
@@ -302,7 +310,7 @@ fn str_literal(s: &str) -> Result<Token> {
                     ),
                     |r, _, _| hex_as_string(r)
                 )
-                | map(tag(r#"\"#), |_, _, _| panic!("Unknown escape sequence."))
+                | flat_map((tag(r#"\"#), fst()), |(_, e), s, p| Ok((("", vec![UnknownEscape(e.to_string())]), s, p)))//Err((UnknownEscape(e.into()), 0..p)))
                 | eat(tag(r#"""#), "".to_owned())
         ).parse(s)
             .map_err(|(e, r)| (FromErr::from(e), r))

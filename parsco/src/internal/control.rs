@@ -186,20 +186,19 @@ pub struct FlatMap<P, F> {
     map: F
 }
 
-impl<P, S, F, T> Parser<S> for FlatMap<P, F>
+impl<P, S, F, E, T> Parser<S> for FlatMap<P, F>
     where P: Parser<S>,
           S: Parseable,
-          F: Fn(P::Res) -> Option<T>
+          F: Fn(P::Res, S, usize) -> Result<S, T, E>
 {
     type Res = T;
-    type Err = Err2<P::Err, ()>;
+    type Err = Err2<P::Err, E>;
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         self.parser.parse(s)
             .map_err(|(e, p)| (Err2::V1(e), p))
             .and_then(|(res, s, pp)|
-                (self.map)(res)
-                    .map(|res| (res, s, pp))
-                    .ok_or((Err2::V2(()), 0..pp))
+                (self.map)(res, s, pp)
+                    .map_err(|(e, r)| (Err2::V2(e), r))
             )
     }
 }
@@ -213,7 +212,7 @@ impl<P, S, F, T> Parser<S> for FlatMap<P, F>
 /// struct Foo;
 /// assert_eq!(
 ///     Ok((Foo, "", 3)),
-///     flat_map(tag("foo"), |_| Some(Foo)).parse("foo")
+///     flat_map(tag("foo"), |_, _, _| Some(Foo)).parse("foo")
 /// );
 /// ```
 /// ```rust
@@ -223,13 +222,13 @@ impl<P, S, F, T> Parser<S> for FlatMap<P, F>
 /// struct Foo;
 /// assert_eq!(
 ///     Err((Err2::V2(()), 0..3)),
-///     flat_map(tag("foo"), |_| None::<u8>).parse("foo")
+///     flat_map(tag("foo"), |_, _, _| Err(())).parse("foo")
 /// );
 /// ```
-pub fn flat_map<P, F, S, T>(parser: P, map: F) -> FlatMap<P, F>
+pub fn flat_map<P, F, S, T, E>(parser: P, map: F) -> FlatMap<P, F>
     where P: Parser<S>,
           S: Parseable,
-          F: Fn(P::Res) -> Option<T>
+          F: Fn(P::Res, S, usize) -> Result<S, T, E>
 {
     FlatMap {
         parser,
