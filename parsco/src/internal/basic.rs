@@ -1,4 +1,4 @@
-use {Parser, Parseable, Result, take};
+use {Parser, Parseable, Sym, Result, take};
 
 use std::fmt;
 
@@ -90,16 +90,16 @@ pub fn tag<S>(tag: S) -> Tag<S>
 pub struct Symbol<S> {
     symbol: S,
 }
-impl<S> Parser<S> for Symbol<S::Symbol>
+impl<S> Parser<S> for Symbol<<S::Symbol as Sym>::Sym>
     where S: Parseable,
-          S::Symbol: PartialEq + Clone
+          <S::Symbol as Sym>::Sym: PartialEq + Clone
 {
-    type Res = S::Symbol;
+    type Res = <S::Symbol as Sym>::Sym;
     type Err = ();
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         s.first()
             .ok_or(((), 0..1))
-            .and_then(|f| if f == self.symbol {
+            .and_then(|f| if f.sym().clone() == self.symbol {
                 Ok((self.symbol.clone(), s.split_at(1).expect("There is first").1, 1))
             } else {
                 Err(((), 0..1))

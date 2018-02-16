@@ -2,6 +2,8 @@ use std::fmt;
 
 use num_bigint::BigInt;
 
+use parsco::Sym;
+
 use Ident;
 
 #[derive(Clone, PartialEq)]
@@ -30,6 +32,13 @@ pub struct Tok {
     pub token: Token,
     pub from: Position,
     pub to: Position,
+}
+
+impl Sym for Tok {
+    type Sym = Token;
+    fn sym(&self) -> &Self::Sym {
+        &self.token
+    }
 }
 
 impl fmt::Debug for Tok {

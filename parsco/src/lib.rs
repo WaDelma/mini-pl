@@ -105,12 +105,27 @@ pub trait FromErr<E> {
     fn from(e: E) -> Self;
 }
 
+/// Type of symbols contained in `Parseable`
+pub trait Sym {
+    /// The type of actual symbol
+    type Sym;
+    /// Returns the symbol
+    fn sym(&self) -> &Self::Sym;
+}
+
+impl Sym for char {
+    type Sym = Self;
+    fn sym(&self) -> &Self::Sym {
+        self
+    }
+}
+
 /// Type that can be parsed by `Parser`.
 /// 
 /// It's `Copy`, because it's supposed to be implemented on shared references which are always `Copy`.
 pub trait Parseable: Copy {
     /// Symbol contained inside the parseable type.
-    type Symbol;
+    type Symbol: Sym;
     /// Returns how many symbols there are inside.
     fn len(self) -> usize;
     /// Returns true if there are no symbols inside.
@@ -150,7 +165,7 @@ impl<'a> Parseable for &'a str {
     }
 }
 
-impl<'a, T: PartialEq + Clone> Parseable for &'a [T] {
+impl<'a, T: PartialEq + Clone + Sym> Parseable for &'a [T] {
     type Symbol = T;
 
     fn len(self) -> usize {
