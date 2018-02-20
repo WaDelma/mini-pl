@@ -59,6 +59,7 @@ impl Tok {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
+    Error(super::LexError),
     Identifier(Ident),
     Literal(Literal),
     Punctuation(Punctuation),

@@ -212,7 +212,7 @@ impl<P, S, F, E, T> Parser<S> for FlatMap<P, F>
 /// struct Foo;
 /// assert_eq!(
 ///     Ok((Foo, "", 3)),
-///     flat_map(tag("foo"), |_, _, _| Some(Foo)).parse("foo")
+///     flat_map(tag("foo"), |_, s, r| Ok::<_, ((), _)>((Foo, s, r))).parse("foo")
 /// );
 /// ```
 /// ```rust
@@ -222,7 +222,7 @@ impl<P, S, F, E, T> Parser<S> for FlatMap<P, F>
 /// struct Foo;
 /// assert_eq!(
 ///     Err((Err2::V2(()), 0..3)),
-///     flat_map(tag("foo"), |_, _, _| Err(())).parse("foo")
+///     flat_map(tag("foo"), |_, _, r| Err::<((), _, _), _>(((), 0..r))).parse("foo")
 /// );
 /// ```
 pub fn flat_map<P, F, S, T, E>(parser: P, map: F) -> FlatMap<P, F>

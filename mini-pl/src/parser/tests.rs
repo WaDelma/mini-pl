@@ -52,7 +52,7 @@ fn complex_expr() {
             &[][..],
             32
         )),
-        parse(&tokenize("
+        parse(&(tokenize("
             print
             (
                 (
@@ -69,7 +69,7 @@ fn complex_expr() {
                     !1
                 )
             );
-        ").unwrap().0)
+        ").unwrap().0).0)
     );
 }
 
@@ -100,10 +100,10 @@ fn example1_parses() {
             &[][..],
             16
         )),
-        parse(&tokenize("
+        parse(&(tokenize("
             var X : int := 4 + (6 * 2);
             print X;
-        ").unwrap().0)
+        ").unwrap().0).0)
     );
 }
 
@@ -158,7 +158,7 @@ fn example2_parses() {
             &[][..],
             43
         )),
-        parse(&tokenize(r#"
+        parse(&(tokenize(r#"
             var nTimes : int := 0;
             print "How many times?"; 
             read nTimes; 
@@ -168,7 +168,7 @@ fn example2_parses() {
                 print " : Hello, World!\n";
             end for;
             assert (x = nTimes);
-        "#).unwrap().0)
+        "#).unwrap().0).0)
     );
 }
 
@@ -225,7 +225,7 @@ fn example3_parses() {
             &[][..],
             45
         )),
-        parse(&tokenize(r#"
+        parse(&(tokenize(r#"
             print "Give a number"; 
             var n : int;
             read n;
@@ -236,6 +236,6 @@ fn example3_parses() {
             end for;
             print "The result is: ";
             print v; 
-        "#).unwrap().0)
+        "#).unwrap().0).0)
     );
 }

@@ -16,14 +16,14 @@ use self::tokens::Operator::*;
 use self::tokens::Literal::*;
 use self::LexError::*;
 
-//TODO: Thread vector of lex errors everywhere. Remove LexError from error type?
-type Result<'a, T> = ::parsco::Result<(&'a str, Vec<LexError>), T, LexError>;
+//TODO: Use dedicated error token. Remove LexError from error type.
+type ParseResult<'a, T> = ::parsco::Result<&'a str, T, LexError>;
 
 pub mod tokens;
 #[cfg(test)]
 mod tests;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum LexError {
     HexadecimalLexError(HexadecimalLexError),
     UnknownEscape(String),
@@ -54,7 +54,7 @@ impl From<HexadecimalLexError> for LexError {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum HexadecimalLexError {
     ParseIntError(ParseIntError),
     FromUtf8Error(Utf8Error),
@@ -72,7 +72,7 @@ impl From<FromUtf8Error> for HexadecimalLexError {
     }
 }
 
-pub fn tokenize(s: &str) -> Result<Vec<Tok>> {
+pub fn tokenize(s: &str) -> ParseResult<Vec<Tok>> {
     let line = Cell::new(0);
     let column = Cell::new(0);
     terminated(many0(
@@ -119,7 +119,7 @@ pub fn tokenize(s: &str) -> Result<Vec<Tok>> {
         .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
-fn comment(s: &str) -> Result<()> {
+fn comment(s: &str) -> ParseResult<()> {
     (alt()
         | fun(multiline_comment)
         | map((tag("//"), take_while(|c| c != '\n')), |_, _, _| ())
@@ -127,8 +127,8 @@ fn comment(s: &str) -> Result<()> {
         .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
-fn multiline_comment(s: &str) -> Result<()> {
-    fn nested_comment(s: &str) -> Result<()> {
+fn multiline_comment(s: &str) -> ParseResult<()> {
+    fn nested_comment(s: &str) -> ParseResult<()> {
         take_until(
             alt()
                 | map(tag("*/"), |_, _, _| true)
@@ -155,7 +155,7 @@ fn multiline_comment(s: &str) -> Result<()> {
         .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
-fn operator(s: &str) -> Result<Token> {
+fn operator(s: &str) -> ParseResult<Token> {
     (alt()
         | eat(tag("+"), Addition)
         | eat(tag("-"), Substraction)
@@ -172,7 +172,7 @@ fn operator(s: &str) -> Result<Token> {
         .map(|(t, s, p)| (Token::Operator(t), s, p))
 }
 
-fn punctuation(s: &str) -> Result<Token> {
+fn punctuation(s: &str) -> ParseResult<Token> {
     (alt()
         | eat(tag(";"), Semicolon)
         | eat(tag(":"), Colon)
@@ -183,7 +183,7 @@ fn punctuation(s: &str) -> Result<Token> {
         .map(|(t, s, p)| (Token::Punctuation(t), s, p))
 }
 
-fn keyword(s: &str) -> Result<Token> {
+fn keyword(s: &str) -> ParseResult<Token> {
     (alt()
         | eat(tag("var"), Var)
         | eat(tag("for"), For)
@@ -201,7 +201,7 @@ fn keyword(s: &str) -> Result<Token> {
         .map(|(t, s, p)| (Token::Keyword(t), s, p))
 }
 
-fn keyword_or_identifier(s: &str) -> Result<Token> {
+fn keyword_or_identifier(s: &str) -> ParseResult<Token> {
     fst()
         .parse(s)
         .map_err(|(e, r)| (FromErr::from(e), r))
@@ -225,7 +225,7 @@ fn keyword_or_identifier(s: &str) -> Result<Token> {
         })
 }
 
-fn integer(s: &str) -> Result<Token> {
+fn integer(s: &str) -> ParseResult<Token> {
     fst()
         .parse(s)
         .map_err(|(e, r)| (FromErr::from(e), r))
@@ -250,20 +250,20 @@ fn hex_as_string(x: &str) -> String {
     ).unwrap().to_string()
 }
 
-fn str_literal(s: &str) -> Result<Token> {
-    fn parse_str(s: &str) -> Result<String> {
+fn str_literal(s: &str) -> ParseResult<Token> {
+    fn parse_str(s: &str) -> ParseResult<Result<String, LexError>> {
         take_until(
             alt()
-                | eat(tag(r#"\a"#), "\x07".to_owned())
-                | eat(tag(r#"\b"#), "\x08".to_owned())
-                | eat(tag(r#"\f"#), "\x0C".to_owned())
-                | eat(tag(r#"\n"#), "\n".to_owned())
-                | eat(tag(r#"\t"#), "\t".to_owned())
-                | eat(tag(r#"\v"#), "\x0B".to_owned())
-                | eat(tag(r#"\'"#), "\'".to_owned())
-                | eat(tag(r#"\""#), "\"".to_owned())
-                | eat(tag(r#"\\"#), "\\".to_owned())
-                | eat(tag(r#"\?"#), "?".to_owned())
+                | eat(tag(r#"\a"#), Ok("\x07".to_owned()))
+                | eat(tag(r#"\b"#), Ok("\x08".to_owned()))
+                | eat(tag(r#"\f"#), Ok("\x0C".to_owned()))
+                | eat(tag(r#"\n"#), Ok("\n".to_owned()))
+                | eat(tag(r#"\t"#), Ok("\t".to_owned()))
+                | eat(tag(r#"\v"#), Ok("\x0B".to_owned()))
+                | eat(tag(r#"\'"#), Ok("\'".to_owned()))
+                | eat(tag(r#"\""#), Ok("\"".to_owned()))
+                | eat(tag(r#"\\"#), Ok("\\".to_owned()))
+                | eat(tag(r#"\?"#), Ok("?".to_owned()))
                 | map(
                     preceded(
                         tag(r#"\"#),
@@ -287,46 +287,49 @@ fn str_literal(s: &str) -> Result<Token> {
                                     .map_err(|e| (e, 0..p))
                             )
                     ),
-                    |x, _, _| String::from_utf8(vec![x]).unwrap()
+                    |x, _, _| Ok(String::from_utf8(vec![x]).unwrap())
                 )
                 | map(
                     preceded(
                         tag(r#"\x"#),
                         take(2)
                     ),
-                    |x, _, _| String::from_utf8(vec![u8::from_str_radix(x, 16).unwrap()]).unwrap()
+                    |x, _, _| Ok(String::from_utf8(vec![u8::from_str_radix(x, 16).unwrap()]).unwrap())
                 )
                 | map(
                     preceded(
                         tag(r#"\U"#),
                         take(8)
                     ),
-                    |r, _, _| hex_as_string(r)
+                    |r, _, _| Ok(hex_as_string(r))
                 )
                 | map(
                     preceded(
                         tag(r#"\u"#),
                         take(4)
                     ),
-                    |r, _, _| hex_as_string(r)
+                    |r, _, _| Ok(hex_as_string(r))
                 )
-                | flat_map((tag(r#"\"#), fst()), |(_, e), s, p| Ok((("", vec![UnknownEscape(e.to_string())]), s, p)))//Err((UnknownEscape(e.into()), 0..p)))
-                | eat(tag(r#"""#), "".to_owned())
+                | map((tag(r#"\"#), fst()), |(_, e), _, _| Err(UnknownEscape(e.to_string())))
+                | eat(tag(r#"""#), Ok("".to_owned()))
         ).parse(s)
             .map_err(|(e, r)| (FromErr::from(e), r))
-            .and_then(|((b, t), s, p)| if t.is_empty() {
-                Ok((b.to_string(), s, p))
-            } else if let Ok((a, s, pp)) = parse_str(s) {
-                Ok((b.to_string() + &t + &a, s, p + pp))
-            } else {
-                Err((Unknown, 0..p))
-            })
-            
+            .and_then(|((b, t), s, p)| t.map(|t| if t.is_empty() {
+                    Ok((Ok(b.to_string()), s, p))
+                } else if let Ok((a, s, pp)) = parse_str(s) {
+                    match a {
+                        Ok(a) => Ok((Ok(b.to_string() + &t + &a), s, p + pp)),
+                        e => Ok((e, s, p + pp)),
+                    }
+                } else {
+                    Err((Unknown, 0..p))
+                }).unwrap_or_else(|e| Ok((Err(e), s, p)))
+            )
     }
     preceded(
         tag("\""),
         fun(parse_str),
     ).parse(s)
         .map_err(|(e, r)| (FromErr::from(e), r))
-        .map(|(t, s, p)| (Token::Literal(StringLit(t)), s, p))
+        .map(|(t, s, p)| (t.map(|t| Token::Literal(StringLit(t))).unwrap_or_else(Token::Error), s, p))
 }
