@@ -16,10 +16,9 @@ fn tok(token: Token, (from_line, from_column): (usize, usize), (to_line, to_colu
 fn string_literal_lexes() {
     assert_eq!(
         Ok((
-            (vec![
+            vec![
                 tok(Literal(StringLit(String::from("Hello, World!"))), (0, 0), (0, 15)),
             ],
-            vec![]),
             "",
             15
         )),
@@ -31,10 +30,9 @@ fn string_literal_lexes() {
 fn string_literal_with_escaped_quote_lexes() {
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Literal(StringLit(String::from("Hello, \"World!\""))), (0, 0), (0, 19)),
             ],
-            vec![]),
             "",
             19
         )),
@@ -46,10 +44,9 @@ fn string_literal_with_escaped_quote_lexes() {
 fn string_literal_with_escaped_linebreak_lexes() {
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Literal(StringLit(String::from("Hello\n World!"))), (0, 0), (0, 16)),
             ],
-            vec![]),
             "",
             16
         )),
@@ -61,10 +58,9 @@ fn string_literal_with_escaped_linebreak_lexes() {
 fn string_literal_with_escaped_tab_lexes() {
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Literal(StringLit(String::from("Hello\t World!"))), (0, 0), (0, 16)),
             ],
-            vec![]),
             "",
             16
         )),
@@ -76,10 +72,9 @@ fn string_literal_with_escaped_tab_lexes() {
 fn string_literal_with_escaped_backslash_lexes() {
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Literal(StringLit(String::from("Hello\\ World!"))), (0, 0), (0, 16)),
             ],
-            vec![]),
             "",
             16
         )),
@@ -91,10 +86,9 @@ fn string_literal_with_escaped_backslash_lexes() {
 fn string_literal_with_alert_lexes() {
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Literal(StringLit(String::from("Hello, World\x07"))), (0, 0), (0, 16)),
             ],
-            vec![]),
             "",
             16
         )),
@@ -106,10 +100,9 @@ fn string_literal_with_alert_lexes() {
 fn string_literal_with_backspace_lexes() {
     assert_eq!(
         Ok((
-            (vec![
+            vec![
                 tok(Literal(StringLit(String::from("Hello,\x08 World!"))), (0, 0), (0, 17)),
             ],
-            vec![]),
             "",
             17
         )),
@@ -121,10 +114,9 @@ fn string_literal_with_backspace_lexes() {
 fn string_literal_with_formfeed_lexes() {
     assert_eq!(
         Ok((
-            (vec![
+            vec![
                 tok(Literal(StringLit(String::from("Hello, World!\x0C"))), (0, 0), (0, 17)),
             ],
-            vec![]),
             "",
             17
         )),
@@ -136,10 +128,9 @@ fn string_literal_with_formfeed_lexes() {
 fn string_literal_with_vertical_tab_lexes() {
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Literal(StringLit(String::from("Hello\x0BWorld!"))), (0, 0), (0, 15)),
             ],
-            vec![]),
             "",
             15
         )),
@@ -151,10 +142,9 @@ fn string_literal_with_vertical_tab_lexes() {
 fn string_literal_with_hexadecimal_escape_lexes() {
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Literal(StringLit(String::from("\x1B\x07\x0C"))), (0, 0), (0, 14)),
             ],
-            vec![]),
             "",
             14
         )),
@@ -166,10 +156,9 @@ fn string_literal_with_hexadecimal_escape_lexes() {
 fn string_literal_with_unicode_escape_lexes() {
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Literal(StringLit(String::from("👌 🤔 😽 ⸙ 𝝅 ≪ 𝝉 ⸎"))), (0, 0), (0, 77)),
             ],
-            vec![]),
             "",
             77
         )),
@@ -181,10 +170,9 @@ fn string_literal_with_unicode_escape_lexes() {
 fn string_literal_with_octal_escape_lexes() {
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Literal(StringLit(String::from_utf8(vec![0o0, 0o10, 0o100, 0o2, 0o12, 0o102]).unwrap())), (0, 0), (0, 20)),
             ],
-            vec![]),
             "",
             20
         )),
@@ -196,10 +184,9 @@ fn string_literal_with_octal_escape_lexes() {
 fn line_comment_lexes() {
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Identifier(String::from("x")), (0, 0), (0, 1)),
             ],
-            vec![]),
             "",
             4
         )),
@@ -211,10 +198,9 @@ fn line_comment_lexes() {
 fn multiline_comment_simple_lexes() {
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Identifier(String::from("x")), (0, 0), (0, 1)),
             ],
-            vec![]),
             "",
             6
         )),
@@ -226,10 +212,9 @@ fn multiline_comment_simple_lexes() {
 fn multiline_comment_star_lexes() {
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Identifier(String::from("x")), (0, 0), (0, 1)),
             ],
-            vec![]),
             "",
             7
         )),
@@ -241,10 +226,9 @@ fn multiline_comment_star_lexes() {
 fn multiline_comment_nested_lexes() {
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Identifier(String::from("x")), (0, 0), (0, 1)),
             ],
-            vec![]),
             "",
             10
         )),
@@ -256,10 +240,9 @@ fn multiline_comment_nested_lexes() {
 fn multiline_comment_complex_nesting_lexes() {
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Identifier(String::from("x")), (0, 0), (0, 1)),
             ],
-            vec![]),
             "",
             16
         )),
@@ -271,10 +254,9 @@ fn multiline_comment_complex_nesting_lexes() {
 fn identifiers_lex() {
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Identifier(String::from("x")), (0, 0), (0, 1)),
             ],
-            vec![]),
             "",
             1
         )),
@@ -282,10 +264,9 @@ fn identifiers_lex() {
     );
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Identifier(String::from("l33t")), (0, 0), (0, 4)),
             ],
-            vec![]),
             "",
             4
         )),
@@ -293,10 +274,9 @@ fn identifiers_lex() {
     );
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Identifier(String::from("l_l")), (0, 0), (0, 3)),
             ],
-            vec![]),
             "",
             3
         )),
@@ -309,7 +289,7 @@ fn keyword_starting_identifier_lexes() {
     let string = "foray into reading independent dodo endofunctors";
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Identifier(String::from("foray")), (0, 0), (0, 5)),
                 tok(Identifier(String::from("into")), (0, 6), (0, 10)),
                 tok(Identifier(String::from("reading")), (0, 11), (0, 18)),
@@ -317,7 +297,6 @@ fn keyword_starting_identifier_lexes() {
                 tok(Identifier(String::from("dodo")), (0, 31), (0, 35)),
                 tok(Identifier(String::from("endofunctors")), (0, 36), (0, 48)),
             ],
-            vec![]),
             "",
             string.len()
         )),
@@ -331,10 +310,9 @@ fn keyword_starting_identifier_lexes() {
 fn unicode_identifier_lexes() {
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Identifier(String::from("föö")), (0, 0), (0, 3)),
             ],
-            vec![]),
             "",
             3
         )),
@@ -346,7 +324,7 @@ fn unicode_identifier_lexes() {
 fn operators_lex() {
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Operator(Addition), (0, 0), (0, 1)),
                 tok(Operator(Substraction), (0, 1), (0, 2)),
                 tok(Operator(Multiplication), (0, 2), (0, 3)),
@@ -356,7 +334,6 @@ fn operators_lex() {
                 tok(Operator(Equality), (0, 6), (0, 7)),
                 tok(Operator(LessThan), (0, 7), (0, 8)),
             ],
-            vec![]),
             "",
             8
         )),
@@ -369,12 +346,11 @@ fn operators_lex() {
 fn punctuation_lexes() {
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Punctuation(Parenthesis(Open)), (0, 0), (0, 1)),
                 tok(Punctuation(Semicolon), (0, 1), (0, 2)),
                 tok(Punctuation(Parenthesis(Close)), (0, 2), (0, 3)),
             ],
-            vec![]),
             "§",
             3
         )),
@@ -390,7 +366,7 @@ fn example1_lexes() {
     "#;
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Keyword(Var), (1, 8), (1, 11)),
                 tok(Identifier(String::from("X")), (1, 12), (1, 13)),
                 tok(Punctuation(Colon), (1, 14), (1, 15)),
@@ -408,7 +384,6 @@ fn example1_lexes() {
                 tok(Identifier(String::from("X")), (2, 14), (2, 15)),
                 tok(Punctuation(Semicolon), (2, 15), (2, 16)),
             ],
-            vec![]),
             "",
             string.len() - 3 // TODO: Why have to subtract amount of linebreaks?
         )),
@@ -431,7 +406,7 @@ fn example2_lexes() {
     "#;
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Keyword(Var), (1, 8), (1, 11)),
                 tok(Identifier(String::from("nTimes")), (1, 12), (1, 18)),
                 tok(Punctuation(Colon), (1, 19), (1, 20)),
@@ -476,7 +451,6 @@ fn example2_lexes() {
                 tok(Punctuation(Parenthesis(Close)), (9, 26), (9, 27)),
                 tok(Punctuation(Semicolon), (9, 27), (9, 28)),
             ],
-            vec![]),
             "",
             string.len() - 10 // TODO: Why have to subtract amount of linebreaks?
         )),
@@ -500,7 +474,7 @@ fn example3_lexes() {
     "#;
     assert_eq!(
         Ok((
-           (vec![
+           vec![
                 tok(Keyword(Print), (1, 8), (1, 13)),
                 tok(Literal(StringLit(String::from("Give a number"))), (1, 14), (1, 29)),
                 tok(Punctuation(Semicolon), (1, 29), (1, 30)),
@@ -547,7 +521,6 @@ fn example3_lexes() {
                 tok(Identifier(String::from("v")), (10, 14), (10, 15)),
                 tok(Punctuation(Semicolon), (10, 15), (10, 16)),
             ],
-            vec![]),
             "",
             string.len() - 11 // TODO: Why have to subtract amount of linebreaks?
         )),

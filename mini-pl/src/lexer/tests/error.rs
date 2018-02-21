@@ -1,16 +1,14 @@
 use super::super::{Tok, Token, LexError, Position, tokenize};
 use super::super::tokens::Literal;
+use super::tok;
 
 #[test]
 fn error_invalid_escape() {
     assert_eq!(
-        Ok(((
+        Ok((
             vec![
-                Tok::new(Token::Error(LexError::UnknownEscape("i".into())), Position::new(0, 0), Position::new(0, 4))
+                tok(Token::Error(LexError::UnknownEscape("i".into())), (0, 0), (0, 4))
             ],
-            vec![
-                LexError::UnknownEscape("i".into())
-            ]),
             "",
             4
         )),

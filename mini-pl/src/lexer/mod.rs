@@ -323,7 +323,13 @@ fn str_literal(s: &str) -> ParseResult<Token> {
                     }
                 } else {
                     Err((Unknown, 0..p))
-                }).unwrap_or_else(|e| Ok((Err(e), s, p)))
+                }).unwrap_or_else(|e| {
+                    Ok(if let Ok((_, s, pp)) = take_until(tag(r#"""#)).parse(s) {
+                        (Err(e), s, p + pp)
+                    } else {
+                        (Err(e), s, p)
+                    })
+                })
             )
     }
     preceded(
