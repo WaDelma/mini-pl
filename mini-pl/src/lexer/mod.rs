@@ -1,74 +1,22 @@
 use std::char;
-use std::num::ParseIntError;
-use std::string::FromUtf8Error;
-use std::str::Utf8Error;
 use std::cell::Cell;
 
 use parsco::{Parser, FromErr, tag, many0, alt, fun, preceded, terminated, take_while0, take_while1, take_until, ws, fst, opt, map, eat, take, flat_map, satisfying, take_nm};
 
-use self::tokens::{Token, Tok, Position};
+use self::tokens::{Token, Tok, Position, LexError};
 use self::tokens::Punctuation::*;
 use self::tokens::Side::*;
 use self::tokens::Keyword::*;
 use self::tokens::Operator::*;
 use self::tokens::Literal::*;
-use self::LexError::*;
+use self::tokens::LexError::*;
 
 //TODO: Remove LexError from error type.
-type ParseResult<'a, T> = ::parsco::Result<&'a str, T, LexError>;
+type ParseResult<'a, T> = ::parsco::Result<&'a str, T, self::tokens::LexError>;
 
 pub mod tokens;
 #[cfg(test)]
 mod tests;
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum LexError {
-    HexadecimalLexError(HexadecimalLexError),
-    UnknownEscape(String),
-    Unknown,
-}
-
-impl FromErr<()> for LexError {
-    fn from(_: ()) -> Self {
-        LexError::Unknown
-    }
-}
-
-impl FromErr<::parsco::common::Void> for LexError {
-    fn from(_: ::parsco::common::Void) -> Self {
-        unreachable!("Void is never type.")
-    }
-}
-
-impl FromErr<LexError> for LexError {
-    fn from(l: LexError) -> Self {
-        l
-    }
-}
-
-impl From<HexadecimalLexError> for LexError {
-    fn from(e: HexadecimalLexError) -> Self {
-        LexError::HexadecimalLexError(e)
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum HexadecimalLexError {
-    ParseIntError(ParseIntError),
-    FromUtf8Error(Utf8Error),
-}
-
-impl From<ParseIntError> for HexadecimalLexError {
-    fn from(e: ParseIntError) -> Self {
-        HexadecimalLexError::ParseIntError(e)
-    }
-}
-
-impl From<FromUtf8Error> for HexadecimalLexError {
-    fn from(e: FromUtf8Error) -> Self {
-        HexadecimalLexError::FromUtf8Error(e.utf8_error())
-    }
-}
 
 /// Lexes given string to mini-pl tokens
 pub fn tokenize(s: &str) -> ParseResult<Vec<Tok>> {
