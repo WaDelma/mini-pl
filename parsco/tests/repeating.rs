@@ -1,5 +1,5 @@
 extern crate parsco;
-use parsco::{Parser, tag, many0, many1, list0, take_while, take_until, ws};
+use parsco::{Parser, tag, many0, many1, list0, take_while0, take_until, ws};
 
 #[test]
 fn many0_parses_none() {
@@ -98,34 +98,34 @@ fn list0_parses_many() {
 // }
 
 #[test]
-fn take_while_zero() {
+fn take_while0_zero() {
     assert_eq!(
         Ok(("", "c", 0)),
-        take_while(|c| c == 'a').parse("c")
+        take_while0(|c| c == 'a').parse("c")
     );
 }
 
 #[test]
-fn take_while_one() {
+fn take_while0_one() {
     assert_eq!(
         Ok(("a", "c", 1)),
-        take_while(|c| c == 'a').parse("ac")
+        take_while0(|c| c == 'a').parse("ac")
     );
 }
 
 #[test]
-fn take_while_many() {
+fn take_while0_many() {
     assert_eq!(
         Ok(("aaa", "c", 3)),
-        take_while(|c| c == 'a').parse("aaac")
+        take_while0(|c| c == 'a').parse("aaac")
     );
 }
 
 #[test]
-fn take_while_end() {
+fn take_while0_end() {
     assert_eq!(
         Ok(("a", "", 1)),
-        take_while(|c| c == 'a').parse("a")
+        take_while0(|c| c == 'a').parse("a")
     );
 }
 #[test]

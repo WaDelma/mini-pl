@@ -6,7 +6,7 @@ use std::cell::Cell;
 
 use num_bigint::BigInt;
 
-use parsco::{Parser, FromErr, tag, many0, alt, fun, preceded, terminated, delimited, take_while, take_until, ws, fst, opt, map, eat, take, flat_map};
+use parsco::{Parser, FromErr, tag, many0, alt, fun, preceded, terminated, delimited, take_while0, take_while1, take_until, ws, fst, opt, map, eat, take, flat_map, satisfying};
 
 use self::tokens::{Token, Tok, Position};
 use self::tokens::Punctuation::*;
@@ -122,7 +122,7 @@ pub fn tokenize(s: &str) -> ParseResult<Vec<Tok>> {
 fn comment(input: &str) -> ParseResult<()> {
     (alt()
         | fun(multiline_comment)
-        | map((tag("//"), take_while(|c| c != '\n')), |_, _, _| ())
+        | map((tag("//"), take_while0(|c| c != '\n')), |_, _, _| ())
     ).parse(input)
         .map_err(|(err, pos)| (FromErr::from(err), pos))
 }
@@ -202,46 +202,28 @@ fn keyword(input: &str) -> ParseResult<Token> {
 }
 
 fn keyword_or_identifier(input: &str) -> ParseResult<Token> {
-    fst()
-        .parse(input)
-        .map_err(|(err, pos)| (FromErr::from(err), pos))
-        .and_then(|(fst, rest, pos)| if fst.is_alphabetic() {
-            Ok((fst, rest, pos))
-        } else {
-            Err((Unknown, 0..pos))
-        })
-        .map(|(fst, rest, pos)| if let Ok((others, rest, pos2)) = take_while(|c| char::is_alphanumeric(c) || c == '_').parse(rest) {
-            (format!("{}{}", fst, others), rest, pos + pos2)
-        } else {
-            (fst.to_string(), rest, pos)
-        })
-        .map(|(ident, rest, pos)| {
-            if let Ok((keyword, after_keyword, pos)) = keyword(&ident) {
-                if after_keyword.is_empty() {
-                    return (keyword, rest, pos);
-                }
+    map((
+        satisfying(fst(), |c: &char| c.is_alphabetic()),
+        take_while0(|c| char::is_alphanumeric(c) || c == '_')
+    ), |(fst, rest), _, _| {
+        let ident = format!("{}{}", fst, rest);
+        if let Ok((keyword, after_keyword, _)) = keyword(&ident) {
+            if after_keyword.is_empty() {
+                return keyword;
             }
-            (Token::Identifier(ident), rest, pos)
-        })
+        }
+        Token::Identifier(ident)
+    }).parse(input)
+        .map_err(|(err, pos)| (FromErr::from(err), pos))
 }
 
 fn integer(input: &str) -> ParseResult<Token> {
-    fst()
-        .parse(input)
-        .map_err(|(err, pos)| (FromErr::from(err), pos))
-        .and_then(|(fst, rest, pos)| if fst.is_digit(10) {
-            Ok((fst, rest, pos))
-        } else {
-            Err((Unknown, 0..pos))
-        })
-        .map(|(fst, rest, pos)| {
-            let (number, rest, pos) = if let Ok((others, rest, pos2)) = take_while(|c| char::is_digit(c, 10)).parse(rest) {
-                (format!("{}{}", fst, others), rest, pos + pos2)
-            } else {
-                (fst.to_string(), rest, pos)
-            };
-            (Token::Literal(Integer(number.parse::<BigInt>().unwrap())), rest, pos)
-        })
+    map(
+        take_while1(|c| char::is_digit(c, 10)),
+        |number: &str, _, _| Token::Literal(Integer(number.parse::<BigInt>().unwrap()))
+    )
+    .parse(input)
+    .map_err(|(err, pos)| (FromErr::from(err), pos))
 }
 
 fn hex_as_string(x: &str) -> String {

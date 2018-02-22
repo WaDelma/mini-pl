@@ -19,7 +19,7 @@
 //! # Examples
 //! ```rust
 //! extern crate parsco;
-//! use parsco::{Parser, take_while, delimited, tag, list0, fun, map};
+//! use parsco::{Parser, take_while1, delimited, tag, list0, fun, map};
 //! use std::char;
 //! 
 //! #[derive(Debug, PartialEq)]
@@ -30,7 +30,7 @@
 //! 
 //! fn parse_res(s: &str) -> parsco::Result<&str, Res, ()> {
 //!     map((
-//!         take_while(char::is_alphabetic),
+//!         take_while1(char::is_alphabetic),
 //!         delimited(
 //!             tag("{"),
 //!             list0(
@@ -75,16 +75,16 @@ use common::Void;
 
 pub use internal::basic::{tag, sym, fst, dbg, fun};
 pub use internal::delimited::{preceded, terminated, delimited};
-pub use internal::repeating::{many0, many1, list0, take_while, take_until, ws, take};
-pub use internal::control::{alt, map, flat_map, eat, opt};
+pub use internal::repeating::{many0, many1, list0, take_while0, take_while1, take_until, ws, take};
+pub use internal::control::{alt, map, flat_map, eat, opt, satisfying};
 
 /// The structs used for the actual parsing.
 /// 
 /// User of the crate shouldn't have need to use these directly, but use functions that create them instead.
 pub mod parsers {
-    pub use internal::control::{Alt, Empty, Map, FlatMap, Eat, Opt};
+    pub use internal::control::{Alt, Empty, Map, FlatMap, Eat, Opt, Satisfying};
     pub use internal::delimited::{Preceded, Terminated, Delimited};
-    pub use internal::repeating::{Many0, Many1, List0, TakeWhile, TakeUntil, Whitespace, Take};
+    pub use internal::repeating::{Many0, Many1, List0, TakeWhile0, TakeWhile1, TakeUntil, Whitespace, Take};
     pub use internal::basic::{Tag, Symbol, Fst, Fun, Dbg};
 }
 

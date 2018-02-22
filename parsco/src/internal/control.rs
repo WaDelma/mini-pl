@@ -4,6 +4,55 @@ use std::ops::BitOr;
 use {Parser, Parseable, Result};
 use common::Err2;
 
+/// Allows to check that certain condition holds for the result of given parser. Used via `parsco::satisfying` function.
+pub struct Satisfying<P, F, S> {
+    parser: P,
+    predicate: F,
+    _marker: PhantomData<fn(S) -> S>,
+}
+
+impl<S, F, P> Parser<S> for Satisfying<P, F, S>
+    where S: Parseable,
+          P: Parser<S>,
+          F: Fn(&P::Res) -> bool,
+{
+    type Res = P::Res;
+    type Err = Err2<P::Err, ()>;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
+        self.parser.parse(s)
+            .map_err(|(err, pos)| (Err2::V1(err), pos))
+            .and_then(|(res, rest, pos)| {
+                if (self.predicate)(&res) {
+                    Ok((res, rest, pos))
+                } else {
+                    Err((Err2::V2(()), 0..pos))
+                }
+            })
+    }
+}
+
+/// Allows to use checking if predicate holds for result of given parser.
+/// 
+/// # Examples
+/// ```rust
+/// # use parsco::{Parser, fst, satisfying};
+/// assert_eq!(
+///     Ok(('b', "ar", 1)),
+///     satisfying(fst(), |c: &char| c.is_alphabetic()).parse("bar")
+/// );
+/// ```
+pub fn satisfying<S, P, F>(parser: P, predicate: F) -> Satisfying<P, F, S>
+    where S: Parseable,
+          P: Parser<S>,
+          F: Fn(&P::Res) -> bool,
+{
+    Satisfying {
+        parser,
+        predicate,
+        _marker: PhantomData,
+    }
+}
+ 
 /// Allows to try multiple alternative parsers in a sequence. Used via `parsco::alt` function.
 /// 
 /// Chaining multiple parsers using `BitOr` implementation creates type based list that ends with `Empty`.
@@ -13,7 +62,7 @@ use common::Err2;
 pub struct Alt<P, R, S> {
     parser: P,
     rest: R,
-    _marker: PhantomData<S>,
+    _marker: PhantomData<fn(S) -> S>,
 }
 
 impl<P, R, N, S, T> BitOr<N> for Alt<P, R, S>
@@ -49,7 +98,7 @@ impl<P, R, T, S> Parser<S> for Alt<P, R, S>
 
 // TODO: Remove P when `!` becomes stable.
 /// End of type type based list of `Alt`s. Used via `parsco::alt` function.
-pub struct Empty<P, S>(PhantomData<(P, S)>);
+pub struct Empty<P, S>(PhantomData<(fn(P), fn(S) -> S)>);
 
 impl<P, N, S, T> BitOr<N> for Empty<P, S>
     where S: Parseable,
