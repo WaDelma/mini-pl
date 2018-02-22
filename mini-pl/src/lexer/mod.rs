@@ -16,7 +16,7 @@ use self::tokens::Operator::*;
 use self::tokens::Literal::*;
 use self::LexError::*;
 
-//TODO: Use dedicated error token. Remove LexError from error type.
+//TODO: Remove LexError from error type.
 type ParseResult<'a, T> = ::parsco::Result<&'a str, T, LexError>;
 
 pub mod tokens;
@@ -86,7 +86,7 @@ pub fn tokenize(s: &str) -> ParseResult<Vec<Tok>> {
                         | fun(keyword_or_identifier)
                         | fun(integer)
                         | fun(str_literal),
-                    |r, _, p| (r, p)
+                    |token, _, place| (token, place)
                 ))
             ),
             |((_, comment_lines, comment_columns), ((token, token_size), preceding_lines, preceding_columns)), _, eaten_chars| {
@@ -116,46 +116,46 @@ pub fn tokenize(s: &str) -> ParseResult<Vec<Tok>> {
             }
         )
     ), ws(opt(fun(comment)))).parse(s)
-        .map_err(|(e, r)| (FromErr::from(e), r))
+        .map_err(|(err, pos)| (FromErr::from(err), pos))
 }
 
-fn comment(s: &str) -> ParseResult<()> {
+fn comment(input: &str) -> ParseResult<()> {
     (alt()
         | fun(multiline_comment)
         | map((tag("//"), take_while(|c| c != '\n')), |_, _, _| ())
-    ).parse(s)
-        .map_err(|(e, r)| (FromErr::from(e), r))
+    ).parse(input)
+        .map_err(|(err, pos)| (FromErr::from(err), pos))
 }
 
-fn multiline_comment(s: &str) -> ParseResult<()> {
-    fn nested_comment(s: &str) -> ParseResult<()> {
+fn multiline_comment(input: &str) -> ParseResult<()> {
+    fn nested_comment(input: &str) -> ParseResult<()> {
         take_until(
             alt()
                 | map(tag("*/"), |_, _, _| true)
                 | map(tag("/*"), |_, _, _| false)
-        ).parse(s)
-            .map_err(|(e, r)| (FromErr::from(e), r))
-            .and_then(|((_, end), s, p)| if end {
-                Err((Unknown, 0..p))
+        ).parse(input)
+            .map_err(|(err, pos)| (FromErr::from(err), pos))
+            .and_then(|((_, is_comment_end), rest, pos)| if is_comment_end {
+                Err((Unknown, 0..pos))
             } else {
                 map((
                     opt(fun(nested_comment)),
                     take_until(tag("*/")),
                     opt(fun(nested_comment))
-                ), |_, _, _| ()).parse(s)
-                    .map(|(r, s, pp)| (r, s, p + pp))
-                    .map_err(|(e, r)| (FromErr::from(e), r))
+                ), |_, _, _| ()).parse(rest)
+                    .map(|(cur, rest, pos2)| (cur, rest, pos + pos2))
+                    .map_err(|(err, pos)| (FromErr::from(err), pos))
             })
     }
     map(delimited(
         tag("/*"),
         opt(fun(nested_comment)),
         take_until(tag("*/"))
-    ), |_, _, _| ()).parse(s)
-        .map_err(|(e, r)| (FromErr::from(e), r))
+    ), |_, _, _| ()).parse(input)
+        .map_err(|(err, pos)| (FromErr::from(err), pos))
 }
 
-fn operator(s: &str) -> ParseResult<Token> {
+fn operator(input: &str) -> ParseResult<Token> {
     (alt()
         | eat(tag("+"), Addition)
         | eat(tag("-"), Substraction)
@@ -167,23 +167,23 @@ fn operator(s: &str) -> ParseResult<Token> {
         | eat(tag("="), Equality)
         | eat(tag("<"), LessThan)
         | eat(tag(".."), Range)
-    ).parse(s)
-        .map_err(|(e, r)| (FromErr::from(e), r))
-        .map(|(t, s, p)| (Token::Operator(t), s, p))
+    ).parse(input)
+        .map_err(|(err, pos)| (FromErr::from(err), pos))
+        .map(|(oper, rest, pos)| (Token::Operator(oper), rest, pos))
 }
 
-fn punctuation(s: &str) -> ParseResult<Token> {
+fn punctuation(input: &str) -> ParseResult<Token> {
     (alt()
         | eat(tag(";"), Semicolon)
         | eat(tag(":"), Colon)
         | eat(tag("("), Parenthesis(Open))
         | eat(tag(")"), Parenthesis(Close))
-    ).parse(s)
-        .map_err(|(e, r)| (FromErr::from(e), r))
-        .map(|(t, s, p)| (Token::Punctuation(t), s, p))
+    ).parse(input)
+        .map_err(|(err, pos)| (FromErr::from(err), pos))
+        .map(|(punct, rest, pos)| (Token::Punctuation(punct), rest, pos))
 }
 
-fn keyword(s: &str) -> ParseResult<Token> {
+fn keyword(input: &str) -> ParseResult<Token> {
     (alt()
         | eat(tag("var"), Var)
         | eat(tag("for"), For)
@@ -196,51 +196,51 @@ fn keyword(s: &str) -> ParseResult<Token> {
         | eat(tag("string"), Str)
         | eat(tag("bool"), Bool)
         | eat(tag("assert"), Assert)
-    ).parse(s)
-        .map_err(|(e, r)| (FromErr::from(e), r))
-        .map(|(t, s, p)| (Token::Keyword(t), s, p))
+    ).parse(input)
+        .map_err(|(err, pos)| (FromErr::from(err), pos))
+        .map(|(keyword, rest, pos)| (Token::Keyword(keyword), rest, pos))
 }
 
-fn keyword_or_identifier(s: &str) -> ParseResult<Token> {
+fn keyword_or_identifier(input: &str) -> ParseResult<Token> {
     fst()
-        .parse(s)
-        .map_err(|(e, r)| (FromErr::from(e), r))
-        .and_then(|(t, s, p)| if t.is_alphabetic() {
-            Ok((t, s, p))
+        .parse(input)
+        .map_err(|(err, pos)| (FromErr::from(err), pos))
+        .and_then(|(fst, rest, pos)| if fst.is_alphabetic() {
+            Ok((fst, rest, pos))
         } else {
-            Err((Unknown, 0..p))
+            Err((Unknown, 0..pos))
         })
-        .map(|(t1, s, p)| if let Ok((t2, s, pp)) = take_while(|c| char::is_alphanumeric(c) || c == '_').parse(s) {
-            (format!("{}{}", t1, t2), s, p + pp)
+        .map(|(fst, rest, pos)| if let Ok((others, rest, pos2)) = take_while(|c| char::is_alphanumeric(c) || c == '_').parse(rest) {
+            (format!("{}{}", fst, others), rest, pos + pos2)
         } else {
-            (t1.to_string(), s, p)
+            (fst.to_string(), rest, pos)
         })
-        .map(|(t, s, p)| {
-            if let Ok((k, ss, p)) = keyword(&t) {
-                if ss.is_empty() {
-                    return (k, s, p);
+        .map(|(ident, rest, pos)| {
+            if let Ok((keyword, after_keyword, pos)) = keyword(&ident) {
+                if after_keyword.is_empty() {
+                    return (keyword, rest, pos);
                 }
             }
-            (Token::Identifier(t), s, p)
+            (Token::Identifier(ident), rest, pos)
         })
 }
 
-fn integer(s: &str) -> ParseResult<Token> {
+fn integer(input: &str) -> ParseResult<Token> {
     fst()
-        .parse(s)
-        .map_err(|(e, r)| (FromErr::from(e), r))
-        .and_then(|(t, s, p)| if t.is_digit(10) {
-            Ok((t, s, p))
+        .parse(input)
+        .map_err(|(err, pos)| (FromErr::from(err), pos))
+        .and_then(|(fst, rest, pos)| if fst.is_digit(10) {
+            Ok((fst, rest, pos))
         } else {
-            Err((Unknown, 0..p))
+            Err((Unknown, 0..pos))
         })
-        .map(|(t1, s, p)| {
-            let (t, s, p) = if let Ok((t2, s, pp)) = take_while(|c| char::is_digit(c, 10)).parse(s) {
-                (format!("{}{}", t1, t2), s, p + pp)
+        .map(|(fst, rest, pos)| {
+            let (number, rest, pos) = if let Ok((others, rest, pos2)) = take_while(|c| char::is_digit(c, 10)).parse(rest) {
+                (format!("{}{}", fst, others), rest, pos + pos2)
             } else {
-                (t1.to_string(), s, p)
+                (fst.to_string(), rest, pos)
             };
-            (Token::Literal(Integer(t.parse::<BigInt>().unwrap())), s, p)
+            (Token::Literal(Integer(number.parse::<BigInt>().unwrap())), rest, pos)
         })
 }
 
@@ -250,8 +250,8 @@ fn hex_as_string(x: &str) -> String {
     ).unwrap().to_string()
 }
 
-fn str_literal(s: &str) -> ParseResult<Token> {
-    fn parse_str(s: &str) -> ParseResult<Result<String, LexError>> {
+fn str_literal(input: &str) -> ParseResult<Token> {
+    fn parse_str(input: &str) -> ParseResult<Result<String, LexError>> {
         take_until(
             alt()
                 | eat(tag(r#"\a"#), Ok("\x07".to_owned()))
@@ -270,21 +270,21 @@ fn str_literal(s: &str) -> ParseResult<Token> {
                         alt()
                             | flat_map(
                                 take(3),
-                                |x, s, p| u8::from_str_radix(x, 8)
-                                    .map(|i| (i, s, p))
-                                    .map_err(|e| (e, 0..p))
+                                |x, rest, pos| u8::from_str_radix(x, 8)
+                                    .map(|i| (i, rest, pos))
+                                    .map_err(|err| (err, 0..pos))
                             )
                             | flat_map(
                                 take(2),
-                                |x, s, p| u8::from_str_radix(x, 8)
-                                    .map(|i| (i, s, p))
-                                    .map_err(|e| (e, 0..p))
+                                |x, rest, pos| u8::from_str_radix(x, 8)
+                                    .map(|i| (i, rest, pos))
+                                    .map_err(|err| (err, 0..pos))
                             )
                             | flat_map(
                                 take(1),
-                                |x, s, p| u8::from_str_radix(x, 8)
-                                    .map(|i| (i, s, p))
-                                    .map_err(|e| (e, 0..p))
+                                |x, rest, pos| u8::from_str_radix(x, 8)
+                                    .map(|i| (i, rest, pos))
+                                    .map_err(|err| (err, 0..pos))
                             )
                     ),
                     |x, _, _| Ok(String::from_utf8(vec![x]).unwrap())
@@ -310,24 +310,24 @@ fn str_literal(s: &str) -> ParseResult<Token> {
                     ),
                     |r, _, _| Ok(hex_as_string(r))
                 )
-                | map((tag(r#"\"#), fst()), |(_, e), _, _| Err(UnknownEscape(e.to_string())))
+                | map((tag(r#"\"#), fst()), |(_, escape), _, _| Err(UnknownEscape(escape.to_string())))
                 | eat(tag(r#"""#), Ok("".to_owned()))
-        ).parse(s)
-            .map_err(|(e, r)| (FromErr::from(e), r))
-            .and_then(|((b, t), s, p)| t.map(|t| if t.is_empty() {
-                    Ok((Ok(b.to_string()), s, p))
-                } else if let Ok((a, s, pp)) = parse_str(s) {
-                    match a {
-                        Ok(a) => Ok((Ok(b.to_string() + &t + &a), s, p + pp)),
-                        e => Ok((e, s, p + pp)),
-                    }
+        ).parse(input)
+            .map_err(|(err, pos)| (FromErr::from(err), pos))
+            .and_then(|((str_before, escape), rest, pos)| escape.map(|escaped| if escaped.is_empty() {
+                    Ok((Ok(str_before.to_string()), rest, pos))
+                } else if let Ok((str_after, rest, pos2)) = parse_str(rest) {
+                    Ok(match str_after {
+                        Ok(str_after) => (Ok(str_before.to_string() + &escaped + &str_after), rest, pos + pos2),
+                        err => (err, rest, pos + pos2),
+                    })
                 } else {
-                    Err((Unknown, 0..p))
-                }).unwrap_or_else(|e| {
-                    Ok(if let Ok((_, s, pp)) = take_until(tag(r#"""#)).parse(s) {
-                        (Err(e), s, p + pp)
+                    Err((Unknown, 0..pos))
+                }).unwrap_or_else(|err| {
+                    Ok(if let Ok((_, rest, pos2)) = take_until(tag(r#"""#)).parse(rest) {
+                        (Err(err), rest, pos + pos2)
                     } else {
-                        (Err(e), s, p)
+                        (Err(err), rest, pos)
                     })
                 })
             )
@@ -335,7 +335,7 @@ fn str_literal(s: &str) -> ParseResult<Token> {
     preceded(
         tag("\""),
         fun(parse_str),
-    ).parse(s)
-        .map_err(|(e, r)| (FromErr::from(e), r))
-        .map(|(t, s, p)| (t.map(|t| Token::Literal(StringLit(t))).unwrap_or_else(Token::Error), s, p))
+    ).parse(input)
+        .map_err(|(err, pos)| (FromErr::from(err), pos))
+        .map(|(string, rest, pos)| (string.map(|string| Token::Literal(StringLit(string))).unwrap_or_else(Token::Error), rest, pos))
 }
