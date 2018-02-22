@@ -75,7 +75,7 @@ use common::Void;
 
 pub use internal::basic::{tag, sym, fst, dbg, fun};
 pub use internal::delimited::{preceded, terminated, delimited};
-pub use internal::repeating::{many0, many1, list0, take_while0, take_while1, take_until, ws, take};
+pub use internal::repeating::{many0, many1, list0, take_while0, take_while1, take_until, ws, take, take_nm};
 pub use internal::control::{alt, map, flat_map, eat, opt, satisfying};
 
 /// The structs used for the actual parsing.
@@ -84,7 +84,7 @@ pub use internal::control::{alt, map, flat_map, eat, opt, satisfying};
 pub mod parsers {
     pub use internal::control::{Alt, Empty, Map, FlatMap, Eat, Opt, Satisfying};
     pub use internal::delimited::{Preceded, Terminated, Delimited};
-    pub use internal::repeating::{Many0, Many1, List0, TakeWhile0, TakeWhile1, TakeUntil, Whitespace, Take};
+    pub use internal::repeating::{Many0, Many1, List0, TakeWhile0, TakeWhile1, TakeUntil, Whitespace, Take, TakeNM};
     pub use internal::basic::{Tag, Symbol, Fst, Fun, Dbg};
 }
 

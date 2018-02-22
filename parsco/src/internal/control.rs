@@ -52,7 +52,7 @@ pub fn satisfying<S, P, F>(parser: P, predicate: F) -> Satisfying<P, F, S>
         _marker: PhantomData,
     }
 }
- 
+
 /// Allows to try multiple alternative parsers in a sequence. Used via `parsco::alt` function.
 /// 
 /// Chaining multiple parsers using `BitOr` implementation creates type based list that ends with `Empty`.

@@ -68,6 +68,82 @@ pub fn take_while1<F, S>(predicate: F) -> TakeWhile1<F, S>
     }
 }
 
+/// Allows taking at most and at least given amount of symbols from input while predicate holds. Used via `parsco::take_nm` function.
+pub struct TakeNM<F, S> {
+    min: usize,
+    max: usize,
+    predicate: F,
+    _marker: PhantomData<fn(S) -> S>,
+}
+
+impl<F, S> Parser<S> for TakeNM<F, S>
+    where S: Parseable,
+          F: Fn(<S as Parseable>::Symbol) -> bool,
+{
+    type Res = S;
+    type Err = ();
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
+        let mut n = 0;
+        let mut cur = s;
+        while let Some((start, end)) = cur.split_at(1) {
+            if (self.predicate)(start.first().expect("Split should ensure that there is first.")) {
+                cur = end;
+                n += 1;
+                if self.max <= n {
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+        if n < self.min {
+            Err(((), 0..n))
+        } else {
+            let (start, end) = s.split_at(n).expect("This index should be already split at.");
+            Ok((start, end, n))
+        }
+    }
+}
+
+/// Takes at least and at most given amount of symbols from the source while given predicate returns true.
+/// 
+/// # Example
+/// ```rust
+/// # use parsco::{Parser, take_nm};
+/// # use std::char;
+/// assert_eq!(
+///     Ok(("foo", "bar", 3)),
+///     take_nm(2, 3, char::is_alphabetic).parse("foobar")
+/// );
+/// ```
+/// ```rust
+/// # use parsco::{Parser, take_nm};
+/// # use std::char;
+/// assert_eq!(
+///     Ok(("fo", "0bar", 2)),
+///     take_nm(2, 3, char::is_alphabetic).parse("fo0bar")
+/// );
+/// ```
+/// ```rust
+/// # use parsco::{Parser, take_nm};
+/// # use std::char;
+/// assert_eq!(
+///     Err(((), 0..1)),
+///     take_nm(2, 3, char::is_alphabetic).parse("f00bar")
+/// );
+/// ```
+pub fn take_nm<F, S>(min: usize, max: usize, predicate: F) -> TakeNM<F, S>
+    where F: Fn(char) -> bool,
+          S: Parseable
+{
+    TakeNM {
+        predicate,
+        min,
+        max,
+        _marker: PhantomData,
+    }
+}
+
 /// Allows taking symbols from input while predicate holds. Succeeds even if predicate doens't hold at all. Used via `parsco::take_while0` function.
 pub struct TakeWhile0<F, S> {
     predicate: F,
