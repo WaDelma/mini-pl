@@ -3,7 +3,14 @@ use num_bigint::BigInt;
 use std::fmt;
 
 use Ident;
-use lexer::tokens::Operator;
+use lexer::tokens::{Operator, Position};
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Statement {
+    stmt: Stmt,
+    from: Position,
+    to: Position,
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Stmt {

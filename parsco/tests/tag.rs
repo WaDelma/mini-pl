@@ -1,6 +1,5 @@
 extern crate parsco;
-use parsco::{Parser, ws, tag};
-use parsco::common::Err2;
+use parsco::{Parser, tag};
 
 #[test]
 fn tag_parses() {
@@ -24,30 +23,5 @@ fn tag_unicode() {
     assert_eq!(
         Ok((t, "a", t.len())),
         tag(t).parse("áàäåöa")
-    );
-}
-
-#[test]
-fn whitespace_parse() {
-    assert_eq!(
-        Ok(("a", "c", 14)),
-        ws(tag("a")).parse("    
-        ac")
-    );
-}
-
-#[test]
-fn whitespace_none() {
-    assert_eq!(
-        Ok(("a", "c", 1)),
-        ws(tag("a")).parse("ac")
-    );
-}
-
-#[test]
-fn whitespace_empty() {
-    assert_eq!(
-        Err((Err2::V2(()), 0..0)),
-        ws(tag("a")).parse("c")
     );
 }

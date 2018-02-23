@@ -1,17 +1,17 @@
-use parsco::{Parser, FromErr, many1, preceded, terminated, delimited, fun, sym, alt, opt, map, fst};
+use parsco::{Parser, FromErr, Sym, many1, preceded, terminated, delimited, fun, sym, alt, opt, map, fst};
 
 use Ident;
+use lexer::tokens::Tok;
 use lexer::tokens::Token::*;
 use lexer::tokens::Punctuation::*;
 use lexer::tokens::Side::*;
 use lexer::tokens::Keyword::*;
 use lexer::tokens::Operator::*;
 use lexer::tokens::Literal::*;
-use lexer::tokens::Token;
-use self::ast::{Stmt, Expr, Type, Opnd, BinOp, UnaOp};
+use self::ast::{Statement, Stmt, Expr, Type, Opnd, BinOp, UnaOp};
 use self::ParseError::*;
 
-type Result<'a, T> = ::parsco::Result<&'a [Token], T, ParseError>;
+type Result<'a, T> = ::parsco::Result<&'a [Tok], T, ParseError>;
 
 pub mod ast;
 #[cfg(test)]
@@ -34,7 +34,7 @@ impl FromErr<ParseError> for ParseError {
     }
 }
 
-pub fn parse(ts: &[Token]) -> Result<Vec<Stmt>> {
+pub fn parse(ts: &[Tok]) -> Result<Vec<Stmt>> {
     many1(
         terminated(
             fun(stmt),
@@ -44,7 +44,7 @@ pub fn parse(ts: &[Token]) -> Result<Vec<Stmt>> {
         .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
-pub fn stmt(ts: &[Token]) -> Result<Stmt> {
+pub fn stmt(ts: &[Tok]) -> Result<Stmt> {
     (alt()
         | map(
             (
@@ -58,7 +58,7 @@ pub fn stmt(ts: &[Token]) -> Result<Stmt> {
                     sym(Operator(Assignment)), fun(expr)
                 ))
             ),
-            |(ident, ty, value)| Stmt::Declaration {
+            |(ident, ty, value), _, _| Stmt::Declaration {
                 ident,
                 ty,
                 value
@@ -72,7 +72,7 @@ pub fn stmt(ts: &[Token]) -> Result<Stmt> {
                     fun(expr)
                 )
             ),
-            |(ident, value)| Stmt::Assignment {
+            |(ident, value), _, _| Stmt::Assignment {
                 ident,
                 value
             }
@@ -95,7 +95,7 @@ pub fn stmt(ts: &[Token]) -> Result<Stmt> {
                     (sym(Keyword(End)), sym(Keyword(For)))
                 )
             ),
-            |(ident, from, to, stmts)| Stmt::Loop {
+            |(ident, from, to, stmts), _, _| Stmt::Loop {
                 ident,
                 from,
                 to,
@@ -107,7 +107,7 @@ pub fn stmt(ts: &[Token]) -> Result<Stmt> {
                 sym(Keyword(Read)),
                 fun(ident)
             ),
-            |ident| Stmt::Read {
+            |ident, _, _| Stmt::Read {
                 ident
             }
         )
@@ -116,7 +116,7 @@ pub fn stmt(ts: &[Token]) -> Result<Stmt> {
                 sym(Keyword(Print)),
                 fun(expr)
             ),
-            |expr| Stmt::Print {
+            |expr, _, _| Stmt::Print {
                 expr
             }
         )
@@ -129,7 +129,7 @@ pub fn stmt(ts: &[Token]) -> Result<Stmt> {
                     sym(Punctuation(Parenthesis(Close))),
                 )
             ),
-            |expr| Stmt::Assert {
+            |expr, _, _| Stmt::Assert {
                 expr
             }
         )
@@ -137,11 +137,11 @@ pub fn stmt(ts: &[Token]) -> Result<Stmt> {
         .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
-pub fn expr(ts: &[Token]) -> Result<Expr> {
+pub fn expr(ts: &[Tok]) -> Result<Expr> {
     (alt()
         | map(
             (fun(opnd), fun(binop), fun(opnd)),
-            |(lhs, op, rhs)| Expr::BinOper {
+            |(lhs, op, rhs), _, _| Expr::BinOper {
                 lhs,
                 op,
                 rhs
@@ -149,28 +149,28 @@ pub fn expr(ts: &[Token]) -> Result<Expr> {
         )
         | map(
             (fun(unaop), fun(opnd)),
-            |(op, rhs)| Expr::UnaOper {
+            |(op, rhs), _, _| Expr::UnaOper {
                 op,
                 rhs
             }
         )
         | map(
             fun(opnd),
-            Expr::Opnd
+            |o, _, _| Expr::Opnd(o)
         )
     ).parse(ts)
 }
 
-pub fn opnd(ts: &[Token]) -> Result<Opnd> {
+pub fn opnd(ts: &[Tok]) -> Result<Opnd> {
     (alt()
         | fun(int)
         | fun(string)
-        | map(fun(ident), Opnd::Ident)
+        | map(fun(ident), |i, _, _| Opnd::Ident(i))
         | delimited(
             sym(Punctuation(Parenthesis(Open))),
             map(
                 fun(expr),
-                |expr| Opnd::Expr(Box::new(expr))
+                |expr, _, _| Opnd::Expr(Box::new(expr))
             ),
             sym(Punctuation(Parenthesis(Close)))
         )
@@ -178,20 +178,20 @@ pub fn opnd(ts: &[Token]) -> Result<Opnd> {
         .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
-pub fn ident(ts: &[Token]) -> Result<Ident> {
+pub fn ident(ts: &[Tok]) -> Result<Ident> {
     fst().parse(ts)
         .map_err(|(e, r)| (FromErr::from(e), r))
-        .and_then(|(t, s, p)| if let Identifier(ref t) = t {
+        .and_then(|(t, s, p)| if let Identifier(ref t) = *t.sym() {
             Ok((t.clone(), s, p))
         } else {
             Err((Unknown, 0..p))
         })
 }
 
-pub fn ty(ts: &[Token]) -> Result<Type> {
+pub fn ty(ts: &[Tok]) -> Result<Type> {
     fst().parse(ts)
         .map_err(|(e, r)| (FromErr::from(e), r))
-        .and_then(|(t, s, p)| if let Keyword(ref t) = t {
+        .and_then(|(t, s, p)| if let Keyword(ref t) = *t.sym() {
             Ok((match *t {
                 Int => Type::Integer,
                 Bool => Type::Bool,
@@ -203,40 +203,40 @@ pub fn ty(ts: &[Token]) -> Result<Type> {
         })
 }
 
-pub fn int(ts: &[Token]) -> Result<Opnd> {
+pub fn int(ts: &[Tok]) -> Result<Opnd> {
     fst().parse(ts)
         .map_err(|(e, r)| (FromErr::from(e), r))
-        .and_then(|(t, s, p)| if let Literal(Integer(ref i)) = t {
+        .and_then(|(t, s, p)| if let Literal(Integer(ref i)) = *t.sym() {
             Ok((Opnd::Int(i.clone()), s, p))
         } else {
             Err((Unknown, 0..p))
         })
 }
 
-pub fn string(ts: &[Token]) -> Result<Opnd> {
+pub fn string(ts: &[Tok]) -> Result<Opnd> {
     fst().parse(ts)
         .map_err(|(e, r)| (FromErr::from(e), r))
-        .and_then(|(t, s, p)| if let Literal(StringLit(ref t)) = t {
+        .and_then(|(t, s, p)| if let Literal(StringLit(ref t)) = *t.sym() {
             Ok((Opnd::StrLit(t.clone()), s, p))
         } else {
             Err((Unknown, 0..p))
         })
 }
 
-pub fn binop(ts: &[Token]) -> Result<BinOp> {
+pub fn binop(ts: &[Tok]) -> Result<BinOp> {
     fst().parse(ts)
         .map_err(|(e, r)| (FromErr::from(e), r))
-        .and_then(|(t, s, p)| if let Operator(ref o) = t {
+        .and_then(|(t, s, p)| if let Operator(ref o) = *t.sym() {
             Ok((BinOp::from_oper(o).ok_or((Unknown, 0..p))?, s, p))
         } else {
             Err((Unknown, 0..p))
         })
 }
 
-pub fn unaop(ts: &[Token]) -> Result<UnaOp> {
+pub fn unaop(ts: &[Tok]) -> Result<UnaOp> {
     fst().parse(ts)
         .map_err(|(e, r)| (FromErr::from(e), r))
-        .and_then(|(t, s, p)| if let Operator(ref o) = t {
+        .and_then(|(t, s, p)| if let Operator(ref o) = *t.sym() {
             Ok((UnaOp::from_oper(o).ok_or((Unknown, 0..p))?, s, p))
         } else {
             Err((Unknown, 0..p))

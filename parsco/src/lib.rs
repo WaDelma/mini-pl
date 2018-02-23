@@ -19,7 +19,7 @@
 //! # Examples
 //! ```rust
 //! extern crate parsco;
-//! use parsco::{Parser, take_while, delimited, tag, list0, fun, map};
+//! use parsco::{Parser, take_while1, delimited, tag, list0, fun, map};
 //! use std::char;
 //! 
 //! #[derive(Debug, PartialEq)]
@@ -30,7 +30,7 @@
 //! 
 //! fn parse_res(s: &str) -> parsco::Result<&str, Res, ()> {
 //!     map((
-//!         take_while(char::is_alphabetic),
+//!         take_while1(char::is_alphabetic),
 //!         delimited(
 //!             tag("{"),
 //!             list0(
@@ -40,7 +40,7 @@
 //!             tag("}")
 //!         )
 //!     ),
-//!     |(name, value)| Res {
+//!     |(name, value), _, _| Res {
 //!         name: name.into(),
 //!         value
 //!     }).parse(s)
@@ -75,16 +75,16 @@ use common::Void;
 
 pub use internal::basic::{tag, sym, fst, dbg, fun};
 pub use internal::delimited::{preceded, terminated, delimited};
-pub use internal::repeating::{many0, many1, list0, take_while, take_until, ws, take};
-pub use internal::control::{alt, map, flat_map, eat, opt};
+pub use internal::repeating::{many0, many1, list0, take_while0, take_while1, take_until, ws, take, take_nm};
+pub use internal::control::{alt, map, flat_map, eat, opt, satisfying};
 
 /// The structs used for the actual parsing.
 /// 
 /// User of the crate shouldn't have need to use these directly, but use functions that create them instead.
 pub mod parsers {
-    pub use internal::control::{Alt, Empty, Map, FlatMap, Eat, Opt};
+    pub use internal::control::{Alt, Empty, Map, FlatMap, Eat, Opt, Satisfying};
     pub use internal::delimited::{Preceded, Terminated, Delimited};
-    pub use internal::repeating::{Many0, Many1, List0, TakeWhile, TakeUntil, Whitespace, Take};
+    pub use internal::repeating::{Many0, Many1, List0, TakeWhile0, TakeWhile1, TakeUntil, Whitespace, Take, TakeNM};
     pub use internal::basic::{Tag, Symbol, Fst, Fun, Dbg};
 }
 
@@ -105,12 +105,27 @@ pub trait FromErr<E> {
     fn from(e: E) -> Self;
 }
 
+/// Type of symbols contained in `Parseable`
+pub trait Sym {
+    /// The type of actual symbol
+    type Sym;
+    /// Returns the symbol
+    fn sym(&self) -> &Self::Sym;
+}
+
+impl Sym for char {
+    type Sym = Self;
+    fn sym(&self) -> &Self::Sym {
+        self
+    }
+}
+
 /// Type that can be parsed by `Parser`.
 /// 
 /// It's `Copy`, because it's supposed to be implemented on shared references which are always `Copy`.
 pub trait Parseable: Copy {
     /// Symbol contained inside the parseable type.
-    type Symbol;
+    type Symbol: Sym;
     /// Returns how many symbols there are inside.
     fn len(self) -> usize;
     /// Returns true if there are no symbols inside.
@@ -150,7 +165,7 @@ impl<'a> Parseable for &'a str {
     }
 }
 
-impl<'a, T: PartialEq + Clone> Parseable for &'a [T] {
+impl<'a, T: PartialEq + Clone + Sym> Parseable for &'a [T] {
     type Symbol = T;
 
     fn len(self) -> usize {

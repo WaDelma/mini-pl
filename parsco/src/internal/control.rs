@@ -4,6 +4,55 @@ use std::ops::BitOr;
 use {Parser, Parseable, Result};
 use common::Err2;
 
+/// Allows to check that certain condition holds for the result of given parser. Used via `parsco::satisfying` function.
+pub struct Satisfying<P, F, S> {
+    parser: P,
+    predicate: F,
+    _marker: PhantomData<fn(S) -> S>,
+}
+
+impl<S, F, P> Parser<S> for Satisfying<P, F, S>
+    where S: Parseable,
+          P: Parser<S>,
+          F: Fn(&P::Res) -> bool,
+{
+    type Res = P::Res;
+    type Err = Err2<P::Err, ()>;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
+        self.parser.parse(s)
+            .map_err(|(err, pos)| (Err2::V1(err), pos))
+            .and_then(|(res, rest, pos)| {
+                if (self.predicate)(&res) {
+                    Ok((res, rest, pos))
+                } else {
+                    Err((Err2::V2(()), 0..pos))
+                }
+            })
+    }
+}
+
+/// Allows to use checking if predicate holds for result of given parser.
+/// 
+/// # Examples
+/// ```rust
+/// # use parsco::{Parser, fst, satisfying};
+/// assert_eq!(
+///     Ok(('b', "ar", 1)),
+///     satisfying(fst(), |c: &char| c.is_alphabetic()).parse("bar")
+/// );
+/// ```
+pub fn satisfying<S, P, F>(parser: P, predicate: F) -> Satisfying<P, F, S>
+    where S: Parseable,
+          P: Parser<S>,
+          F: Fn(&P::Res) -> bool,
+{
+    Satisfying {
+        parser,
+        predicate,
+        _marker: PhantomData,
+    }
+}
+
 /// Allows to try multiple alternative parsers in a sequence. Used via `parsco::alt` function.
 /// 
 /// Chaining multiple parsers using `BitOr` implementation creates type based list that ends with `Empty`.
@@ -13,7 +62,7 @@ use common::Err2;
 pub struct Alt<P, R, S> {
     parser: P,
     rest: R,
-    _marker: PhantomData<S>,
+    _marker: PhantomData<fn(S) -> S>,
 }
 
 impl<P, R, N, S, T> BitOr<N> for Alt<P, R, S>
@@ -49,7 +98,7 @@ impl<P, R, T, S> Parser<S> for Alt<P, R, S>
 
 // TODO: Remove P when `!` becomes stable.
 /// End of type type based list of `Alt`s. Used via `parsco::alt` function.
-pub struct Empty<P, S>(PhantomData<(P, S)>);
+pub struct Empty<P, S>(PhantomData<(fn(P), fn(S) -> S)>);
 
 impl<P, N, S, T> BitOr<N> for Empty<P, S>
     where S: Parseable,
@@ -147,13 +196,13 @@ pub struct Map<P, F> {
 impl<P, S, F, T> Parser<S> for Map<P, F>
     where P: Parser<S>,
           S: Parseable,
-          F: Fn(P::Res) -> T       
+          F: Fn(P::Res, S, usize) -> T       
 {
     type Res = T;
     type Err = P::Err;
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         self.parser.parse(s)
-            .map(|(res, s, p)| ((self.map)(res), s, p))
+            .map(|(res, s, p)| ((self.map)(res, s, p), s, p))
     }
 }
 
@@ -166,13 +215,13 @@ impl<P, S, F, T> Parser<S> for Map<P, F>
 /// struct Foo;
 /// assert_eq!(
 ///     Ok((Foo, "", 3)),
-///     map(tag("foo"), |_| Foo).parse("foo")
+///     map(tag("foo"), |_, _, _| Foo).parse("foo")
 /// );
 /// ```
 pub fn map<P, F, S, T>(parser: P, map: F) -> Map<P, F>
     where P: Parser<S>,
           S: Parseable,
-          F: Fn(P::Res) -> T
+          F: Fn(P::Res, S, usize) -> T    
 {
     Map {
         parser,
@@ -186,20 +235,19 @@ pub struct FlatMap<P, F> {
     map: F
 }
 
-impl<P, S, F, T> Parser<S> for FlatMap<P, F>
+impl<P, S, F, E, T> Parser<S> for FlatMap<P, F>
     where P: Parser<S>,
           S: Parseable,
-          F: Fn(P::Res) -> Option<T>
+          F: Fn(P::Res, S, usize) -> Result<S, T, E>
 {
     type Res = T;
-    type Err = Err2<P::Err, ()>;
+    type Err = Err2<P::Err, E>;
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         self.parser.parse(s)
             .map_err(|(e, p)| (Err2::V1(e), p))
             .and_then(|(res, s, pp)|
-                (self.map)(res)
-                    .map(|res| (res, s, pp))
-                    .ok_or((Err2::V2(()), 0..pp))
+                (self.map)(res, s, pp)
+                    .map_err(|(e, r)| (Err2::V2(e), r))
             )
     }
 }
@@ -213,7 +261,7 @@ impl<P, S, F, T> Parser<S> for FlatMap<P, F>
 /// struct Foo;
 /// assert_eq!(
 ///     Ok((Foo, "", 3)),
-///     flat_map(tag("foo"), |_| Some(Foo)).parse("foo")
+///     flat_map(tag("foo"), |_, s, r| Ok::<_, ((), _)>((Foo, s, r))).parse("foo")
 /// );
 /// ```
 /// ```rust
@@ -223,13 +271,13 @@ impl<P, S, F, T> Parser<S> for FlatMap<P, F>
 /// struct Foo;
 /// assert_eq!(
 ///     Err((Err2::V2(()), 0..3)),
-///     flat_map(tag("foo"), |_| None::<u8>).parse("foo")
+///     flat_map(tag("foo"), |_, _, r| Err::<((), _, _), _>(((), 0..r))).parse("foo")
 /// );
 /// ```
-pub fn flat_map<P, F, S, T>(parser: P, map: F) -> FlatMap<P, F>
+pub fn flat_map<P, F, S, T, E>(parser: P, map: F) -> FlatMap<P, F>
     where P: Parser<S>,
           S: Parseable,
-          F: Fn(P::Res) -> Option<T>
+          F: Fn(P::Res, S, usize) -> Result<S, T, E>
 {
     FlatMap {
         parser,

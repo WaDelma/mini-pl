@@ -1,18 +1,18 @@
 //! Parsers that are used to repeat other parsers.
 
-use {Parser, Parseable, Result, tag, terminated, preceded, opt, map};
+use {Parser, Parseable, Result, tag, terminated, opt, map};
 use parsers::Tag;
-use common::Err2;
+use common::{Err2, Void};
 
 use std::marker::PhantomData;
 
-/// Allows taking symbols from input while predicate holds. Used via `parsco::take_while` function.
-pub struct TakeWhile<F, P> {
+/// Allows taking symbols from input while predicate holds. Succeeds only if predicate holds even once. Used via `parsco::take_while1` function.
+pub struct TakeWhile1<F, S> {
     predicate: F,
-    _marker: PhantomData<P>,
+    _marker: PhantomData<fn(S) -> S>,
 }
 
-impl<F, S> Parser<S> for TakeWhile<F, S>
+impl<F, S> Parser<S> for TakeWhile1<F, S>
     where S: Parseable,
           F: Fn(<S as Parseable>::Symbol) -> bool,
 {
@@ -39,22 +39,164 @@ impl<F, S> Parser<S> for TakeWhile<F, S>
 }
 
 // TODO: Transform this use parser instead of closure?
-/// Takes symbols from the source while given predicate returns true.
+/// Takes symbols from the source while given predicate returns true. Succeeds when predicate doesn't match at all.
 /// 
 /// # Example
 /// ```rust
-/// # use parsco::{Parser, take_while};
+/// # use parsco::{Parser, take_while1};
 /// # use std::char;
 /// assert_eq!(
 ///     Ok(("foo", "123", 3)),
-///     take_while(char::is_alphabetic).parse("foo123")
+///     take_while1(char::is_alphabetic).parse("foo123")
 /// );
 /// ```
-pub fn take_while<F, S>(predicate: F) -> TakeWhile<F, S>
+/// ```rust
+/// # use parsco::{Parser, take_while1};
+/// # use std::char;
+/// assert_eq!(
+///     Err(((), 0..0)),
+///     take_while1(char::is_numeric).parse("foo123")
+/// );
+/// ```
+pub fn take_while1<F, S>(predicate: F) -> TakeWhile1<F, S>
     where F: Fn(char) -> bool,
           S: Parseable
 {
-    TakeWhile {
+    TakeWhile1 {
+        predicate,
+        _marker: PhantomData,
+    }
+}
+
+/// Allows taking at most and at least given amount of symbols from input while predicate holds. Used via `parsco::take_nm` function.
+pub struct TakeNM<F, S> {
+    min: usize,
+    max: usize,
+    predicate: F,
+    _marker: PhantomData<fn(S) -> S>,
+}
+
+impl<F, S> Parser<S> for TakeNM<F, S>
+    where S: Parseable,
+          F: Fn(<S as Parseable>::Symbol) -> bool,
+{
+    type Res = S;
+    type Err = ();
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
+        let mut n = 0;
+        let mut cur = s;
+        while let Some((start, end)) = cur.split_at(1) {
+            if (self.predicate)(start.first().expect("Split should ensure that there is first.")) {
+                cur = end;
+                n += 1;
+                if self.max <= n {
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+        if n < self.min {
+            Err(((), 0..n))
+        } else {
+            let (start, end) = s.split_at(n).expect("This index should be already split at.");
+            Ok((start, end, n))
+        }
+    }
+}
+
+/// Takes at least and at most given amount of symbols from the source while given predicate returns true.
+/// 
+/// # Example
+/// ```rust
+/// # use parsco::{Parser, take_nm};
+/// # use std::char;
+/// assert_eq!(
+///     Ok(("foo", "bar", 3)),
+///     take_nm(2, 3, char::is_alphabetic).parse("foobar")
+/// );
+/// ```
+/// ```rust
+/// # use parsco::{Parser, take_nm};
+/// # use std::char;
+/// assert_eq!(
+///     Ok(("fo", "0bar", 2)),
+///     take_nm(2, 3, char::is_alphabetic).parse("fo0bar")
+/// );
+/// ```
+/// ```rust
+/// # use parsco::{Parser, take_nm};
+/// # use std::char;
+/// assert_eq!(
+///     Err(((), 0..1)),
+///     take_nm(2, 3, char::is_alphabetic).parse("f00bar")
+/// );
+/// ```
+pub fn take_nm<F, S>(min: usize, max: usize, predicate: F) -> TakeNM<F, S>
+    where F: Fn(char) -> bool,
+          S: Parseable
+{
+    TakeNM {
+        predicate,
+        min,
+        max,
+        _marker: PhantomData,
+    }
+}
+
+/// Allows taking symbols from input while predicate holds. Succeeds even if predicate doens't hold at all. Used via `parsco::take_while0` function.
+pub struct TakeWhile0<F, S> {
+    predicate: F,
+    _marker: PhantomData<fn(S) -> S>,
+}
+
+impl<F, S> Parser<S> for TakeWhile0<F, S>
+    where S: Parseable,
+          F: Fn(<S as Parseable>::Symbol) -> bool,
+{
+    type Res = S;
+    type Err = Void;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
+        let mut n = 0;
+        let mut cur = s;
+        while let Some((start, end)) = cur.split_at(1) {
+            if (self.predicate)(start.first().expect("Split should ensure that there is first.")) {
+                cur = end;
+                n += 1;
+            } else {
+                break;
+            }
+        }
+        let (start, end) = s.split_at(n).expect("This index should be already split at.");
+        Ok((start, end, n))
+    }
+}
+
+// TODO: Transform this use parser instead of closure?
+/// Takes symbols from the source while given predicate returns true. Succeeds when predicate doesn't match at all.
+/// 
+/// # Example
+/// ```rust
+/// # use parsco::{Parser, take_while0};
+/// # use std::char;
+/// assert_eq!(
+///     Ok(("foo", "123", 3)),
+///     take_while0(char::is_alphabetic).parse("foo123")
+/// );
+/// ```
+/// ```rust
+/// # use parsco::{Parser, take_while0};
+/// # use std::char;
+/// assert_eq!(
+///     Ok(("", "foo123", 0)),
+///     take_while0(char::is_numeric).parse("foo123")
+/// );
+/// ```
+pub fn take_while0<F, S>(predicate: F) -> TakeWhile0<F, S>
+    where F: Fn(char) -> bool,
+          S: Parseable
+{
+    TakeWhile0 {
         predicate,
         _marker: PhantomData,
     }
@@ -226,7 +368,7 @@ impl<P, S> Parser<S> for List0<P, S>
                 ),
                 opt(&self.parser)
             ),
-            |(mut p, e)| {
+            |(mut p, e), _, _| {
                 p.extend(e);
                 p
             }
@@ -290,28 +432,47 @@ pub struct Whitespace<P> {
 impl<'b, P> Parser<&'b str> for Whitespace<P>
     where P: Parser<&'b str>,
 {
-    type Res = P::Res;
-    type Err = Err2<(), P::Err>;
-    fn parse(&self, s: &'b str) ->  Result<&'b str, Self::Res, Self::Err> {
-        preceded(
-            opt(take_while(char::is_whitespace)),
-            &self.parser
-        ).parse(s)
-        .map_err(|(e, p)| (match e {
-            Err2::V1(_) => Err2::V1(()),
-            Err2::V2(e) => Err2::V2(e),
-        }, p))
+    type Res = (P::Res, usize, usize);
+    type Err = P::Err;
+    fn parse(&self, mut s: &'b str) ->  Result<&'b str, Self::Res, Self::Err> {
+        let mut lines = 0;
+        let mut parsed = 0;
+        loop {
+            match take_while0(|c| c != '\n' && c.is_whitespace()).parse(s) {
+                Ok((_, ss, p)) => {
+                    s = ss;
+                    parsed += p;
+                    if let Some(f) = s.first() {
+                        if f == '\n' {
+                            s = s.split_at(1).1;
+                            lines += 1;
+                        } else if !f.is_whitespace() {
+                            return self.parser.parse(s)
+                                .map(|(t, s, pp)| ((t, lines, p), s, pp + parsed));
+                        }
+                    } else {
+                        return self.parser.parse(s)
+                            .map(|(t, s, pp)| ((t, lines, p), s, pp + parsed));
+                    }
+                },
+                Err(_) => {
+                    unreachable!("Void is uninhabited");
+                }
+            }
+        }
     }
 }
 
 /// Eats whitespace before parser.
 /// 
+/// Returns result of parser, how many lines were eaten and how much whitespace after last line has been eaten.
+/// 
 /// # Examples
 /// ```rust
 /// # use parsco::{Parser, tag, ws};
 /// assert_eq!(
-///     Ok(("foo", " bar", 6)),
-///     ws(tag("foo")).parse(" \n\tfoo bar")
+///     Ok((("foo", 3, 2), " bar", 6)),
+///     ws(tag("foo")).parse(" \n\n\n\t\tfoo bar")
 /// );
 /// ```
 pub fn ws<'b, P>(parser: P) -> Whitespace<P>
