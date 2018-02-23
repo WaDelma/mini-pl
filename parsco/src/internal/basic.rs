@@ -1,6 +1,39 @@
 use {Parser, Parseable, Sym, Result, take};
+use common::Void;
 
 use std::fmt;
+
+/// Accepts anything and returns constant value. Used via `parsco::constant` function.
+pub struct Constant<C>(C);
+
+impl<C, S> Parser<S> for Constant<C>
+    where S: Parseable,
+          C: Clone,
+{
+    type Res = C;
+    type Err = Void;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
+        Ok((self.0.clone(), s, 0))
+    }
+}
+
+/// Returns constant value regardless of the input.
+/// 
+/// Beware: This combinator doesn't eat anything from the input.
+/// 
+/// # Examples
+/// ```rust
+/// # use parsco::{Parser, Result, constant};
+/// assert_eq!(
+///     Ok(("things", " stuff", 0)),
+///     constant("things").parse("stuff")
+/// );
+/// ```
+pub fn constant<C>(c: C) -> Constant<C>
+    where C: Clone
+{
+    Constant(c)
+}
 
 /// Allows wrapping function as parser. Used via `parsco::fun` function.
 pub struct Fun<P>(P);

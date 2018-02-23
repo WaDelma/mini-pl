@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 use std::ops::BitOr;
 
 use {Parser, Parseable, Result};
-use common::Err2;
+use common::{Err2, Void};
 
 /// Allows to check that certain condition holds for the result of given parser. Used via `parsco::satisfying` function.
 pub struct Satisfying<P, F, S> {
@@ -278,6 +278,47 @@ pub fn flat_map<P, F, S, T, E>(parser: P, map: F) -> FlatMap<P, F>
     where P: Parser<S>,
           S: Parseable,
           F: Fn(P::Res, S, usize) -> Result<S, T, E>
+{
+    FlatMap {
+        parser,
+        map
+    }
+}
+
+/// Allows recovering from a failure of the given parser. Used via `parsco::fix_err` function.
+pub struct FixErr<P, F> {
+    parser: P,
+    fixer: F
+}
+
+impl<P, S, F> Parser<S> for FixErr<P, F>
+    where P: Parser<S>,
+          S: Parseable,
+          F: Fn(P::Err, S, ::std::ops::Range<usize>) -> (P::Res, S, usize)
+{
+    type Res = P::Res;
+    type Err = Void;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
+        Ok(self.parser.parse(s)
+            .unwrap_or_else(|(err, pos)| (self.fixer)(err, s, pos)))
+    }
+}
+
+/// Allows transforming failed parse to succesful one.
+/// 
+/// # Examples
+/// ```rust
+/// # use parsco::{Parser, flat_map, tag};
+/// #[derive(Debug, PartialEq)]
+/// assert_eq!(
+///     Ok(("baz", "bar", 0)),
+///     fix_err(tag("foo"), |_, _, _| "baz").parse("bar")
+/// );
+/// ```
+pub fn fix_err<P, F, S, T, E>(parser: P, map: F) -> FlatMap<P, F>
+    where P: Parser<S>,
+          S: Parseable,
+          F: Fn(P::Err, S, ::std::ops::Range<usize>) -> (P::Res, S, usize)
 {
     FlatMap {
         parser,

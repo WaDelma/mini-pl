@@ -8,6 +8,8 @@ use super::ast::BinOp::*;
 use super::ast::UnaOp::*;
 use super::parse;
 
+mod error;
+
 #[test]
 fn complex_expr() {
     let bop = |lhs, op, rhs| Expr(Box::new(BinOper { lhs, op, rhs }));

@@ -31,6 +31,7 @@ impl Opnd {
     pub fn pretty_print(&self, ctx: &Context<TypedValue>) -> String {
         use self::Opnd::*;
         match *self {
+            Err(ref e) => panic!("Error: {:?}", e),
             Int(ref i) => i.to_string(),
             StrLit(ref s) => s.to_string(),
             Ident(ref i) => format!("{}", ctx.get(i).unwrap().value()),

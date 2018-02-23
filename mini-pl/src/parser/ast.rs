@@ -1,5 +1,7 @@
 use num_bigint::BigInt;
 
+use parsco::FromErr;
+
 use std::fmt;
 
 use Ident;
@@ -77,16 +79,24 @@ impl fmt::Display for Expr {
 
 #[derive(Clone, PartialEq)]
 pub enum Opnd {
+    Err(OpndError),
     Int(BigInt),
     StrLit(String),
     Ident(Ident),
     Expr(Box<Expr>),
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum OpndError {
+    MissingEndParenthesis,
+    InvalidOperand,
+}
+
 impl fmt::Display for Opnd {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         use self::Opnd::*;
         fmt.write_str(&match *self {
+            Err(ref e) => format!("{:?}", e), // TODO: Proper error message?
             Int(ref i) => i.to_string(),
             StrLit(ref s) => s.to_string(),
             Ident(ref i) => i.to_string(),
@@ -99,6 +109,11 @@ impl fmt::Debug for Opnd {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         use self::Opnd::*;
         match *self {
+            Err(ref e) => {
+                fmt.write_str("Int(")?;
+                e.fmt(fmt)?;
+                fmt.write_str(")")
+            }
             Int(ref i) => {
                 fmt.write_str("Int(")?;
                 i.fmt(fmt)?;
@@ -194,4 +209,27 @@ pub enum Type {
     Integer,
     Str,
     Bool
+}
+
+#[derive(Debug, PartialEq)]
+pub enum ParseError {
+    Unknown,
+}
+
+impl FromErr<()> for ParseError {
+    fn from(_: ()) -> Self {
+        ParseError::Unknown
+    }
+}
+
+impl FromErr<ParseError> for ParseError {
+    fn from(l: ParseError) -> Self {
+        l
+    }
+}
+
+impl FromErr<::parsco::common::Void> for ParseError {
+    fn from(_: ::parsco::common::Void) -> Self {
+        unreachable!("Void is never type.")
+    }
 }

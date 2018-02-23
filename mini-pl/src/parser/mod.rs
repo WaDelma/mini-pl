@@ -1,4 +1,4 @@
-use parsco::{Parser, FromErr, Sym, many1, preceded, terminated, delimited, fun, sym, alt, opt, map, fst};
+use parsco::{Parser, FromErr, Sym, many1, preceded, terminated, delimited, fun, sym, alt, opt, map, fst, take_until, constant, fix_err};
 
 use Ident;
 use lexer::tokens::Tok;
@@ -9,31 +9,15 @@ use lexer::tokens::Keyword::*;
 use lexer::tokens::Operator::*;
 use lexer::tokens::Literal::*;
 use lexer::tokens::Token;
-use self::ast::{Statement, Stmt, Expr, Type, Opnd, BinOp, UnaOp};
-use self::ParseError::*;
+use self::ast::{Statement, Stmt, Expr, Type, Opnd, BinOp, UnaOp, ParseError};
+use self::ast::OpndError::*;
+use self::ast::ParseError::*;
 
 type Result<'a, T> = ::parsco::Result<&'a [Tok], T, ParseError>;
 
 pub mod ast;
 #[cfg(test)]
 mod tests;
-
-#[derive(Debug, PartialEq)]
-pub enum ParseError {
-    Unknown,
-}
-
-impl FromErr<()> for ParseError {
-    fn from(_: ()) -> Self {
-        ParseError::Unknown
-    }
-}
-
-impl FromErr<ParseError> for ParseError {
-    fn from(l: ParseError) -> Self {
-        l
-    }
-}
 
 pub fn parse(ts: &[Tok]) -> Result<Vec<Stmt>> {
     many1(
@@ -167,14 +151,26 @@ pub fn opnd(ts: &[Tok]) -> Result<Opnd> {
         | fun(int)
         | fun(string)
         | map(fun(ident), |i, _, _| Opnd::Ident(i))
-        | delimited(
+        | preceded(
             sym(Punctuation(Parenthesis(Open))),
-            map(
-                fun(expr),
-                |expr, _, _| Opnd::Expr(Box::new(expr))
-            ),
-            sym(Punctuation(Parenthesis(Close)))
+            fix_err(terminated(map(
+                        fun(expr),
+                        |expr, _, _| Opnd::Expr(Box::new(expr))
+                    ),
+                    sym(Punctuation(Parenthesis(Close)))
+                ),
+                |_, rest, pos| (Opnd::Err(MissingEndParenthesis), rest, pos.end)
+            )
+            // alt()
+            //     | terminated(map(
+            //             fun(expr),
+            //             |expr, _, _| Opnd::Expr(Box::new(expr))
+            //         ),
+            //         sym(Punctuation(Parenthesis(Close)))
+            //     )
+            //     | constant(Opnd::Err(MissingEndParenthesis))
         )
+        | constant(Opnd::Err(InvalidOperand))
     ).parse(ts)
         .map_err(|(e, r)| (FromErr::from(e), r))
 }

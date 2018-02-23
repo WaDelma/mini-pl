@@ -164,6 +164,7 @@ fn interpret_expr(expr: &Expr, ctx: &mut Context<TypedValue>) -> TypedValue {
 fn interpret_opnd(opnd: &Opnd, ctx: &mut Context<TypedValue>) -> TypedValue {
     use self::Opnd::*;
     match *opnd {
+        Err(ref e) => panic!("Error: {:?}", e),
         Int(ref i) => TypedValue::from_value(Value::Integer(i.clone())),
         StrLit(ref s) => TypedValue::from_value(Value::Str(s.clone())),
         Ident(ref ident) => ctx.get(ident).expect(&format!("Tried to use undeclared variable: `{}`.", ident)).clone(),
