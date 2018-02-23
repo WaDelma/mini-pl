@@ -5,6 +5,7 @@ use std::fmt;
 use Ident;
 use lexer::tokens::{Operator, Position};
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct Statement {
     stmt: Stmt,
     from: Position,

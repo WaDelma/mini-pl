@@ -121,6 +121,7 @@ pub enum Keyword {
 #[derive(Debug, PartialEq, Clone)]
 pub enum LexError {
     HexadecimalLexError(HexadecimalLexError),
+    OctalLexError(OctalLexError),
     UnknownEscape(String),
     Unknown,
 }
@@ -149,10 +150,30 @@ impl From<HexadecimalLexError> for LexError {
     }
 }
 
+impl From<OctalLexError> for LexError {
+    fn from(e: OctalLexError) -> Self {
+        LexError::OctalLexError(e)
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum OctalLexError {
+    ParseIntError(ParseIntError),
+    FromUtf8Error(Utf8Error),
+    InvalidUtf8,
+}
+
+impl From<ParseIntError> for OctalLexError {
+    fn from(e: ParseIntError) -> Self {
+        OctalLexError::ParseIntError(e)
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum HexadecimalLexError {
     ParseIntError(ParseIntError),
     FromUtf8Error(Utf8Error),
+    InvalidUtf8,
 }
 
 impl From<ParseIntError> for HexadecimalLexError {

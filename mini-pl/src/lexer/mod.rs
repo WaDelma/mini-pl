@@ -3,7 +3,7 @@ use std::cell::Cell;
 
 use parsco::{Parser, FromErr, tag, many0, alt, fun, preceded, terminated, take_while0, take_while1, take_until, ws, fst, opt, map, eat, take, flat_map, satisfying, take_nm};
 
-use self::tokens::{Token, Tok, Position, LexError};
+use self::tokens::{Token, Tok, Position, LexError, HexadecimalLexError, OctalLexError};
 use self::tokens::Punctuation::*;
 use self::tokens::Side::*;
 use self::tokens::Keyword::*;
@@ -39,16 +39,19 @@ pub fn tokenize(s: &str) -> ParseResult<Vec<Tok>> {
             |((_, comment_lines, comment_columns), ((token, token_size), preceding_lines, preceding_columns)), _, eaten_chars| {
                 let cur_line = line.get();
                 line.set(cur_line + comment_lines + preceding_lines);
+
                 let mut cur_column = column.get();
-                if comment_lines + preceding_lines == 0 {
-                    column.set(cur_column + eaten_chars);
-                } else if preceding_lines == 0 {
-                    cur_column = 0;
-                    column.set(comment_columns + token_size);
+                column.set(if comment_lines + preceding_lines == 0 {
+                    cur_column + eaten_chars
                 } else {
                     cur_column = 0;
-                    column.set(preceding_columns + token_size);
-                }
+                    token_size + if preceding_lines == 0 {
+                        comment_columns 
+                    } else {
+                        preceding_columns
+                    }
+                });
+
                 Tok {
                     token,
                     from: Position {
@@ -212,20 +215,20 @@ fn str_contents(input: &str) -> ParseResult<StrOrLexErr> {
                 tag(r#"\"#),
                 map(
                     take_nm(1, 3, |c| char::is_digit(c, 8)),
-                    |x, _, _| Str(oct_as_byte(x))
+                    |x, _, _| oct_as_byte(x).into()
                 )
             )
             | preceded(
                 tag(r#"\x"#),
                 map(
                     take_while1(|c| char::is_digit(c, 16)),
-                    |x, _, _| Str(hex_as_byte(x))
+                    |x, _, _| hex_as_byte(x).into()
                 )
             )
             | map(alt()
                     | preceded(tag(r#"\U"#), take(8))
                     | preceded(tag(r#"\u"#), take(4)),
-                |r, _, _| Str(hex_as_char(r))
+                |r, _, _| hex_as_char(r).into()
             )
             | map((tag(r#"\"#), fst()), |(_, escape), _, _| LexErr(UnknownEscape(escape.to_string())))
             | eat(tag(r#"""#), Str("".into()))
@@ -253,30 +256,43 @@ fn str_contents(input: &str) -> ParseResult<StrOrLexErr> {
 }
 
 /// Trasforms given hexadecimal code to character corresponding to it
-fn hex_as_char(x: &str) -> String {
-    char::from_u32(
-        u32::from_str_radix(x, 16).unwrap()
-    ).unwrap().to_string()
+fn hex_as_char(x: &str) -> Result<String, HexadecimalLexError> {
+    use self::HexadecimalLexError::*;
+    Ok(char::from_u32(
+        u32::from_str_radix(x, 16)?
+    ).ok_or(InvalidUtf8)?.to_string())
 }
 
 /// Trasforms given octal code to byte corresponding to it
-fn oct_as_byte(x: &str) -> String {
-    char::from_u32(
-        u8::from_str_radix(x, 8).unwrap() as u32
-    ).unwrap().to_string()
+fn oct_as_byte(x: &str) -> Result<String, OctalLexError> {
+    use self::OctalLexError::*;
+    Ok(char::from_u32(
+        u8::from_str_radix(x, 8)? as u32
+    ).ok_or(InvalidUtf8)?.to_string())
 }
 
 /// Trasforms given hexadecimal code to byte corresponding to it
-fn hex_as_byte(x: &str) -> String {
-    char::from_u32(
-        u8::from_str_radix(x, 16).unwrap() as u32
-    ).unwrap().to_string()
+fn hex_as_byte(x: &str) -> Result<String, HexadecimalLexError> {
+    use self::HexadecimalLexError::*;
+    Ok(char::from_u32(
+        u8::from_str_radix(x, 16)? as u32
+    ).ok_or(InvalidUtf8)?.to_string())
 }
 
 #[derive(Clone)]
 enum StrOrLexErr {
     Str(String),
     LexErr(LexError),
+}
+
+impl<E: Into<LexError>> From<Result<String, E>> for StrOrLexErr {
+    fn from(r: Result<String, E>) -> Self {
+        use self::StrOrLexErr::*;
+        match r {
+            Ok(s) => Str(s),
+            Err(e) => LexErr(e.into()),
+        }
+    }
 }
 
 impl StrOrLexErr {
@@ -289,6 +305,7 @@ impl StrOrLexErr {
             e => e,
         }
     }
+
     fn into_res(self) -> Result<String, LexError> {
         use self::StrOrLexErr::*;
         match self {

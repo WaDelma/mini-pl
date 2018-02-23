@@ -8,7 +8,6 @@ use lexer::tokens::Side::*;
 use lexer::tokens::Keyword::*;
 use lexer::tokens::Operator::*;
 use lexer::tokens::Literal::*;
-use lexer::tokens::Token;
 use self::ast::{Statement, Stmt, Expr, Type, Opnd, BinOp, UnaOp};
 use self::ParseError::*;
 
