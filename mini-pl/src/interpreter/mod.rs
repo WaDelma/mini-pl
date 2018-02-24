@@ -20,6 +20,7 @@ pub fn interpret<IO: Io>(stmts: &[Stmt], ctx: &mut Context<TypedValue>, stdio: &
 fn interpret_stmt<IO: Io>(stmt: &Stmt, ctx: &mut Context<TypedValue>, stdio: &mut IO) {
     use self::Stmt::*;
     match *stmt {
+        ErrStmt(ref e) => panic!("Error while parsing: {:?}", e),
         Declaration {
             ref ident,
             ref ty,
@@ -164,7 +165,7 @@ fn interpret_expr(expr: &Expr, ctx: &mut Context<TypedValue>) -> TypedValue {
 fn interpret_opnd(opnd: &Opnd, ctx: &mut Context<TypedValue>) -> TypedValue {
     use self::Opnd::*;
     match *opnd {
-        Err(ref e) => panic!("Error: {:?}", e),
+        OpndErr(ref e) => panic!("Error: {:?}", e),
         Int(ref i) => TypedValue::from_value(Value::Integer(i.clone())),
         StrLit(ref s) => TypedValue::from_value(Value::Str(s.clone())),
         Ident(ref ident) => ctx.get(ident).expect(&format!("Tried to use undeclared variable: `{}`.", ident)).clone(),

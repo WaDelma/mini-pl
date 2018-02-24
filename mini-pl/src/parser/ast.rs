@@ -16,6 +16,7 @@ pub struct Statement {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Stmt {
+    ErrStmt(ParseError),
     Declaration {
         ident: Ident,
         ty: Type,
@@ -80,7 +81,7 @@ impl fmt::Display for Expr {
 
 #[derive(Clone, PartialEq)]
 pub enum Opnd {
-    Err(OpndError),
+    OpndErr(OpndError),
     Int(BigInt),
     StrLit(String),
     Ident(Ident),
@@ -97,7 +98,7 @@ impl fmt::Display for Opnd {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         use self::Opnd::*;
         fmt.write_str(&match *self {
-            Err(ref e) => format!("{:?}", e), // TODO: Proper error message?
+            OpndErr(ref e) => format!("{:?}", e), // TODO: Proper error message?
             Int(ref i) => i.to_string(),
             StrLit(ref s) => s.to_string(),
             Ident(ref i) => i.to_string(),
@@ -110,7 +111,7 @@ impl fmt::Debug for Opnd {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         use self::Opnd::*;
         match *self {
-            Err(ref e) => {
+            OpndErr(ref e) => {
                 fmt.write_str("Int(")?;
                 e.fmt(fmt)?;
                 fmt.write_str(")")
@@ -207,14 +208,21 @@ impl UnaOp {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Type {
+    TypeErr(TypeError),
     Integer,
     Str,
     Bool
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
+pub enum TypeError {
+    UnknownType(String),
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum ParseError {
     Unknown,
+    MissingSemicolon,
 }
 
 impl FromErr<()> for ParseError {

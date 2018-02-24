@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 use std::ops::BitOr;
 
 use {Parser, Parseable, Result};
-use common::{Err2, Void};
+use common::Err2;
 
 /// Allows to check that certain condition holds for the result of given parser. Used via `parsco::satisfying` function.
 pub struct Satisfying<P, F, S> {
@@ -35,7 +35,8 @@ impl<S, F, P> Parser<S> for Satisfying<P, F, S>
 /// 
 /// # Examples
 /// ```rust
-/// # use parsco::{Parser, fst, satisfying};
+/// use parsco::{Parser, fst, satisfying};
+/// 
 /// assert_eq!(
 ///     Ok(('b', "ar", 1)),
 ///     satisfying(fst(), |c: &char| c.is_alphabetic()).parse("bar")
@@ -128,7 +129,8 @@ impl<T, S> Parser<S> for Empty<T, S>
 /// 
 /// # Examples
 /// ```rust
-/// # use parsco::{Parser, alt, tag};
+/// use parsco::{Parser, alt, tag};
+/// 
 /// let parser = alt()
 ///     | tag("foo")
 ///     | tag("bar");
@@ -167,7 +169,8 @@ impl<P, S> Parser<S> for Opt<P>
 /// 
 /// # Examples
 /// ```rust
-/// # use parsco::{Parser, opt, tag};
+/// use parsco::{Parser, opt, tag};
+/// 
 /// let parser = opt(tag("foo"));
 /// assert_eq!(
 ///     Ok((Some("foo"), "", 3)),
@@ -210,9 +213,11 @@ impl<P, S, F, T> Parser<S> for Map<P, F>
 /// 
 /// # Examples
 /// ```rust
-/// # use parsco::{Parser, map, tag};
+/// use parsco::{Parser, map, tag};
+/// 
 /// #[derive(Debug, PartialEq)]
 /// struct Foo;
+/// 
 /// assert_eq!(
 ///     Ok((Foo, "", 3)),
 ///     map(tag("foo"), |_, _, _| Foo).parse("foo")
@@ -256,19 +261,23 @@ impl<P, S, F, E, T> Parser<S> for FlatMap<P, F>
 /// 
 /// # Examples
 /// ```rust
-/// # use parsco::{Parser, flat_map, tag};
+/// use parsco::{Parser, flat_map, tag};
+/// 
 /// #[derive(Debug, PartialEq)]
 /// struct Foo;
+/// 
 /// assert_eq!(
 ///     Ok((Foo, "", 3)),
 ///     flat_map(tag("foo"), |_, s, r| Ok::<_, ((), _)>((Foo, s, r))).parse("foo")
 /// );
 /// ```
 /// ```rust
-/// # use parsco::{Parser, flat_map, tag};
+/// use parsco::{Parser, flat_map, tag};
+/// 
 /// # use parsco::common::Err2;
 /// #[derive(Debug, PartialEq)]
 /// struct Foo;
+/// 
 /// assert_eq!(
 ///     Err((Err2::V2(()), 0..3)),
 ///     flat_map(tag("foo"), |_, _, r| Err::<((), _, _), _>(((), 0..r))).parse("foo")
@@ -286,21 +295,21 @@ pub fn flat_map<P, F, S, T, E>(parser: P, map: F) -> FlatMap<P, F>
 }
 
 /// Allows recovering from a failure of the given parser. Used via `parsco::fix_err` function.
-pub struct FixErr<P, F> {
+pub struct FlatMapErr<P, F> {
     parser: P,
     fixer: F
 }
 
-impl<P, S, F> Parser<S> for FixErr<P, F>
+impl<P, S, F, E> Parser<S> for FlatMapErr<P, F>
     where P: Parser<S>,
           S: Parseable,
-          F: Fn(P::Err, S, ::std::ops::Range<usize>) -> (P::Res, S, usize)
+          F: Fn(P::Err, S, ::std::ops::Range<usize>) -> Result<S, P::Res, E>
 {
     type Res = P::Res;
-    type Err = Void;
+    type Err = E;
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
-        Ok(self.parser.parse(s)
-            .unwrap_or_else(|(err, pos)| (self.fixer)(err, s, pos)))
+        self.parser.parse(s)
+            .or_else(|(err, pos)| (self.fixer)(err, s, pos))
     }
 }
 
@@ -308,21 +317,23 @@ impl<P, S, F> Parser<S> for FixErr<P, F>
 /// 
 /// # Examples
 /// ```rust
-/// # use parsco::{Parser, flat_map, tag};
+/// use parsco::{Parser, flat_map_err, tag};
+/// use parsco::common::Void;
+/// 
 /// #[derive(Debug, PartialEq)]
 /// assert_eq!(
 ///     Ok(("baz", "bar", 0)),
-///     fix_err(tag("foo"), |_, _, _| "baz").parse("bar")
+///     flat_map_err::<_, _, _, Void>(tag("foo"), |_, rest, pos| Ok(("baz", rest, pos.end))).parse("bar")
 /// );
 /// ```
-pub fn fix_err<P, F, S, T, E>(parser: P, map: F) -> FlatMap<P, F>
+pub fn flat_map_err<P, F, S, E>(parser: P, fixer: F) -> FlatMapErr<P, F>
     where P: Parser<S>,
           S: Parseable,
-          F: Fn(P::Err, S, ::std::ops::Range<usize>) -> (P::Res, S, usize)
+          F: Fn(P::Err, S, ::std::ops::Range<usize>) -> Result<S, P::Res, E>
 {
-    FlatMap {
+    FlatMapErr {
         parser,
-        map
+        fixer
     }
 }
 
@@ -349,7 +360,7 @@ impl<P, S, T> Parser<S> for Eat<P, T>
 /// 
 /// # Examples
 /// ```rust
-/// # use parsco::{Parser, eat, tag};
+/// use parsco::{Parser, eat, tag};
 /// assert_eq!(
 ///     Ok(("+", "", 3)),
 ///     eat(tag("add"), "+").parse("add")

@@ -31,7 +31,7 @@ impl Opnd {
     pub fn pretty_print(&self, ctx: &Context<TypedValue>) -> String {
         use self::Opnd::*;
         match *self {
-            Err(ref e) => panic!("Error: {:?}", e),
+            OpndErr(ref e) => panic!("Error: {:?}", e),
             Int(ref i) => i.to_string(),
             StrLit(ref s) => s.to_string(),
             Ident(ref i) => format!("{}", ctx.get(i).unwrap().value()),
@@ -186,6 +186,7 @@ impl From<Type> for Ty {
     fn from(ty: Type) -> Self {
         use self::Type::*;
         match ty {
+            TypeErr(e) => panic!("Unknown type: {:?}", e),
             Integer => Ty::Integer,
             Str => Ty::Str,
             Bool => Ty::Bool,

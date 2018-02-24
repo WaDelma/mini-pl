@@ -25,7 +25,8 @@ impl<P1, P2, S> Parser<S> for Preceded<P1, P2>
 /// 
 /// # Examples
 /// ```rust
-/// # use parsco::{Parser, preceded, tag, take};
+/// use parsco::{Parser, preceded, tag, take};
+/// 
 /// assert_eq!(
 ///     Ok(("foo", "", 4)),
 ///     preceded(
@@ -68,7 +69,8 @@ impl<P1, P2, S> Parser<S> for Terminated<P1, P2>
 /// 
 /// # Examples
 /// ```rust
-/// # use parsco::{Parser, terminated, tag, take};
+/// use parsco::{Parser, terminated, tag, take};
+/// 
 /// assert_eq!(
 ///     Ok(("foo", "", 4)),
 ///     terminated(
@@ -113,7 +115,8 @@ impl<P1, P2, P3, S> Parser<S> for Delimited<P1, P2, P3>
 /// 
 /// # Examples
 /// ```rust
-/// # use parsco::{Parser, delimited, tag, take};
+/// use parsco::{Parser, delimited, tag, take};
+/// 
 /// assert_eq!(
 ///     Ok(("foo", "", 5)),
 ///     delimited(
@@ -151,7 +154,7 @@ impl<P1, P2, S> Parser<S> for (P1, P2)
                 self.1
                     .parse(s)
                     .map(|(r2, s, p)| ((r1, r2), s, pp + p))
-                    .map_err(|(e, p)| (::common::Err2::V2(e), pp..(pp + p.end)))
+                    .map_err(|(e, p)| (::common::Err2::V2(e), (pp + p.start)..(pp + p.end)))
             )
     }
 }

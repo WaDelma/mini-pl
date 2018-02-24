@@ -1,4 +1,5 @@
-use parsco::{Parser, FromErr, Sym, many1, preceded, terminated, delimited, fun, sym, alt, opt, map, fst, take_until, constant, fix_err};
+use parsco::common::{Err2, Err3, Void};
+use parsco::*;
 
 use Ident;
 use lexer::tokens::Tok;
@@ -8,10 +9,10 @@ use lexer::tokens::Side::*;
 use lexer::tokens::Keyword::*;
 use lexer::tokens::Operator::*;
 use lexer::tokens::Literal::*;
-use lexer::tokens::Token;
 use self::ast::{Statement, Stmt, Expr, Type, Opnd, BinOp, UnaOp, ParseError};
 use self::ast::OpndError::*;
 use self::ast::ParseError::*;
+use self::ast::TypeError::*;
 
 type Result<'a, T> = ::parsco::Result<&'a [Tok], T, ParseError>;
 
@@ -21,9 +22,15 @@ mod tests;
 
 pub fn parse(ts: &[Tok]) -> Result<Vec<Stmt>> {
     many1(
-        terminated(
-            fun(stmt),
-            sym(Punctuation(Semicolon))
+        flat_map_err(
+            terminated(
+                fun(stmt),
+                sym(Punctuation(Semicolon))
+            ),
+            |err, rest, pos| match err {
+                Err2::V1(e) => Err((e, pos)),
+                Err2::V2(_) => Ok((Stmt::ErrStmt(MissingSemicolon), &rest[(pos.end - 1)..], pos.end - 1)),
+            }
         )
     ).parse(ts)
         .map_err(|(e, r)| (FromErr::from(e), r))
@@ -119,7 +126,10 @@ pub fn stmt(ts: &[Tok]) -> Result<Stmt> {
             }
         )
     ).parse(ts)
-        .map_err(|(e, r)| (FromErr::from(e), r))
+        .map_err(|(err, pos)| (match err {
+                Err2::V2(Err3::V2(e)) => FromErr::from(e),
+                _ => ParseError::Unknown,
+            }, pos))
 }
 
 pub fn expr(ts: &[Tok]) -> Result<Expr> {
@@ -153,24 +163,21 @@ pub fn opnd(ts: &[Tok]) -> Result<Opnd> {
         | map(fun(ident), |i, _, _| Opnd::Ident(i))
         | preceded(
             sym(Punctuation(Parenthesis(Open))),
-            fix_err(terminated(map(
+            flat_map_err(
+                terminated(
+                    map(
                         fun(expr),
                         |expr, _, _| Opnd::Expr(Box::new(expr))
                     ),
                     sym(Punctuation(Parenthesis(Close)))
                 ),
-                |_, rest, pos| (Opnd::Err(MissingEndParenthesis), rest, pos.end)
+                |err, rest, pos| match err {
+                    Err2::V1(e) => Err((e, pos)),
+                    Err2::V2(_) => Ok((Opnd::OpndErr(MissingEndParenthesis), &rest[(pos.end - 1)..], pos.end - 1)),
+                }
             )
-            // alt()
-            //     | terminated(map(
-            //             fun(expr),
-            //             |expr, _, _| Opnd::Expr(Box::new(expr))
-            //         ),
-            //         sym(Punctuation(Parenthesis(Close)))
-            //     )
-            //     | constant(Opnd::Err(MissingEndParenthesis))
         )
-        | constant(Opnd::Err(InvalidOperand))
+        | constant(Opnd::OpndErr(InvalidOperand))
     ).parse(ts)
         .map_err(|(e, r)| (FromErr::from(e), r))
 }
@@ -196,7 +203,10 @@ pub fn ty(ts: &[Tok]) -> Result<Type> {
                 _ => Err((Unknown, 0..p))?,
             }, s, p))
         } else {
-            Err((Unknown, 0..p))
+            match *t.sym() {
+                Identifier(ref i) => Ok((Type::TypeErr(UnknownType(i.clone())), s, p)),
+                _ => Err((Unknown, 0..p))   
+            }
         })
 }
 
