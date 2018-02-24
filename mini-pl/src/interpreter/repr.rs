@@ -9,6 +9,7 @@ impl Expr {
     pub fn pretty_print(&self, ctx: &Context<TypedValue>) -> String {
         use self::Expr::*;
         match *self {
+            ErrExpr(ref e) => panic!("Invalid expression: {:?}", e),
             BinOper {
                 ref lhs,
                 ref op,

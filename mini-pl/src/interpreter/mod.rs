@@ -118,6 +118,7 @@ fn interpret_expr(expr: &Expr, ctx: &mut Context<TypedValue>) -> TypedValue {
     use parser::ast::BinOp::*;
     use parser::ast::UnaOp::*;
     match *expr {
+        ErrExpr(ref e) => panic!("Invalid expression: {:?}", e),
         BinOper {
             ref lhs,
             ref op,

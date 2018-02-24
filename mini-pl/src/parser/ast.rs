@@ -5,7 +5,7 @@ use parsco::FromErr;
 use std::fmt;
 
 use Ident;
-use lexer::tokens::{Operator, Position};
+use lexer::tokens::{Operator, Position, Keyword, Side};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Statement {
@@ -45,6 +45,7 @@ pub enum Stmt {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
+    ErrExpr(ExprError),
     BinOper {
         lhs: Opnd,
         op: BinOp,
@@ -57,10 +58,16 @@ pub enum Expr {
     Opnd(Opnd),
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum ExprError {
+    MissingParenthesis(Side),
+}
+
 impl fmt::Display for Expr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         use self::Expr::*;
         fmt.write_str(&match *self {
+            ErrExpr(ref e) => panic!("Invalid expression: {:?}", e),
             BinOper {
                 ref lhs,
                 ref op,
@@ -217,6 +224,8 @@ pub enum Type {
 #[derive(Clone, Debug, PartialEq)]
 pub enum TypeError {
     UnknownType(String),
+    KeywordNotType(Keyword),
+    NoTypeAnnotation
 }
 
 #[derive(Debug, Clone, PartialEq)]

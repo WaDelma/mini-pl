@@ -1,4 +1,6 @@
 use lexer::tokenize;
+use lexer::tokens::Keyword;
+use lexer::tokens::Side::*;
 
 use super::super::ast::Stmt::*;
 use super::super::ast::Expr::*;
@@ -7,6 +9,7 @@ use super::super::ast::Type::*;
 use super::super::ast::BinOp::*;
 use super::super::ast::UnaOp::*;
 use super::super::ast::OpndError::*;
+use super::super::ast::ExprError::*;
 use super::super::ast::ParseError::*;
 use super::super::ast::TypeError::*;
 use super::super::parse;
@@ -35,9 +38,6 @@ fn error_keyword_as_expr() {
         Ok((
             vec![
                 ErrStmt(MissingSemicolon),
-                Print {
-                    expr: Opnd(OpndErr(MissingEndParenthesis))
-                }
             ],
             &[][..],
             3
@@ -117,6 +117,42 @@ fn error_no_parenthesis() {
 }
 
 #[test]
+fn error_no_start_parenthesis_in_assert() {
+    assert_eq!(
+        Ok((
+            vec![
+                Assert {
+                    expr: ErrExpr(MissingParenthesis(Open))
+                }
+            ],
+            &[][..],
+            6
+        )),
+        parse(&tokenize("
+            assert 1 + 1);
+        ").unwrap().0)
+    );
+}
+
+#[test]
+fn error_no_end_parenthesis_in_assert() {
+    assert_eq!(
+        Ok((
+            vec![
+                Assert {
+                    expr: ErrExpr(MissingParenthesis(Close))
+                }
+            ],
+            &[][..],
+            6
+        )),
+        parse(&tokenize("
+            assert (1 + 1;
+        ").unwrap().0)
+    );
+}
+
+#[test]
 fn error_no_parenthesis_in_assert() {
     assert_eq!(
         Ok((
@@ -137,13 +173,17 @@ fn error_no_type_annotation() {
     assert_eq!(
         Ok((
             vec![
-                
+                Declaration {
+                    ident: "x".into(),
+                    ty: TypeErr(NoTypeAnnotation),
+                    value: None,
+                }
             ],
             &[][..],
-            5
+            3
         )),
         parse(&tokenize("
-            var x = 0;
+            var x;
         ").unwrap().0)
     );
 }
@@ -249,7 +289,11 @@ fn error_keyword_as_type() {
     assert_eq!(
         Ok((
             vec![
-
+                Declaration {
+                    ident: "x".into(),
+                    ty: TypeErr(KeywordNotType(Keyword::For)),
+                    value: None,
+                }
             ],
             &[][..],
             5

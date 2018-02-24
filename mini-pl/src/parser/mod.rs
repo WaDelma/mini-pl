@@ -13,6 +13,7 @@ use self::ast::{Statement, Stmt, Expr, Type, Opnd, BinOp, UnaOp, ParseError};
 use self::ast::OpndError::*;
 use self::ast::ParseError::*;
 use self::ast::TypeError::*;
+use self::ast::ExprError::*;
 
 type Result<'a, T> = ::parsco::Result<&'a [Tok], T, ParseError>;
 
@@ -43,8 +44,14 @@ pub fn stmt(ts: &[Tok]) -> Result<Stmt> {
                 preceded(
                     sym(Keyword(Var)), fun(ident)
                 ),
-                preceded(
-                    sym(Punctuation(Colon)), fun(ty)
+                flat_map_err(
+                    preceded(
+                        sym(Punctuation(Colon)), fun(ty)
+                    ),
+                    |err, rest, pos| match err {
+                        Err2::V1(_) => Ok((Type::TypeErr(NoTypeAnnotation), &rest[(pos.end - 1)..], pos.end - 1)),
+                        Err2::V2(e) => Err((e, pos)),
+                    }
                 ),
                 opt(preceded(
                     sym(Operator(Assignment)), fun(expr)
@@ -115,10 +122,17 @@ pub fn stmt(ts: &[Tok]) -> Result<Stmt> {
         | map(
             preceded(
                 sym(Keyword(Assert)),
-                delimited(
-                    sym(Punctuation(Parenthesis(Open))),
-                    fun(expr),
-                    sym(Punctuation(Parenthesis(Close))),
+                flat_map_err(
+                    delimited(
+                        sym(Punctuation(Parenthesis(Open))),
+                        fun(expr),
+                        sym(Punctuation(Parenthesis(Close))),
+                    ),
+                    |err, rest, pos| match err {
+                        Err3::V1(_) => Ok((Expr::ErrExpr(MissingParenthesis(Open)), &rest[(pos.end - 1)..], pos.end - 1)),
+                        Err3::V2(e) => Err((e, pos)),
+                        Err3::V3(_) => Ok((Expr::ErrExpr(MissingParenthesis(Close)), &rest[(pos.end - 1)..], pos.end - 1)),
+                    }
                 )
             ),
             |expr, _, _| Stmt::Assert {
@@ -127,7 +141,7 @@ pub fn stmt(ts: &[Tok]) -> Result<Stmt> {
         )
     ).parse(ts)
         .map_err(|(err, pos)| (match err {
-                Err2::V2(Err3::V2(e)) => FromErr::from(e),
+                Err2::V2(e) => FromErr::from(e),
                 _ => ParseError::Unknown,
             }, pos))
 }
@@ -200,7 +214,7 @@ pub fn ty(ts: &[Tok]) -> Result<Type> {
                 Int => Type::Integer,
                 Bool => Type::Bool,
                 Str => Type::Str,
-                _ => Err((Unknown, 0..p))?,
+                ref k => Type::TypeErr(KeywordNotType(k.clone())),
             }, s, p))
         } else {
             match *t.sym() {
