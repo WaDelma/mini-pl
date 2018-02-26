@@ -1,6 +1,6 @@
 use num_bigint::BigInt;
 
-use parser::ast::{Stmt, Expr, Opnd};
+use parser::ast::{Stmt, Statement, Expr, Opnd};
 use self::context::{Context, Io};
 use self::repr::{Ty, Value, TypedValue};
 use self::repr::Value::*;
@@ -10,16 +10,16 @@ mod repr;
 #[cfg(test)]
 mod tests;
 
-pub fn interpret<IO: Io>(stmts: &[Stmt], ctx: &mut Context<TypedValue>, stdio: &mut IO) {
+pub fn interpret<IO: Io>(stmts: &[Statement], ctx: &mut Context<TypedValue>, stdio: &mut IO) {
     for stmt in stmts {
         interpret_stmt(stmt, ctx, stdio);
     }
 }
 
 // TODO: Use stdio for printing errors. Also test error reporting. Also row and column numbers for errors.
-fn interpret_stmt<IO: Io>(stmt: &Stmt, ctx: &mut Context<TypedValue>, stdio: &mut IO) {
+fn interpret_stmt<IO: Io>(stmt: &Statement, ctx: &mut Context<TypedValue>, stdio: &mut IO) {
     use self::Stmt::*;
-    match *stmt {
+    match stmt.stmt {
         ErrStmt(ref e) => panic!("Error while parsing: {:?}", e),
         Declaration {
             ref ident,

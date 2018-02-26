@@ -9,9 +9,19 @@ use lexer::tokens::{Operator, Position, Keyword, Side};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Statement {
-    stmt: Stmt,
-    from: Position,
-    to: Position,
+    pub stmt: Stmt,
+    pub from: Position,
+    pub to: Position,
+}
+
+impl Statement {
+    pub fn new(stmt: Stmt, from: Position, to: Position) -> Self {
+        Statement {
+            stmt,
+            from,
+            to
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -30,7 +40,7 @@ pub enum Stmt {
         ident: Ident,
         from: Expr,
         to: Expr,
-        stmts: Vec<Stmt>,
+        stmts: Vec<Statement>,
     },
     Read {
         ident: Ident,

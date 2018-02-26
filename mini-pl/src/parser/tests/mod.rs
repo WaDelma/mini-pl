@@ -1,5 +1,7 @@
 use lexer::tokenize;
+use lexer::tokens::Position;
 
+use super::ast::Statement;
 use super::ast::Stmt::*;
 use super::ast::Expr::*;
 use super::ast::Opnd::*;
@@ -8,7 +10,7 @@ use super::ast::BinOp::*;
 use super::ast::UnaOp::*;
 use super::parse;
 
-mod error;
+//mod error;
 
 #[test]
 fn complex_expr() {
@@ -16,7 +18,7 @@ fn complex_expr() {
     assert_eq!(
         Ok((
             vec![
-                Print {
+                Statement::new(Print {
                     expr: BinOper {
                         lhs: bop(
                                 bop(
@@ -49,7 +51,7 @@ fn complex_expr() {
                             })),
                         ),
                     },
-                },
+                }, Position::new(1, 13), Position::new(16, 15)),
             ],
             &[][..],
             32
@@ -80,7 +82,7 @@ fn example1_parses() {
     assert_eq!(
         Ok((
             vec![
-                Declaration {
+                Statement::new(Declaration {
                     ident: String::from("X"),
                     ty: Integer,
                     value: Some(
@@ -94,10 +96,10 @@ fn example1_parses() {
                             })),
                         }
                     )
-                },
-                Print {
+                }, Position::new(1, 13), Position::new(1, 40)),
+                Statement::new(Print {
                     expr: Opnd(Ident(String::from("X"))),
-                }
+                }, Position::new(2, 13), Position::new(2, 21))
             ],
             &[][..],
             16
@@ -114,25 +116,25 @@ fn example2_parses() {
     assert_eq!(
         Ok((
             vec![
-                Declaration {
+                Statement::new(Declaration {
                     ident: String::from("nTimes"),
                     ty: Integer,
                     value: Some(
                         Opnd(Int(0.into()))
                     )
-                },
-                Print {
+                }, Position::new(1, 13), Position::new(1, 35)),
+                Statement::new(Print {
                     expr: Opnd(StrLit(String::from("How many times?"))),
-                },
-                Read {
+                }, Position::new(2, 13), Position::new(2, 37)),
+                Statement::new(Read {
                     ident: String::from("nTimes"),
-                },
-                Declaration {
+                }, Position::new(3, 13), Position::new(3, 25)),
+                Statement::new(Declaration {
                     ident: String::from("x"),
                     ty: Integer,
                     value: None,
-                },
-                Loop {
+                }, Position::new(4, 13), Position::new(4, 25)),
+                Statement::new(Loop {
                     ident: String::from("x"),
                     from: Opnd(Int(0.into())),
                     to: BinOper {
@@ -141,29 +143,29 @@ fn example2_parses() {
                         rhs: Int(1.into())
                     },
                     stmts: vec![
-                        Print {
+                        Statement::new(Print {
                             expr: Opnd(Ident(String::from("x")))
-                        },
-                        Print {
+                        }, Position::new(6, 17), Position::new(6, 25)),
+                        Statement::new(Print {
                             expr: Opnd(StrLit(String::from(" : Hello, World!\n"))),
-                        }
+                        }, Position::new(7, 17), Position::new(7, 44))
                     ]
-                },
-                Assert {
+                }, Position::new(5, 13), Position::new(8, 21)),
+                Statement::new(Assert {
                     expr: BinOper {
                         lhs: Ident(String::from("x")),
                         op: Equality,
                         rhs: Ident(String::from("nTimes"))
                     }
-                }
+                }, Position::new(4, 13), Position::new(4, 25))
             ],
             &[][..],
             43
         )),
         parse(&tokenize(r#"
             var nTimes : int := 0;
-            print "How many times?"; 
-            read nTimes; 
+            print "How many times?";
+            read nTimes;
             var x : int;
             for x in 0..nTimes-1 do 
                 print x;
@@ -179,50 +181,50 @@ fn example3_parses() {
     assert_eq!(
         Ok((
             vec![
-                Print {
+                Statement::new(Print {
                     expr: Opnd(StrLit(String::from("Give a number"))),
-                },
-                Declaration {
+                }, Position::new(1, 13), Position::new(1, 35)),
+                Statement::new(Declaration {
                     ident: String::from("n"),
                     ty: Integer,
                     value: None,
-                },
-                Read {
+                }, Position::new(2, 13), Position::new(2, 25)),
+                Statement::new(Read {
                     ident: String::from("n")
-                },
-                Declaration {
+                }, Position::new(3, 13), Position::new(3, 20)),
+                Statement::new(Declaration {
                     ident: String::from("v"),
                     ty: Integer,
                     value: Some(
                         Opnd(Int(1.into()))
                     )
-                },
-                Declaration {
+                }, Position::new(4, 13), Position::new(4, 30)),
+                Statement::new(Declaration {
                     ident: String::from("i"),
                     ty: Integer,
                     value: None,
-                },
-                Loop {
+                }, Position::new(5, 13), Position::new(5, 25)),
+                Statement::new(Loop {
                     ident: String::from("i"),
                     from: Opnd(Int(1.into())),
                     to: Opnd(Ident(String::from("n"))),
                     stmts: vec![
-                        Assignment {
+                        Statement::new(Assignment {
                             ident: String::from("v"),
                             value: BinOper {
                                 lhs: Ident(String::from("v")),
                                 op: Multiplication,
                                 rhs: Ident(String::from("i")),
                             }
-                        }
+                        }, Position::new(7, 17), Position::new(7, 28))
                     ],
-                },
-                Print {
+                }, Position::new(6, 13), Position::new(8, 21)),
+                Statement::new(Print {
                     expr: Opnd(StrLit(String::from("The result is: "))),
-                },
-                Print {
+                }, Position::new(9, 13), Position::new(9, 37)),
+                Statement::new(Print {
                     expr: Opnd(Ident(String::from("v")))
-                }
+                }, Position::new(10, 13), Position::new(4, 21))
             ],
             &[][..],
             45
@@ -233,11 +235,11 @@ fn example3_parses() {
             read n;
             var v : int := 1;
             var i : int;
-            for i in 1..n do 
+            for i in 1..n do
                 v := v * i;
             end for;
             print "The result is: ";
-            print v; 
+            print v;
         "#).unwrap().0)
     );
 }

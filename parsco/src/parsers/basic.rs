@@ -1,5 +1,5 @@
 use {Parser, Parseable, Sym, Result, take};
-use common::Void;
+use common::{Void, Err2};
 
 use std::fmt;
 
@@ -131,15 +131,15 @@ impl<S> Parser<S> for Symbol<<S::Symbol as Sym>::Sym>
     where S: Parseable,
           <S::Symbol as Sym>::Sym: PartialEq + Clone
 {
-    type Res = <S::Symbol as Sym>::Sym;
-    type Err = <S::Symbol as Sym>::Sym;
+    type Res = S::Symbol;
+    type Err = Err2<S::Symbol, ()>;
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         s.first()
-            .ok_or_else(|| (self.symbol.clone(), 0..1))
+            .ok_or_else(|| (Err2::V2(()), 0..1))
             .and_then(|f| if f.sym().clone() == self.symbol {
-                Ok((self.symbol.clone(), s.split_at(1).expect("There is first").1, 1))
+                Ok((f, s.split_at(1).expect("There is first").1, 1))
             } else {
-                Err((self.symbol.clone(), 0..1))
+                Err((Err2::V1(f), 0..1))
             })
     }
 }
@@ -157,9 +157,10 @@ impl<S> Parser<S> for Symbol<<S::Symbol as Sym>::Sym>
 /// ```
 /// ```rust
 /// use parsco::{Parser, sym};
+/// use parsco::common::Err2;
 /// 
 /// assert_eq!(
-///     Err(('f', 0..1)),
+///     Err((Err2::V1('g'), 0..1)),
 ///     sym('f').parse("gfunction")
 /// );
 /// ```

@@ -2,7 +2,7 @@ use parsco::common::{Err2, Err3, Void};
 use parsco::*;
 
 use Ident;
-use lexer::tokens::Tok;
+use lexer::tokens::{Tok, Position};
 use lexer::tokens::Token::*;
 use lexer::tokens::Punctuation::*;
 use lexer::tokens::Side::*;
@@ -20,8 +20,7 @@ type Result<'a, T> = ::parsco::Result<&'a [Tok], T, ParseError>;
 pub mod ast;
 #[cfg(test)]
 mod tests;
-
-pub fn parse(ts: &[Tok]) -> Result<Vec<Stmt>> {
+pub fn parse(ts: &[Tok]) -> Result<Vec<Statement>> {
     many1(
         flat_map_err(
             terminated(
@@ -30,26 +29,34 @@ pub fn parse(ts: &[Tok]) -> Result<Vec<Stmt>> {
             ),
             |err, rest, pos| match err {
                 Err2::V1(e) => Err((e, pos)),
-                Err2::V2(_) => Ok((Stmt::ErrStmt(MissingSemicolon), &rest[(pos.end - 1)..], pos.end - 1)),
+                Err2::V2(s) => {
+                    let statement = match s {
+                        Err2::V1(s) => Statement::new(Stmt::ErrStmt(MissingSemicolon), s.from, s.to),
+                        Err2::V2(_) => Statement::new(Stmt::ErrStmt(MissingSemicolon), Position::new(0, 0), Position::new(0, 0)),
+                    };
+                    let pos = pos.end - 1;
+                    Ok((statement, &rest[pos..], pos))
+                },
             }
         )
     ).parse(ts)
         .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
-pub fn stmt(ts: &[Tok]) -> Result<Stmt> {
+pub fn stmt(ts: &[Tok]) -> Result<Statement> {
     (alt()
         | map(
             (
-                preceded(
-                    sym(Keyword(Var)), fun(ident)
-                ),
+                (sym(Keyword(Var)), fun(ident)),
                 flat_map_err(
                     preceded(
                         sym(Punctuation(Colon)), fun(ty)
                     ),
                     |err, rest, pos| match err {
-                        Err2::V1(_) => Ok((Type::TypeErr(NoTypeAnnotation), &rest[(pos.end - 1)..], pos.end - 1)),
+                        Err2::V1(_) => {
+                            let pos = pos.end - 1;
+                            Ok((Type::TypeErr(NoTypeAnnotation), &rest[pos..], pos))
+                        },
                         Err2::V2(e) => Err((e, pos)),
                     }
                 ),
@@ -57,10 +64,17 @@ pub fn stmt(ts: &[Tok]) -> Result<Stmt> {
                     sym(Operator(Assignment)), fun(expr)
                 ))
             ),
-            |(ident, ty, value), _, _| Stmt::Declaration {
-                ident,
-                ty,
-                value
+            |((var, ident), ty, value), _, _| {
+                let to = if let Some(ref expr) = value {
+                    Position::new(0, 0)
+                } else {
+                    Position::new(0, 0)
+                };
+                Statement::new(Stmt::Declaration {
+                    ident,
+                    ty,
+                    value
+                }, var.from, to)
             }
         )
         | map(
@@ -71,10 +85,10 @@ pub fn stmt(ts: &[Tok]) -> Result<Stmt> {
                     fun(expr)
                 )
             ),
-            |(ident, value), _, _| Stmt::Assignment {
+            |(ident, value), _, _| Statement::new(Stmt::Assignment {
                 ident,
                 value
-            }
+            }, Position::new(0, 0), Position::new(0, 0))
         )
         | map(
             (
@@ -94,30 +108,30 @@ pub fn stmt(ts: &[Tok]) -> Result<Stmt> {
                     (sym(Keyword(End)), sym(Keyword(For)))
                 )
             ),
-            |(ident, from, to, stmts), _, _| Stmt::Loop {
+            |(ident, from, to, stmts), _, _| Statement::new(Stmt::Loop {
                 ident,
                 from,
                 to,
                 stmts
-            }
+            }, Position::new(0, 0), Position::new(0, 0))
         )
         | map(
             preceded(
                 sym(Keyword(Read)),
                 fun(ident)
             ),
-            |ident, _, _| Stmt::Read {
+            |ident, _, _| Statement::new(Stmt::Read {
                 ident
-            }
+            }, Position::new(0, 0), Position::new(0, 0))
         )
         | map(
             preceded(
                 sym(Keyword(Print)),
                 fun(expr)
             ),
-            |expr, _, _| Stmt::Print {
+            |expr, _, _| Statement::new(Stmt::Print {
                 expr
-            }
+            }, Position::new(0, 0), Position::new(0, 0))
         )
         | map(
             preceded(
@@ -147,9 +161,9 @@ pub fn stmt(ts: &[Tok]) -> Result<Stmt> {
                     }
                 )
             ),
-            |expr, _, _| Stmt::Assert {
+            |expr, _, _| Statement::new(Stmt::Assert {
                 expr
-            }
+            }, Position::new(0, 0), Position::new(0, 0))
         )
     ).parse(ts)
         .map_err(|(err, pos)| (match err {
