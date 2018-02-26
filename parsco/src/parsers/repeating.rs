@@ -39,7 +39,7 @@ impl<F, S> Parser<S> for TakeWhile1<F, S>
 }
 
 // TODO: Transform this use parser instead of closure?
-/// Takes symbols from the source while given predicate returns true. Succeeds when predicate doesn't match at all.
+/// Takes symbols from the source while given predicate returns true. Needs at least one match of the predicate.
 /// 
 /// # Example
 /// ```rust

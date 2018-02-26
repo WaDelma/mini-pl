@@ -157,7 +157,9 @@ fn error_no_parenthesis_in_assert() {
     assert_eq!(
         Ok((
             vec![
-                
+                Assert {
+                    expr: ErrExpr(MissingParenthesis(Open))
+                }
             ],
             &[][..],
             5

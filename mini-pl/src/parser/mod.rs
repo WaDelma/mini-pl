@@ -128,10 +128,22 @@ pub fn stmt(ts: &[Tok]) -> Result<Stmt> {
                         fun(expr),
                         sym(Punctuation(Parenthesis(Close))),
                     ),
-                    |err, rest, pos| match err {
-                        Err3::V1(_) => Ok((Expr::ErrExpr(MissingParenthesis(Open)), &rest[(pos.end - 1)..], pos.end - 1)),
-                        Err3::V2(e) => Err((e, pos)),
-                        Err3::V3(_) => Ok((Expr::ErrExpr(MissingParenthesis(Close)), &rest[(pos.end - 1)..], pos.end - 1)),
+                    |err, rest, pos| {
+                        use self::Err3::*;
+                        let pos_before = pos.end - 1;
+                        match err {
+                            V1(_) => {
+                                match take_until::<_, &[Tok]>(sym(Punctuation(Semicolon))).parse(rest) {
+                                    Ok((_, _, pos2)) => {
+                                        let pos = pos_before + pos2 - 1;
+                                        Ok((Expr::ErrExpr(MissingParenthesis(Open)), &rest[pos..], pos))
+                                    },
+                                    Err(_) => Ok((Expr::ErrExpr(MissingParenthesis(Open)), &rest[pos_before..], pos_before))
+                                }
+                            },
+                            V2(e) => Err((e, pos)),
+                            V3(_) => Ok((Expr::ErrExpr(MissingParenthesis(Close)), &rest[pos_before..], pos_before)),
+                        }
                     }
                 )
             ),
