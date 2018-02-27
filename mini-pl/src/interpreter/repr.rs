@@ -36,7 +36,7 @@ impl Opnd {
             Int(ref i) => i.to_string(),
             StrLit(ref s) => s.to_string(),
             Ident(ref i) => format!("{}", ctx.get(i).unwrap().value()),
-            Expr(ref expr) => expr.pretty_print(ctx),
+            Expr(ref expr) => expr.data.pretty_print(ctx),
         }
     }
 }

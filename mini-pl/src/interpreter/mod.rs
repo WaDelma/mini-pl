@@ -1,6 +1,6 @@
 use num_bigint::BigInt;
 
-use parser::ast::{Stmt, Statement, Expr, Opnd};
+use parser::ast::{Stmt, Positioned, Expr, Opnd};
 use self::context::{Context, Io};
 use self::repr::{Ty, Value, TypedValue};
 use self::repr::Value::*;
@@ -10,16 +10,16 @@ mod repr;
 #[cfg(test)]
 mod tests;
 
-pub fn interpret<IO: Io>(stmts: &[Statement], ctx: &mut Context<TypedValue>, stdio: &mut IO) {
+pub fn interpret<IO: Io>(stmts: &[Positioned<Stmt>], ctx: &mut Context<TypedValue>, stdio: &mut IO) {
     for stmt in stmts {
         interpret_stmt(stmt, ctx, stdio);
     }
 }
 
 // TODO: Use stdio for printing errors. Also test error reporting. Also row and column numbers for errors.
-fn interpret_stmt<IO: Io>(stmt: &Statement, ctx: &mut Context<TypedValue>, stdio: &mut IO) {
+fn interpret_stmt<IO: Io>(stmt: &Positioned<Stmt>, ctx: &mut Context<TypedValue>, stdio: &mut IO) {
     use self::Stmt::*;
-    match stmt.stmt {
+    match stmt.data {
         ErrStmt(ref e) => panic!("Error while parsing: {:?}", e),
         Declaration {
             ref ident,
@@ -27,7 +27,7 @@ fn interpret_stmt<IO: Io>(stmt: &Statement, ctx: &mut Context<TypedValue>, stdio
             ref value,
         } => {
             let mut decl = TypedValue::new(Unknown, Ty::from(ty.clone())).expect("Unknown should be valid value for any type.");
-            if let Some(v) = value.as_ref().map(|e| interpret_expr(e, ctx)) {
+            if let Some(v) = value.as_ref().map(|e| interpret_expr(&e.data, ctx)) {
                 if !decl.set_typed(v) {
                     panic!("Invalid type");
                 }
@@ -38,7 +38,7 @@ fn interpret_stmt<IO: Io>(stmt: &Statement, ctx: &mut Context<TypedValue>, stdio
             ref ident,
             ref value,
         } => {
-            let value = interpret_expr(value, ctx);
+            let value = interpret_expr(&value.data, ctx);
             let error = &format!("Tried to assign to non-existent variable ´{}´ value ´{}´.", ident, value);
             ctx.get_mut(ident)
                 .expect(error)
@@ -50,8 +50,8 @@ fn interpret_stmt<IO: Io>(stmt: &Statement, ctx: &mut Context<TypedValue>, stdio
             ref to,
             ref stmts,
         } => {
-            let mut from = interpret_expr(from, ctx).integer().clone();
-            let to = interpret_expr(to, ctx).integer().clone();
+            let mut from = interpret_expr(&from.data, ctx).integer().clone();
+            let to = interpret_expr(&to.data, ctx).integer().clone();
             ctx.get_mut(ident)
                 .expect("Non-existent control variable")
                 .set(Integer(from.clone()));
@@ -90,7 +90,7 @@ fn interpret_stmt<IO: Io>(stmt: &Statement, ctx: &mut Context<TypedValue>, stdio
         Print {
             ref expr,
         } => {
-            let value = interpret_expr(expr, ctx);
+            let value = interpret_expr(&expr.data, ctx);
             match *value.value() {
                 Integer(ref i) => stdio.write(&i.to_string()),
                 Str(ref s) => stdio.write(s),
@@ -101,10 +101,10 @@ fn interpret_stmt<IO: Io>(stmt: &Statement, ctx: &mut Context<TypedValue>, stdio
         Assert {
             ref expr,
         } => {
-            let value = interpret_expr(expr, ctx);
+            let value = interpret_expr(&expr.data, ctx);
             match *value.value() {
                 Bool(ref b) => if !b {
-                    panic!("Assertion failed for `{}` resolved as `{}`", expr, expr.pretty_print(ctx));   
+                    panic!("Assertion failed for `{}` resolved as `{}`", expr.data, expr.data.pretty_print(ctx));   
                 },
                 Unknown => panic!("Use of uninitialized value."),
                 ref v => panic!("Use of wrong type of value {}", v),
@@ -170,6 +170,6 @@ fn interpret_opnd(opnd: &Opnd, ctx: &mut Context<TypedValue>) -> TypedValue {
         Int(ref i) => TypedValue::from_value(Value::Integer(i.clone())),
         StrLit(ref s) => TypedValue::from_value(Value::Str(s.clone())),
         Ident(ref ident) => ctx.get(ident).expect(&format!("Tried to use undeclared variable: `{}`.", ident)).clone(),
-        Expr(ref expr) => interpret_expr(expr, ctx),
+        Expr(ref expr) => interpret_expr(&expr.data, ctx),
     }
 }

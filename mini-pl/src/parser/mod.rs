@@ -9,7 +9,7 @@ use lexer::tokens::Side::*;
 use lexer::tokens::Keyword::*;
 use lexer::tokens::Operator::*;
 use lexer::tokens::Literal::*;
-use self::ast::{Statement, Stmt, Expr, Type, Opnd, BinOp, UnaOp, ParseError};
+use self::ast::{Positioned, Stmt, Expr, Type, Opnd, BinOp, UnaOp, ParseError};
 use self::ast::OpndError::*;
 use self::ast::ParseError::*;
 use self::ast::TypeError::*;
@@ -20,7 +20,7 @@ type Result<'a, T> = ::parsco::Result<&'a [Tok], T, ParseError>;
 pub mod ast;
 #[cfg(test)]
 mod tests;
-pub fn parse(ts: &[Tok]) -> Result<Vec<Statement>> {
+pub fn parse(ts: &[Tok]) -> Result<Vec<Positioned<Stmt>>> {
     many1(
         flat_map_err(
             terminated(
@@ -31,8 +31,8 @@ pub fn parse(ts: &[Tok]) -> Result<Vec<Statement>> {
                 Err2::V1(e) => Err((e, pos)),
                 Err2::V2(s) => {
                     let statement = match s {
-                        Err2::V1(s) => Statement::new(Stmt::ErrStmt(MissingSemicolon), s.from, s.to),
-                        Err2::V2(_) => Statement::new(Stmt::ErrStmt(MissingSemicolon), Position::new(0, 0), Position::new(0, 0)),
+                        Err2::V1(s) => Positioned::new(Stmt::ErrStmt(MissingSemicolon), s.from, s.to),
+                        Err2::V2(_) => Positioned::new(Stmt::ErrStmt(MissingSemicolon), Position::new(0, 0), Position::new(0, 0)),
                     };
                     let pos = pos.end - 1;
                     Ok((statement, &rest[pos..], pos))
@@ -43,7 +43,7 @@ pub fn parse(ts: &[Tok]) -> Result<Vec<Statement>> {
         .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
-pub fn stmt(ts: &[Tok]) -> Result<Statement> {
+pub fn stmt(ts: &[Tok]) -> Result<Positioned<Stmt>> {
     (alt()
         | map(
             (
@@ -70,7 +70,7 @@ pub fn stmt(ts: &[Tok]) -> Result<Statement> {
                 } else {
                     Position::new(0, 0)
                 };
-                Statement::new(Stmt::Declaration {
+                Positioned::new(Stmt::Declaration {
                     ident,
                     ty,
                     value
@@ -85,7 +85,7 @@ pub fn stmt(ts: &[Tok]) -> Result<Statement> {
                     fun(expr)
                 )
             ),
-            |(ident, value), _, _| Statement::new(Stmt::Assignment {
+            |(ident, value), _, _| Positioned::new(Stmt::Assignment {
                 ident,
                 value
             }, Position::new(0, 0), Position::new(0, 0))
@@ -108,7 +108,7 @@ pub fn stmt(ts: &[Tok]) -> Result<Statement> {
                     (sym(Keyword(End)), sym(Keyword(For)))
                 )
             ),
-            |(ident, from, to, stmts), _, _| Statement::new(Stmt::Loop {
+            |(ident, from, to, stmts), _, _| Positioned::new(Stmt::Loop {
                 ident,
                 from,
                 to,
@@ -120,7 +120,7 @@ pub fn stmt(ts: &[Tok]) -> Result<Statement> {
                 sym(Keyword(Read)),
                 fun(ident)
             ),
-            |ident, _, _| Statement::new(Stmt::Read {
+            |ident, _, _| Positioned::new(Stmt::Read {
                 ident
             }, Position::new(0, 0), Position::new(0, 0))
         )
@@ -129,7 +129,7 @@ pub fn stmt(ts: &[Tok]) -> Result<Statement> {
                 sym(Keyword(Print)),
                 fun(expr)
             ),
-            |expr, _, _| Statement::new(Stmt::Print {
+            |expr, _, _| Positioned::new(Stmt::Print {
                 expr
             }, Position::new(0, 0), Position::new(0, 0))
         )
@@ -148,20 +148,32 @@ pub fn stmt(ts: &[Tok]) -> Result<Statement> {
                         match err {
                             V1(_) => {
                                 match take_until::<_, &[Tok]>(sym(Punctuation(Semicolon))).parse(rest) {
-                                    Ok((_, _, pos2)) => {
+                                    Ok(((_, tok), _, pos2)) => {
                                         let pos = pos_before + pos2 - 1;
-                                        Ok((Expr::ErrExpr(MissingParenthesis(Open)), &rest[pos..], pos))
+                                        Ok((
+                                            Positioned::new(Expr::ErrExpr(MissingParenthesis(Open)), Position::new(0, 0), tok.to),
+                                            &rest[pos..],
+                                            pos
+                                        ))
                                     },
-                                    Err(_) => Ok((Expr::ErrExpr(MissingParenthesis(Open)), &rest[pos_before..], pos_before))
+                                    Err(_) => Ok((
+                                        Positioned::new(Expr::ErrExpr(MissingParenthesis(Open)), Position::new(0, 0), Position::new(0, 0)),
+                                        &rest[pos_before..],
+                                        pos_before
+                                    ))
                                 }
                             },
                             V2(e) => Err((e, pos)),
-                            V3(_) => Ok((Expr::ErrExpr(MissingParenthesis(Close)), &rest[pos_before..], pos_before)),
+                            V3(_) => Ok((
+                                Positioned::new(Expr::ErrExpr(MissingParenthesis(Close)), Position::new(0, 0), Position::new(0, 0)),
+                                &rest[pos_before..],
+                                pos_before
+                            )),
                         }
                     }
                 )
             ),
-            |expr, _, _| Statement::new(Stmt::Assert {
+            |expr, _, _| Positioned::new(Stmt::Assert {
                 expr
             }, Position::new(0, 0), Position::new(0, 0))
         )
@@ -172,26 +184,26 @@ pub fn stmt(ts: &[Tok]) -> Result<Statement> {
             }, pos))
 }
 
-pub fn expr(ts: &[Tok]) -> Result<Expr> {
+pub fn expr(ts: &[Tok]) -> Result<Positioned<Expr>> {
     (alt()
         | map(
             (fun(opnd), fun(binop), fun(opnd)),
-            |(lhs, op, rhs), _, _| Expr::BinOper {
+            |(lhs, op, rhs), _, _| Positioned::new(Expr::BinOper {
                 lhs,
                 op,
                 rhs
-            }
+            }, Position::new(0, 0), Position::new(0, 0))
         )
         | map(
             (fun(unaop), fun(opnd)),
-            |(op, rhs), _, _| Expr::UnaOper {
+            |(op, rhs), _, _| Positioned::new(Expr::UnaOper {
                 op,
                 rhs
-            }
+            }, Position::new(0, 0), Position::new(0, 0))
         )
         | map(
             fun(opnd),
-            |o, _, _| Expr::Opnd(o)
+            |o, _, _| Positioned::new(Expr::Opnd(o), Position::new(0, 0), Position::new(0, 0))
         )
     ).parse(ts)
 }

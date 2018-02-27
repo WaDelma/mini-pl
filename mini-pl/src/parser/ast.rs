@@ -8,16 +8,16 @@ use Ident;
 use lexer::tokens::{Operator, Position, Keyword, Side};
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Statement {
-    pub stmt: Stmt,
+pub struct Positioned<T> {
+    pub data: T,
     pub from: Position,
     pub to: Position,
 }
 
-impl Statement {
-    pub fn new(stmt: Stmt, from: Position, to: Position) -> Self {
-        Statement {
-            stmt,
+impl<T> Positioned<T> {
+    pub fn new(data: T, from: Position, to: Position) -> Self {
+        Positioned {
+            data,
             from,
             to
         }
@@ -30,27 +30,31 @@ pub enum Stmt {
     Declaration {
         ident: Ident,
         ty: Type,
-        value: Option<Expr>,
+        value: Option<Positioned<Expr>>,
     },
     Assignment {
         ident: Ident,
-        value: Expr,
+        value: Positioned<Expr>,
     },
     Loop {
         ident: Ident,
-        from: Expr,
-        to: Expr,
-        stmts: Vec<Statement>,
+        from: Positioned<Expr>,
+        to: Positioned<Expr>,
+        stmts: Vec<Positioned<Stmt>>,
     },
     Read {
         ident: Ident,
     },
     Print {
-        expr: Expr,
+        expr: Positioned<Expr>,
     },
     Assert {
-        expr: Expr,
+        expr: Positioned<Expr>,
     }
+}
+
+pub struct Expression {
+
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -102,7 +106,7 @@ pub enum Opnd {
     Int(BigInt),
     StrLit(String),
     Ident(Ident),
-    Expr(Box<Expr>),
+    Expr(Box<Positioned<Expr>>),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -119,7 +123,7 @@ impl fmt::Display for Opnd {
             Int(ref i) => i.to_string(),
             StrLit(ref s) => s.to_string(),
             Ident(ref i) => i.to_string(),
-            Expr(ref expr) => format!("{}", expr),
+            Expr(ref expr) => format!("{}", expr.data),
         })
     }
 }

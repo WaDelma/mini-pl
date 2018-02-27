@@ -1,7 +1,7 @@
 use lexer::tokenize;
 use lexer::tokens::Position;
 
-use super::ast::Statement;
+use super::ast::Positioned;
 use super::ast::Stmt::*;
 use super::ast::Expr::*;
 use super::ast::Opnd::*;
@@ -14,21 +14,30 @@ use super::parse;
 
 #[test]
 fn complex_expr() {
-    let bop = |lhs, op, rhs| Expr(Box::new(BinOper { lhs, op, rhs }));
+    let bop = |lhs, op, rhs, from: (usize, usize), to: (usize, usize)|
+        Expr(
+            Box::new(Positioned::new(
+                BinOper { lhs, op, rhs },
+                Position::new(from.0, from.1),
+                Position::new(to.0, to.1)
+            ))
+        );
     assert_eq!(
         Ok((
             vec![
-                Statement::new(Print {
-                    expr: BinOper {
+                Positioned::new(Print {
+                    expr: Positioned::new(BinOper {
                         lhs: bop(
                                 bop(
                                     bop(
                                         Int(4.into()),
                                         Division,
                                         Int(2.into()),
+                                        (4, 21), (6, 22)
                                     ),
                                     Addition,
                                     Int(1.into()),
+                                    (3, 17), (7, 18)
                                 ),
                                 LessThan,
                                 bop(
@@ -38,20 +47,24 @@ fn complex_expr() {
                                         Int(2.into()),
                                         Multiplication,
                                         Int(3.into()),
+                                        (8, 23), (10, 22)
                                     ),
+                                    (7, 19), (11, 18)
                                 ),
+                                (2, 13), (12, 14)
                             ),
                         op: Equality,
                         rhs: bop(
                             Int(0.into()),
                             And,
-                            Expr(Box::new(UnaOper {
+                            Expr(Box::new(Positioned::new(UnaOper {
                                 op: Not,
                                 rhs: Int(1.into())
-                            })),
+                            }, Position::new(14, 19), Position::new(5, 18)))),
+                            (13, 15), (16, 14)
                         ),
-                    },
-                }, Position::new(1, 13), Position::new(16, 15)),
+                    }, Position::new(2, 13), Position::new(16, 14)),
+                }, Position::new(1, 13), Position::new(16, 14)),
             ],
             &[][..],
             32
@@ -82,23 +95,27 @@ fn example1_parses() {
     assert_eq!(
         Ok((
             vec![
-                Statement::new(Declaration {
+                Positioned::new(Declaration {
                     ident: String::from("X"),
                     ty: Integer,
                     value: Some(
-                        BinOper {
+                        Positioned::new(BinOper {
                             lhs: Int(4.into()),
                             op: Addition,
-                            rhs: Expr(Box::new(BinOper {
+                            rhs: Expr(Box::new(Positioned::new(BinOper {
                                 lhs: Int(6.into()),
                                 op: Multiplication,
                                 rhs: Int(2.into()),
-                            })),
-                        }
+                            }, Position::new(1, 32), Position::new(1, 39)))),
+                        }, Position::new(1, 28), Position::new(1, 39))
                     )
                 }, Position::new(1, 13), Position::new(1, 40)),
-                Statement::new(Print {
-                    expr: Opnd(Ident(String::from("X"))),
+                Positioned::new(Print {
+                    expr: Positioned::new(
+                        Opnd(Ident(String::from("X"))),
+                        Position::new(2, 19),
+                        Position::new(2, 20)
+                    ),
                 }, Position::new(2, 13), Position::new(2, 21))
             ],
             &[][..],
@@ -116,42 +133,56 @@ fn example2_parses() {
     assert_eq!(
         Ok((
             vec![
-                Statement::new(Declaration {
+                Positioned::new(Declaration {
                     ident: String::from("nTimes"),
                     ty: Integer,
-                    value: Some(
-                        Opnd(Int(0.into()))
-                    )
+                    value: Some(Positioned::new(
+                        Opnd(Int(0.into())),
+                        Position::new(1, 33),
+                        Position::new(1, 34)
+                    ))
                 }, Position::new(1, 13), Position::new(1, 35)),
-                Statement::new(Print {
-                    expr: Opnd(StrLit(String::from("How many times?"))),
+                Positioned::new(Print {
+                    expr: Positioned::new(
+                        Opnd(StrLit(String::from("How many times?"))),
+                        Position::new(2, 19),
+                        Position::new(2, 36)
+                    ),
                 }, Position::new(2, 13), Position::new(2, 37)),
-                Statement::new(Read {
+                Positioned::new(Read {
                     ident: String::from("nTimes"),
                 }, Position::new(3, 13), Position::new(3, 25)),
-                Statement::new(Declaration {
+                Positioned::new(Declaration {
                     ident: String::from("x"),
                     ty: Integer,
                     value: None,
                 }, Position::new(4, 13), Position::new(4, 25)),
-                Statement::new(Loop {
+                Positioned::new(Loop {
                     ident: String::from("x"),
-                    from: Opnd(Int(0.into())),
-                    to: BinOper {
-                        lhs: Ident(String::from("nTimes")),
-                        op: Substraction,
-                        rhs: Int(1.into())
-                    },
+                    from: Positioned::new(
+                        Opnd(Int(0.into())),
+                        Position::new(6, 23),
+                        Position::new(6, 24)
+                    ),
+                    to: Positioned::new(
+                        BinOper {
+                            lhs: Ident(String::from("nTimes")),
+                            op: Substraction,
+                            rhs: Int(1.into())
+                        },
+                        Position::new(6, 25),
+                        Position::new(6, 33)
+                    ),
                     stmts: vec![
-                        Statement::new(Print {
+                        Positioned::new(Print {
                             expr: Opnd(Ident(String::from("x")))
                         }, Position::new(6, 17), Position::new(6, 25)),
-                        Statement::new(Print {
+                        Positioned::new(Print {
                             expr: Opnd(StrLit(String::from(" : Hello, World!\n"))),
                         }, Position::new(7, 17), Position::new(7, 44))
                     ]
                 }, Position::new(5, 13), Position::new(8, 21)),
-                Statement::new(Assert {
+                Positioned::new(Assert {
                     expr: BinOper {
                         lhs: Ident(String::from("x")),
                         op: Equality,
@@ -181,35 +212,35 @@ fn example3_parses() {
     assert_eq!(
         Ok((
             vec![
-                Statement::new(Print {
+                Positioned::new(Print {
                     expr: Opnd(StrLit(String::from("Give a number"))),
                 }, Position::new(1, 13), Position::new(1, 35)),
-                Statement::new(Declaration {
+                Positioned::new(Declaration {
                     ident: String::from("n"),
                     ty: Integer,
                     value: None,
                 }, Position::new(2, 13), Position::new(2, 25)),
-                Statement::new(Read {
+                Positioned::new(Read {
                     ident: String::from("n")
                 }, Position::new(3, 13), Position::new(3, 20)),
-                Statement::new(Declaration {
+                Positioned::new(Declaration {
                     ident: String::from("v"),
                     ty: Integer,
                     value: Some(
                         Opnd(Int(1.into()))
                     )
                 }, Position::new(4, 13), Position::new(4, 30)),
-                Statement::new(Declaration {
+                Positioned::new(Declaration {
                     ident: String::from("i"),
                     ty: Integer,
                     value: None,
                 }, Position::new(5, 13), Position::new(5, 25)),
-                Statement::new(Loop {
+                Positioned::new(Loop {
                     ident: String::from("i"),
                     from: Opnd(Int(1.into())),
                     to: Opnd(Ident(String::from("n"))),
                     stmts: vec![
-                        Statement::new(Assignment {
+                        Positioned::new(Assignment {
                             ident: String::from("v"),
                             value: BinOper {
                                 lhs: Ident(String::from("v")),
@@ -219,10 +250,10 @@ fn example3_parses() {
                         }, Position::new(7, 17), Position::new(7, 28))
                     ],
                 }, Position::new(6, 13), Position::new(8, 21)),
-                Statement::new(Print {
+                Positioned::new(Print {
                     expr: Opnd(StrLit(String::from("The result is: "))),
                 }, Position::new(9, 13), Position::new(9, 37)),
-                Statement::new(Print {
+                Positioned::new(Print {
                     expr: Opnd(Ident(String::from("v")))
                 }, Position::new(10, 13), Position::new(4, 21))
             ],
