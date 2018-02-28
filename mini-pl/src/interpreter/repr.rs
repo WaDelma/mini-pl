@@ -15,15 +15,15 @@ impl Expr {
                 ref op,
                 ref rhs,
             } => {
-                format!("{} {} {}", lhs.pretty_print(ctx), op, rhs.pretty_print(ctx))
+                format!("{} {} {}", lhs.data.pretty_print(ctx), op, rhs.data.pretty_print(ctx))
             },
             UnaOper {
                 ref op,
                 ref rhs,
             } => {
-                format!("{}{}", op, rhs.pretty_print(ctx))
+                format!("{}{}", op, rhs.data.pretty_print(ctx))
             },
-            Opnd(ref opnd) => format!("({})", opnd.pretty_print(ctx)),
+            Opnd(ref opnd) => format!("({})", opnd.data.pretty_print(ctx)),
         }
     }
 }

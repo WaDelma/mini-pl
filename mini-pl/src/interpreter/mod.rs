@@ -124,8 +124,8 @@ fn interpret_expr(expr: &Expr, ctx: &mut Context<TypedValue>) -> TypedValue {
             ref op,
             ref rhs,
         } => {
-            let lhs = interpret_opnd(lhs, ctx);
-            let rhs = interpret_opnd(rhs, ctx);
+            let lhs = interpret_opnd(&lhs.data, ctx);
+            let rhs = interpret_opnd(&rhs.data, ctx);
             TypedValue::from_value(match *op {
                 Equality => Bool(match (lhs.value(), rhs.value()) {
                     (&Integer(ref i1), &Integer(ref i2)) => i1 == i2,
@@ -154,12 +154,12 @@ fn interpret_expr(expr: &Expr, ctx: &mut Context<TypedValue>) -> TypedValue {
             ref op,
             ref rhs,
         } => {
-            let rhs = interpret_opnd(rhs, ctx);
+            let rhs = interpret_opnd(&rhs.data, ctx);
             match *op {
                 Not => TypedValue::from_value(Value::Bool(!rhs.boolean())),
             }
         },
-        Opnd(ref opnd) => interpret_opnd(opnd, ctx),
+        Opnd(ref opnd) => interpret_opnd(&opnd.data, ctx),
     }
 }
 

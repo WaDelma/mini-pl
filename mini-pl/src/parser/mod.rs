@@ -20,23 +20,39 @@ type Result<'a, T> = ::parsco::Result<&'a [Tok], T, ParseError>;
 pub mod ast;
 #[cfg(test)]
 mod tests;
+
 pub fn parse(ts: &[Tok]) -> Result<Vec<Positioned<Stmt>>> {
     many1(
-        flat_map_err(
-            terminated(
-                fun(stmt),
-                sym(Punctuation(Semicolon))
+        map(
+            flat_map_err(
+                (
+                    fun(stmt),
+                    sym(Punctuation(Semicolon))
+                ),
+                |err, rest, pos| match err {
+                    Err2::V1(e) => Err((e, pos)),
+                    Err2::V2(s) => {
+                        let statement = match s {
+                            Err2::V1(s) => Positioned::new(
+                                Stmt::ErrStmt(MissingSemicolon),
+                                s.from,
+                                s.to
+                            ),
+                            Err2::V2(_) => Positioned::new(
+                                Stmt::ErrStmt(MissingSemicolon),
+                                Position::new(0, 0),
+                                Position::new(0, 0)
+                            ),
+                        };
+                        let pos = pos.end - 1;
+                        let (from, to) = (statement.from.clone(), statement.to.clone());
+                        Ok(((statement, Tok::new(Punctuation(Semicolon), from, to)), &rest[pos..], pos))
+                    },
+                }
             ),
-            |err, rest, pos| match err {
-                Err2::V1(e) => Err((e, pos)),
-                Err2::V2(s) => {
-                    let statement = match s {
-                        Err2::V1(s) => Positioned::new(Stmt::ErrStmt(MissingSemicolon), s.from, s.to),
-                        Err2::V2(_) => Positioned::new(Stmt::ErrStmt(MissingSemicolon), Position::new(0, 0), Position::new(0, 0)),
-                    };
-                    let pos = pos.end - 1;
-                    Ok((statement, &rest[pos..], pos))
-                },
+            |(mut stmt, semi), _, _| {
+                stmt.to = semi.to;
+                stmt
             }
         )
     ).parse(ts)
@@ -53,10 +69,30 @@ pub fn stmt(ts: &[Tok]) -> Result<Positioned<Stmt>> {
                         sym(Punctuation(Colon)), fun(ty)
                     ),
                     |err, rest, pos| match err {
+                        Err2::V1(Err2::V1(t)) => {
+                            let pos = pos.end - 1;
+                            Ok((
+                                Positioned::new(
+                                    Type::TypeErr(NoTypeAnnotation),
+                                    t.from,
+                                    t.to
+                                ),
+                                &rest[pos..],
+                                pos
+                            ))
+                        },
                         Err2::V1(_) => {
                             let pos = pos.end - 1;
-                            Ok((Type::TypeErr(NoTypeAnnotation), &rest[pos..], pos))
-                        },
+                            Ok((
+                                Positioned::new(
+                                    Type::TypeErr(NoTypeAnnotation),
+                                    Position::new(0, 0),
+                                    Position::new(0, 0)
+                                ),
+                                &rest[pos..],
+                                pos
+                            ))
+                        }
                         Err2::V2(e) => Err((e, pos)),
                     }
                 ),
@@ -66,15 +102,19 @@ pub fn stmt(ts: &[Tok]) -> Result<Positioned<Stmt>> {
             ),
             |((var, ident), ty, value), _, _| {
                 let to = if let Some(ref expr) = value {
-                    Position::new(0, 0)
+                    expr.to.clone()
                 } else {
-                    Position::new(0, 0)
+                    ty.to
                 };
-                Positioned::new(Stmt::Declaration {
-                    ident,
-                    ty,
-                    value
-                }, var.from, to)
+                Positioned::new(
+                    Stmt::Declaration {
+                        ident: ident.data,
+                        ty: ty.data,
+                        value
+                    },
+                    var.from,
+                    to
+                )
             }
         )
         | map(
@@ -85,10 +125,17 @@ pub fn stmt(ts: &[Tok]) -> Result<Positioned<Stmt>> {
                     fun(expr)
                 )
             ),
-            |(ident, value), _, _| Positioned::new(Stmt::Assignment {
-                ident,
-                value
-            }, Position::new(0, 0), Position::new(0, 0))
+            |(ident, value), _, _| {
+                let (from, to) = (ident.from, value.to.clone());
+                Positioned::new(
+                    Stmt::Assignment {
+                        ident: ident.data,
+                        value
+                    },
+                    from,
+                    to
+                )
+            }
         )
         | map(
             (
@@ -103,38 +150,56 @@ pub fn stmt(ts: &[Tok]) -> Result<Positioned<Stmt>> {
                     fun(expr),
                     sym(Keyword(Do))
                 ),
-                terminated(
+                (
                     fun(parse),
                     (sym(Keyword(End)), sym(Keyword(For)))
                 )
             ),
-            |(ident, from, to, stmts), _, _| Positioned::new(Stmt::Loop {
-                ident,
-                from,
-                to,
-                stmts
-            }, Position::new(0, 0), Position::new(0, 0))
+            |(ident, range_from, range_to, (stmts, (_, end))), _, _| {
+                let (from, to) = (ident.from, end.to);
+                Positioned::new(
+                    Stmt::Loop {
+                        ident: ident.data,
+                        from: range_from,
+                        to: range_to,
+                        stmts
+                    },
+                    from,
+                    to
+                )
+            }
         )
         | map(
-            preceded(
+            (
                 sym(Keyword(Read)),
                 fun(ident)
             ),
-            |ident, _, _| Positioned::new(Stmt::Read {
-                ident
-            }, Position::new(0, 0), Position::new(0, 0))
+            |(read, ident), _, _| Positioned::new(
+                Stmt::Read {
+                    ident: ident.data
+                },
+                read.from,
+                ident.to
+            )
         )
         | map(
-            preceded(
+            (
                 sym(Keyword(Print)),
                 fun(expr)
             ),
-            |expr, _, _| Positioned::new(Stmt::Print {
-                expr
-            }, Position::new(0, 0), Position::new(0, 0))
+            |(print, expr), _, _| {
+                let (from, to) = (print.from, expr.to.clone());
+                Positioned::new(
+                    Stmt::Print {
+                        expr
+                    },
+                    from,
+                    to,
+                )
+            }
         )
         | map(
-            preceded(
+            (
                 sym(Keyword(Assert)),
                 flat_map_err(
                     delimited(
@@ -151,13 +216,21 @@ pub fn stmt(ts: &[Tok]) -> Result<Positioned<Stmt>> {
                                     Ok(((_, tok), _, pos2)) => {
                                         let pos = pos_before + pos2 - 1;
                                         Ok((
-                                            Positioned::new(Expr::ErrExpr(MissingParenthesis(Open)), Position::new(0, 0), tok.to),
+                                            Positioned::new(
+                                                Expr::ErrExpr(MissingParenthesis(Open)),
+                                                Position::new(0, 0),
+                                                tok.to
+                                            ),
                                             &rest[pos..],
                                             pos
                                         ))
                                     },
                                     Err(_) => Ok((
-                                        Positioned::new(Expr::ErrExpr(MissingParenthesis(Open)), Position::new(0, 0), Position::new(0, 0)),
+                                        Positioned::new(
+                                            Expr::ErrExpr(MissingParenthesis(Open)),
+                                            Position::new(0, 0),
+                                            Position::new(0, 0)
+                                        ),
                                         &rest[pos_before..],
                                         pos_before
                                     ))
@@ -165,7 +238,11 @@ pub fn stmt(ts: &[Tok]) -> Result<Positioned<Stmt>> {
                             },
                             V2(e) => Err((e, pos)),
                             V3(_) => Ok((
-                                Positioned::new(Expr::ErrExpr(MissingParenthesis(Close)), Position::new(0, 0), Position::new(0, 0)),
+                                Positioned::new(
+                                    Expr::ErrExpr(MissingParenthesis(Close)),
+                                    Position::new(0, 0),
+                                    Position::new(0, 0)
+                                ),
                                 &rest[pos_before..],
                                 pos_before
                             )),
@@ -173,50 +250,86 @@ pub fn stmt(ts: &[Tok]) -> Result<Positioned<Stmt>> {
                     }
                 )
             ),
-            |expr, _, _| Positioned::new(Stmt::Assert {
-                expr
-            }, Position::new(0, 0), Position::new(0, 0))
+            |(assert, expr), _, _| {
+                let (from, to) = (assert.from, expr.to.clone());
+                Positioned::new(
+                    Stmt::Assert {
+                        expr
+                    },
+                    from,
+                    to,
+                )
+            }
         )
     ).parse(ts)
-        .map_err(|(err, pos)| (match err {
+        .map_err(|(err, pos)| (
+            match err {
                 Err2::V2(e) => FromErr::from(e),
                 _ => ParseError::Unknown,
-            }, pos))
+            },
+            pos
+        ))
 }
 
 pub fn expr(ts: &[Tok]) -> Result<Positioned<Expr>> {
     (alt()
         | map(
             (fun(opnd), fun(binop), fun(opnd)),
-            |(lhs, op, rhs), _, _| Positioned::new(Expr::BinOper {
-                lhs,
-                op,
-                rhs
-            }, Position::new(0, 0), Position::new(0, 0))
+            |(lhs, op, rhs), _, _| {
+                let (from, to) = (lhs.from.clone(), rhs.to.clone());
+                Positioned::new(
+                    Expr::BinOper {
+                        lhs,
+                        op,
+                        rhs
+                    },
+                    from,
+                    to
+                )
+            }
         )
         | map(
             (fun(unaop), fun(opnd)),
-            |(op, rhs), _, _| Positioned::new(Expr::UnaOper {
-                op,
-                rhs
-            }, Position::new(0, 0), Position::new(0, 0))
+            |(op, rhs), _, _| {
+                let (from, to) = (op.from, rhs.to.clone());
+                Positioned::new(
+                    Expr::UnaOper {
+                        op: op.data,
+                        rhs
+                    },
+                    from,
+                    to
+                )
+            }
         )
         | map(
             fun(opnd),
-            |o, _, _| Positioned::new(Expr::Opnd(o), Position::new(0, 0), Position::new(0, 0))
+            |o, _, _|  {
+                let (from, to) = (o.from.clone(), o.to.clone());
+                Positioned::new(
+                    Expr::Opnd(o),
+                    from,
+                    to
+                )
+            }
         )
     ).parse(ts)
 }
 
-pub fn opnd(ts: &[Tok]) -> Result<Opnd> {
+pub fn opnd(ts: &[Tok]) -> Result<Positioned<Opnd>> {
     (alt()
         | fun(int)
         | fun(string)
-        | map(fun(ident), |i, _, _| Opnd::Ident(i))
-        | preceded(
+        | map(fun(ident), |i, _, _| Positioned::new(
+                Opnd::Ident(i.data),
+                i.from,
+                i.to
+            )
+        )
+        | map((
             sym(Punctuation(Parenthesis(Open))),
             flat_map_err(
-                terminated(
+                (
                     map(
                         fun(expr),
                         |expr, _, _| Opnd::Expr(Box::new(expr))
@@ -225,58 +338,114 @@ pub fn opnd(ts: &[Tok]) -> Result<Opnd> {
                 ),
                 |err, rest, pos| match err {
                     Err2::V1(e) => Err((e, pos)),
-                    Err2::V2(_) => Ok((Opnd::OpndErr(MissingEndParenthesis), &rest[(pos.end - 1)..], pos.end - 1)),
+                    Err2::V2(_) => Ok((
+                        // TODO: The Tok in the second parameter is useless...
+                        (Opnd::OpndErr(MissingEndParenthesis), Tok::new(Punctuation(Parenthesis(Close)), Position::new(0, 0), Position::new(0, 0))), 
+                        &rest[(pos.end - 1)..],
+                        pos.end - 1
+                    )),
                 }
             )
-        )
-        | constant(Opnd::OpndErr(InvalidOperand))
+        ), |(opening, (expr, ending)), _, _| Positioned::new(
+            expr,
+            opening.from,
+            ending.to,
+        ))
+        | constant(Positioned::new(
+            Opnd::OpndErr(InvalidOperand),
+            Position::new(0, 0),
+            Position::new(0, 0)
+        ))
     ).parse(ts)
         .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
-pub fn ident(ts: &[Tok]) -> Result<Ident> {
+pub fn ident(ts: &[Tok]) -> Result<Positioned<Ident>> {
     fst().parse(ts)
         .map_err(|(e, r)| (FromErr::from(e), r))
-        .and_then(|(t, s, p)| if let Identifier(ref t) = *t.sym() {
-            Ok((t.clone(), s, p))
+        .and_then(|(t, s, p)| if let Identifier(ref tok) = *t.sym() {
+            Ok((
+                Positioned::new(
+                    tok.clone(),
+                    t.from.clone(),
+                    t.to.clone()
+                ),
+                s,
+                p
+            ))
         } else {
             Err((Unknown, 0..p))
         })
 }
 
-pub fn ty(ts: &[Tok]) -> Result<Type> {
+pub fn ty(ts: &[Tok]) -> Result<Positioned<Type>> {
     fst().parse(ts)
         .map_err(|(e, r)| (FromErr::from(e), r))
-        .and_then(|(t, s, p)| if let Keyword(ref t) = *t.sym() {
-            Ok((match *t {
-                Int => Type::Integer,
-                Bool => Type::Bool,
-                Str => Type::Str,
-                ref k => Type::TypeErr(KeywordNotType(k.clone())),
-            }, s, p))
-        } else {
-            match *t.sym() {
-                Identifier(ref i) => Ok((Type::TypeErr(UnknownType(i.clone())), s, p)),
-                _ => Err((Unknown, 0..p))   
+        .and_then(|(t, s, p)| {
+            let (from, to) = (t.from.clone(), t.to.clone());
+            if let Keyword(ref tok) = *t.sym() {
+                Ok((
+                    Positioned::new(
+                        match *tok {
+                            Int => Type::Integer,
+                            Bool => Type::Bool,
+                            Str => Type::Str,
+                            ref k => Type::TypeErr(KeywordNotType(k.clone())),
+                        },
+                        from,
+                        to
+                    ),
+                    s,
+                    p
+                ))
+            } else {
+                match *t.sym() {
+                    Identifier(ref i) => Ok((
+                        Positioned::new(
+                            Type::TypeErr(UnknownType(i.clone())),
+                            from,
+                            to
+                        ),
+                        s,
+                        p
+                    )),
+                    _ => Err((Unknown, 0..p))   
+                }
             }
         })
 }
 
-pub fn int(ts: &[Tok]) -> Result<Opnd> {
+pub fn int(ts: &[Tok]) -> Result<Positioned<Opnd>> {
     fst().parse(ts)
         .map_err(|(e, r)| (FromErr::from(e), r))
         .and_then(|(t, s, p)| if let Literal(Integer(ref i)) = *t.sym() {
-            Ok((Opnd::Int(i.clone()), s, p))
+            Ok((
+                Positioned::new(
+                    Opnd::Int(i.clone()),
+                    t.from.clone(),
+                    t.to.clone()
+                ),
+                s,
+                p
+            ))
         } else {
             Err((Unknown, 0..p))
         })
 }
 
-pub fn string(ts: &[Tok]) -> Result<Opnd> {
+pub fn string(ts: &[Tok]) -> Result<Positioned<Opnd>> {
     fst().parse(ts)
         .map_err(|(e, r)| (FromErr::from(e), r))
-        .and_then(|(t, s, p)| if let Literal(StringLit(ref t)) = *t.sym() {
-            Ok((Opnd::StrLit(t.clone()), s, p))
+        .and_then(|(t, s, p)| if let Literal(StringLit(ref tok)) = *t.sym() {
+            Ok((
+                Positioned::new(
+                    Opnd::StrLit(tok.clone()),
+                    t.from.clone(),
+                    t.to.clone()
+                ),
+                s,
+                p
+            ))
         } else {
             Err((Unknown, 0..p))
         })
@@ -292,11 +461,20 @@ pub fn binop(ts: &[Tok]) -> Result<BinOp> {
         })
 }
 
-pub fn unaop(ts: &[Tok]) -> Result<UnaOp> {
+pub fn unaop(ts: &[Tok]) -> Result<Positioned<UnaOp>> {
     fst().parse(ts)
         .map_err(|(e, r)| (FromErr::from(e), r))
         .and_then(|(t, s, p)| if let Operator(ref o) = *t.sym() {
-            Ok((UnaOp::from_oper(o).ok_or((Unknown, 0..p))?, s, p))
+            Ok((
+                Positioned::new(
+                    UnaOp::from_oper(o)
+                        .ok_or((Unknown, 0..p))?,
+                    t.from.clone(),
+                    t.to.clone()
+                ),
+                s,
+                p
+            ))
         } else {
             Err((Unknown, 0..p))
         })
