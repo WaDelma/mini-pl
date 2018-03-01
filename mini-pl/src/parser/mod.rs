@@ -18,7 +18,7 @@ use self::ast::ExprError::*;
 type Result<'a, T> = ::parsco::Result<&'a [Tok], T, ParseError>;
 
 pub mod ast;
-#[cfg(test)]
+// #[cfg(test)]
 mod tests;
 
 pub fn parse(ts: &[Tok]) -> Result<Vec<Positioned<Stmt>>> {
@@ -139,7 +139,7 @@ pub fn stmt(ts: &[Tok]) -> Result<Positioned<Stmt>> {
         )
         | map(
             (
-                delimited(
+                (
                     sym(Keyword(For)),
                     fun(ident),
                     sym(Keyword(In))
@@ -155,8 +155,8 @@ pub fn stmt(ts: &[Tok]) -> Result<Positioned<Stmt>> {
                     (sym(Keyword(End)), sym(Keyword(For)))
                 )
             ),
-            |(ident, range_from, range_to, (stmts, (_, end))), _, _| {
-                let (from, to) = (ident.from, end.to);
+            |((for_, ident, _), range_from, range_to, (stmts, (_, end))), _, _| {
+                let (from, to) = (for_.from, end.to);
                 Positioned::new(
                     Stmt::Loop {
                         ident: ident.data,
