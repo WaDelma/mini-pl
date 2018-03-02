@@ -10,7 +10,7 @@ use super::ast::BinOp::*;
 use super::ast::UnaOp::*;
 use super::parse;
 
-//mod error;
+mod error;
 
 #[test]
 fn simple_expr() {
@@ -397,7 +397,7 @@ fn example2_parses() {
     );
 }
 
-// #[test]
+#[test]
 fn example3_parses() {
     assert_eq!(
         Ok((
@@ -405,13 +405,17 @@ fn example3_parses() {
                 Positioned::new(
                     Print {
                         expr: Positioned::new(
-                            Opnd(StrLit(String::from("Give a number"))),
-                            Position::new(1, 19),
-                            Position::new(1, 34)
+                            Opnd(Positioned::new(
+                                StrLit(String::from("Give a number")),
+                                Position::new(1, 18),
+                                Position::new(1, 33)
+                            )),
+                            Position::new(1, 18),
+                            Position::new(1, 33)
                         )
                     },
-                    Position::new(1, 13),
-                    Position::new(1, 35)
+                    Position::new(1, 12),
+                    Position::new(1, 34)
                 ),
                 Positioned::new(
                     Declaration {
@@ -419,28 +423,32 @@ fn example3_parses() {
                         ty: Integer,
                         value: None,
                     },
-                    Position::new(2, 13),
-                    Position::new(2, 25)
+                    Position::new(2, 12),
+                    Position::new(2, 24)
                 ),
                 Positioned::new(
                     Read {
                         ident: String::from("n")
                     },
-                    Position::new(3, 13),
-                    Position::new(3, 20)
+                    Position::new(3, 12),
+                    Position::new(3, 19)
                 ),
                 Positioned::new(
                     Declaration {
                         ident: String::from("v"),
                         ty: Integer,
                         value: Some(Positioned::new(
-                            Opnd(Int(1.into())),
-                            Position::new(4, 28),
-                            Position::new(4, 29)
+                            Opnd(Positioned::new(
+                                Int(1.into()),
+                                Position::new(4, 27),
+                                Position::new(4, 28)
+                            )),
+                            Position::new(4, 27),
+                            Position::new(4, 28)
                         ))
                     },
-                    Position::new(4, 13),
-                    Position::new(4, 30)
+                    Position::new(4, 12),
+                    Position::new(4, 29)
                 ),
                 Positioned::new(
                     Declaration {
@@ -448,21 +456,30 @@ fn example3_parses() {
                         ty: Integer,
                         value: None,
                     },
-                    Position::new(5, 13),
-                    Position::new(5, 25)
+                    Position::new(5, 12),
+                    Position::new(5, 24)
                 ),
                 Positioned::new(
                     Loop {
                         ident: String::from("i"),
                         from: Positioned::new(
-                            Opnd(Int(1.into())),
-                            Position::new(6, 22),
-                            Position::new(6, 23)
+                            Opnd(Positioned::new(
+                                Int(1.into()),
+                                Position::new(6, 21),
+                                Position::new(6, 22)
+                            )),
+                            Position::new(6, 21),
+                            Position::new(6, 22)
                         ),
                         to: Positioned::new(
-                            Opnd(Ident(String::from("n"))),
-                            Position::new(6, 25),
-                            Position::new(6, 26)
+                            Opnd(Positioned::new(
+                                Ident(String::from("n")),
+                                Position::new(6, 24),
+                                Position::new(6, 25)
+                                
+                            )),
+                            Position::new(6, 24),
+                            Position::new(6, 25)
                         ),
                         stmts: vec![
                             Positioned::new(
@@ -470,43 +487,59 @@ fn example3_parses() {
                                     ident: String::from("v"),
                                     value: Positioned::new(
                                         BinOper {
-                                            lhs: Ident(String::from("v")),
+                                            lhs: Positioned::new(
+                                                Ident(String::from("v")),
+                                                Position::new(7, 21),
+                                                Position::new(7, 22)
+                                            ),
                                             op: Multiplication,
-                                            rhs: Ident(String::from("i")),
+                                            rhs: Positioned::new(
+                                                Ident(String::from("i")),
+                                                Position::new(7, 25),
+                                                Position::new(7, 26)
+                                            )
                                         },
-                                        Position::new(7, 22),
-                                        Position::new(7, 27)
+                                        Position::new(7, 21),
+                                        Position::new(7, 26)
                                     ),
                                 },
-                                Position::new(7, 17),
-                                Position::new(7, 28)
+                                Position::new(7, 16),
+                                Position::new(7, 27)
                             )
                         ],
                     },
-                    Position::new(6, 13),
-                    Position::new(8, 21)
+                    Position::new(6, 12),
+                    Position::new(8, 20)
                 ),
                 Positioned::new(
                     Print {
                         expr: Positioned::new(
-                            Opnd(StrLit(String::from("The result is: "))),
-                            Position::new(9, 19),
-                            Position::new(9, 27)
+                            Opnd(Positioned::new(
+                                StrLit(String::from("The result is: ")),
+                                Position::new(9, 18),
+                                Position::new(9, 35)
+                            )),
+                            Position::new(9, 18),
+                            Position::new(9, 35)
                         ),
                     },
-                    Position::new(9, 13),
-                    Position::new(9, 37)
+                    Position::new(9, 12),
+                    Position::new(9, 36)
                 ),
                 Positioned::new(
                     Print {
                         expr: Positioned::new(
-                            Opnd(Ident(String::from("v"))),
-                            Position::new(9, 19),
-                            Position::new(9, 20)
+                            Opnd(Positioned::new(
+                                Ident(String::from("v")),
+                                Position::new(10, 18),
+                                Position::new(10, 19)
+                            )),
+                            Position::new(10, 18),
+                            Position::new(10, 19)
                         ),
                     },
-                    Position::new(10, 13),
-                    Position::new(10, 21)
+                    Position::new(10, 12),
+                    Position::new(10, 20)
                 )
             ],
             &[][..],
