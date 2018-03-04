@@ -140,7 +140,7 @@ impl fmt::Debug for Opnd {
         use self::Opnd::*;
         match *self {
             OpndErr(ref e) => {
-                fmt.write_str("Int(")?;
+                fmt.write_str("Err(")?;
                 e.fmt(fmt)?;
                 fmt.write_str(")")
             }

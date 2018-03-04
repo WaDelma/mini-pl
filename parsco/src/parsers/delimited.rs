@@ -14,7 +14,7 @@ impl<P1, P2, S> Parser<S> for Preceded<P1, P2>
           P2: Parser<S>,
 {
     type Res = P1::Res;
-    type Err = ::common::Err2<P2::Err, P1::Err>;
+    type Err = ::common::Err2<P2::Err, (P2::Res, P1::Err)>;
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         (&self.precedator, &self.parser).parse(s)
             .map(|((_, r), s, p)| (r, s, p))
@@ -58,7 +58,7 @@ impl<P1, P2, S> Parser<S> for Terminated<P1, P2>
           P2: Parser<S>,
 {
     type Res = P1::Res;
-    type Err = ::common::Err2<P1::Err, P2::Err>;
+    type Err = ::common::Err2<P1::Err, (P1::Res, P2::Err)>;
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         (&self.parser, &self.terminator).parse(s)
             .map(|((r, _), s, p)|(r, s, p))
@@ -104,7 +104,7 @@ impl<P1, P2, P3, S> Parser<S> for Delimited<P1, P2, P3>
           P3: Parser<S>,
 {
     type Res = P2::Res;
-    type Err = ::common::Err3<P1::Err, P2::Err, P3::Err>;
+    type Err = ::common::Err3<P1::Err, (P1::Res, P2::Err), (P1::Res, P2::Res, P3::Err)>;
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         (&self.precedator, &self.parser, &self.terminator).parse(s)
             .map(|((_, r, _), s, p)| (r, s, p))
@@ -145,16 +145,16 @@ impl<P1, P2, S> Parser<S> for (P1, P2)
           P2: Parser<S>,
 {
     type Res = (P1::Res, P2::Res);
-    type Err = ::common::Err2<P1::Err, P2::Err>;
+    type Err = ::common::Err2<P1::Err, (P1::Res, P2::Err)>;
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         self.0
             .parse(s)
             .map_err(|(e, p)| (::common::Err2::V1(e), p))
             .and_then(|(r1, s, pp)|
-                self.1
-                    .parse(s)
-                    .map(|(r2, s, p)| ((r1, r2), s, pp + p))
-                    .map_err(|(e, p)| (::common::Err2::V2(e), (pp + p.start)..(pp + p.end)))
+                match self.1.parse(s) {
+                    Ok((r2, s, p)) => Ok(((r1, r2), s, pp + p)),
+                    Err((e, p)) => Err((::common::Err2::V2((r1, e)), (pp + p.start)..(pp + p.end))),
+                }
             )
     }
 }
@@ -166,7 +166,7 @@ impl<P1, P2, P3, S> Parser<S> for (P1, P2, P3)
           P3: Parser<S>,
 {
     type Res = (P1::Res, P2::Res, P3::Res);
-    type Err = ::common::Err3<P1::Err, P2::Err, P3::Err>;
+    type Err = ::common::Err3<P1::Err, (P1::Res, P2::Err), (P1::Res, P2::Res, P3::Err)>;
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         use common::Err2::*;
         use common::Err2 as E2;
@@ -177,7 +177,7 @@ impl<P1, P2, P3, S> Parser<S> for (P1, P2, P3)
             .map_err(|(e, p)| (match e {
                 E2::V1(V1(e1)) => E3::V1(e1),
                 E2::V1(V2(e2)) => E3::V2(e2),
-                E2::V2(e3) => E3::V3(e3),
+                E2::V2(((r1, r2), e3)) => E3::V3((r1, r2, e3)),
             }, p))
             .map(|(((r1, r2), r3), s, p)| ((r1, r2, r3), s, p))
     }
@@ -192,7 +192,7 @@ impl<P1, P2, P3, P4, S> Parser<S> for (P1, P2, P3, P4)
           P4: Parser<S>,
 {
     type Res = (P1::Res, P2::Res, P3::Res, P4::Res);
-    type Err = ::common::Err4<P1::Err, P2::Err, P3::Err, P4::Err>;
+    type Err = ::common::Err4<P1::Err, (P1::Res, P2::Err), (P1::Res, P2::Res, P3::Err), (P1::Res, P2::Res, P3::Res, P4::Err)>;
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         use common::Err3::*;
         use common::Err2 as E2;
@@ -204,7 +204,7 @@ impl<P1, P2, P3, P4, S> Parser<S> for (P1, P2, P3, P4)
                 E2::V1(V1(e1)) => E4::V1(e1),
                 E2::V1(V2(e2)) => E4::V2(e2),
                 E2::V1(V3(e3)) => E4::V3(e3),
-                E2::V2(e4) => E4::V4(e4),
+                E2::V2(((r1, r2, r3), e4)) => E4::V4((r1, r2, r3, e4)),
             }, p))
             .map(|(((r1, r2, r3), r4), s, p)| ((r1, r2, r3, r4), s, p))
     }
@@ -219,7 +219,7 @@ impl<P1, P2, P3, P4, P5, S> Parser<S> for (P1, P2, P3, P4, P5)
           P5: Parser<S>,
 {
     type Res = (P1::Res, P2::Res, P3::Res, P4::Res, P5::Res);
-    type Err = ::common::Err5<P1::Err, P2::Err, P3::Err, P4::Err, P5::Err>;
+    type Err = ::common::Err5<P1::Err, (P1::Res, P2::Err), (P1::Res, P2::Res, P3::Err), (P1::Res, P2::Res, P3::Res, P4::Err), (P1::Res, P2::Res, P3::Res, P4::Res, P5::Err)>;
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         use common::Err4::*;
         use common::Err2 as E2;
@@ -232,7 +232,7 @@ impl<P1, P2, P3, P4, P5, S> Parser<S> for (P1, P2, P3, P4, P5)
                 E2::V1(V2(e2)) => E5::V2(e2),
                 E2::V1(V3(e3)) => E5::V3(e3),
                 E2::V1(V4(e4)) => E5::V4(e4),
-                E2::V2(e5) => E5::V5(e5),
+                E2::V2(((r1, r2, r3, r4), e5)) => E5::V5((r1, r2, r3, r4, e5)),
             }, p))
             .map(|(((r1, r2, r3, r4), r5), s, p)| ((r1, r2, r3, r4, r5), s, p))
     }

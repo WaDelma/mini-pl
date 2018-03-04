@@ -1,4 +1,4 @@
-use parsco::common::{Err2, Err3, Void};
+use parsco::common::{Err2, Err3};
 use parsco::*;
 
 use Ident;
@@ -18,7 +18,7 @@ use self::ast::ExprError::*;
 type Result<'a, T> = ::parsco::Result<&'a [Tok], T, ParseError>;
 
 pub mod ast;
-// #[cfg(test)]
+#[cfg(test)]
 mod tests;
 
 pub fn parse(ts: &[Tok]) -> Result<Vec<Positioned<Stmt>>> {
@@ -31,19 +31,12 @@ pub fn parse(ts: &[Tok]) -> Result<Vec<Positioned<Stmt>>> {
                 ),
                 |err, rest, pos| match err {
                     Err2::V1(e) => Err((e, pos)),
-                    Err2::V2(s) => {
-                        let statement = match s {
-                            Err2::V1(s) => Positioned::new(
-                                Stmt::ErrStmt(MissingSemicolon),
-                                s.from,
-                                s.to
-                            ),
-                            Err2::V2(_) => Positioned::new(
-                                Stmt::ErrStmt(MissingSemicolon),
-                                Position::new(0, 0),
-                                Position::new(0, 0)
-                            ),
-                        };
+                    Err2::V2((stmt, _)) => {
+                        let statement = Positioned::new(
+                            Stmt::ErrStmt(MissingSemicolon),
+                            stmt.to.clone(),
+                            stmt.to
+                        );
                         let pos = pos.end - 1;
                         let (from, to) = (statement.from.clone(), statement.to.clone());
                         Ok(((statement, Tok::new(Punctuation(Semicolon), from, to)), &rest[pos..], pos))
@@ -264,7 +257,7 @@ pub fn stmt(ts: &[Tok]) -> Result<Positioned<Stmt>> {
     ).parse(ts)
         .map_err(|(err, pos)| (
             match err {
-                Err2::V2(e) => FromErr::from(e),
+                Err2::V2((_, (_, e))) => FromErr::from(e),
                 _ => ParseError::Unknown,
             },
             pos
@@ -326,36 +319,48 @@ pub fn opnd(ts: &[Tok]) -> Result<Positioned<Opnd>> {
                 i.to
             )
         )
-        | map((
-            sym(Punctuation(Parenthesis(Open))),
-            flat_map_err(
-                (
-                    map(
-                        fun(expr),
-                        |expr, _, _| Opnd::Expr(Box::new(expr))
+        | flat_map_err(
+            map((
+                sym(Punctuation(Parenthesis(Open))),
+                fun(expr),
+                sym(Punctuation(Parenthesis(Close)))
+            ),
+            |(opening, expr, ending), _, _| Positioned::new(
+                Opnd::Expr(Box::new(expr)),
+                opening.from,
+                ending.to,
+            )),
+            |err, rest, pos| match err {
+                // TODO: We want to return Err here, but what is its value?
+                Err3::V1(_) => Err((Unknown, pos)),
+                Err3::V2((_, e)) => Err((e, pos)),
+                Err3::V3((_, expr, _)) => Ok((
+                    Positioned::new(
+                        Opnd::OpndErr(MissingEndParenthesis),
+                        expr.to.clone(),
+                        expr.to
                     ),
-                    sym(Punctuation(Parenthesis(Close)))
-                ),
-                |err, rest, pos| match err {
-                    Err2::V1(e) => Err((e, pos)),
-                    Err2::V2(_) => Ok((
-                        // TODO: The Tok in the second parameter is useless...
-                        (Opnd::OpndErr(MissingEndParenthesis), Tok::new(Punctuation(Parenthesis(Close)), Position::new(0, 0), Position::new(0, 0))), 
-                        &rest[(pos.end - 1)..],
-                        pos.end - 1
-                    )),
-                }
-            )
-        ), |(opening, (expr, ending)), _, _| Positioned::new(
-            expr,
-            opening.from,
-            ending.to,
-        ))
-        | constant(Positioned::new(
-            Opnd::OpndErr(InvalidOperand),
-            Position::new(0, 0),
-            Position::new(0, 0)
-        ))
+                    &rest[(pos.end - 1)..],
+                    pos.end - 1
+                ))
+            }
+        )
+        | map(
+            constant(()),
+            |_, rest: &[Tok], _| {
+                let (from, to) = rest.last()
+                    .map(|l| (l.from.clone(), l.to.clone()))
+                    .unwrap_or((
+                        Position::new(0, 0),
+                        Position::new(0, 0)
+                    ));
+                Positioned::new(
+                    Opnd::OpndErr(InvalidOperand),
+                    from,
+                    to
+                )
+            }
+        )
     ).parse(ts)
         .map_err(|(e, r)| (FromErr::from(e), r))
 }

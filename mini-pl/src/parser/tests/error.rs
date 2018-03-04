@@ -23,12 +23,13 @@ fn error_missing_expr() {
                     Print {
                         expr: Positioned::new(
                             Opnd(Positioned::new(
-                                OpndErr(MissingEndParenthesis),
-                                Position::new(1, 16),
-                                Position::new(1, 17),  
+                                OpndErr(InvalidOperand),
+                                // TODO: Should these both be 18?
+                                Position::new(1, 17),
+                                Position::new(1, 18),  
                             )),
-                            Position::new(1, 12),
                             Position::new(1, 17),
+                            Position::new(1, 18),
                         )
                     },
                     Position::new(1, 12),
@@ -74,11 +75,12 @@ fn error_missing_end_parenthesis_in_expr() {
                         expr: Positioned::new(
                             Opnd(Positioned::new(
                                 OpndErr(MissingEndParenthesis),
-                                Position::new(1, 19),
+                                Position::new(1, 20),
                                 Position::new(1, 20)
                             )),
-                            Position::new(1, 12),
-                            Position::new(1, 19)
+                            // TODO: Should this be 12?
+                            Position::new(1, 20),
+                            Position::new(1, 20)
                         )
                     },
                     Position::new(1, 12),
@@ -105,9 +107,10 @@ fn error_missing_end_parenthesis_content_after_in_expr() {
                             Opnd(Positioned::new(
                                 OpndErr(MissingEndParenthesis),
                                 Position::new(1, 24),
-                                Position::new(1, 25)
+                                Position::new(1, 24)
                             )),
-                            Position::new(1, 18),
+                            // TODO: Should this be 18?
+                            Position::new(1, 24),
                             Position::new(1, 24)
                         )
                     },
@@ -132,7 +135,7 @@ fn error_missing_semicolon() {
                 Positioned::new(
                     ErrStmt(MissingSemicolon),
                     Position::new(1, 25),
-                    Position::new(1, 26),
+                    Position::new(1, 25),
                 ),
                 Positioned::new(
                     Print {
@@ -168,7 +171,7 @@ fn error_missing_semicolon_last_line() {
                 Positioned::new(
                     ErrStmt(MissingSemicolon),
                     Position::new(1, 25),
-                    Position::new(1, 26),
+                    Position::new(1, 25),
                 )
             ],
             &[][..],
@@ -180,228 +183,264 @@ fn error_missing_semicolon_last_line() {
     );
 }
 
-// #[test]
-// fn error_no_parenthesis() {
-//     assert_eq!(
-//         Ok((
-//             vec![
+#[test]
+fn error_no_parenthesis() {
+    assert_eq!(
+        Ok((
+            vec![
                 
-//             ],
-//             &[][..],
-//             7
-//         )),
-//         parse(&tokenize("
-//             print 1 + 1 + 1;
-//         ").unwrap().0)
-//     );
-// }
+            ],
+            &[][..],
+            7
+        )),
+        parse(&tokenize("
+            print 1 + 1 + 1;
+        ").unwrap().0)
+    );
+}
 
-// #[test]
-// fn error_no_start_parenthesis_in_assert() {
-//     assert_eq!(
-//         Ok((
-//             vec![
-//                 Assert {
-//                     expr: ErrExpr(MissingParenthesis(Open))
-//                 }
-//             ],
-//             &[][..],
-//             6
-//         )),
-//         parse(&tokenize("
-//             assert 1 + 1);
-//         ").unwrap().0)
-//     );
-// }
+#[test]
+fn error_no_start_parenthesis_in_assert() {
+    assert_eq!(
+        Ok((
+            vec![
+                Positioned::new(
+                    Assert {
+                        expr: Positioned::new(
+                            ErrExpr(MissingParenthesis(Open)),
+                            Position::new(1, 19),
+                            Position::new(1, 19),
+                        )
+                    },
+                    Position::new(1, 13),
+                    Position::new(1, 26),
+                )
+            ],
+            &[][..],
+            6
+        )),
+        parse(&tokenize("
+            assert 1 + 1);
+        ").unwrap().0)
+    );
+}
 
-// #[test]
-// fn error_no_end_parenthesis_in_assert() {
-//     assert_eq!(
-//         Ok((
-//             vec![
-//                 Assert {
-//                     expr: ErrExpr(MissingParenthesis(Close))
-//                 }
-//             ],
-//             &[][..],
-//             6
-//         )),
-//         parse(&tokenize("
-//             assert (1 + 1;
-//         ").unwrap().0)
-//     );
-// }
+#[test]
+fn error_no_end_parenthesis_in_assert() {
+    assert_eq!(
+        Ok((
+            vec![
+                Positioned::new(
+                    Assert {
+                        expr: Positioned::new(
+                            ErrExpr(MissingParenthesis(Close)),
+                            Position::new(1, 25),
+                            Position::new(1, 25),
+                        )
+                    },
+                    Position::new(1, 22),
+                    Position::new(1, 26),
+                )
+            ],
+            &[][..],
+            6
+        )),
+        parse(&tokenize("
+            assert (1 + 1;
+        ").unwrap().0)
+    );
+}
 
-// #[test]
-// fn error_no_parenthesis_in_assert() {
-//     assert_eq!(
-//         Ok((
-//             vec![
-//                 Assert {
-//                     expr: ErrExpr(MissingParenthesis(Open))
-//                 }
-//             ],
-//             &[][..],
-//             5
-//         )),
-//         parse(&tokenize("
-//             assert 1 + 1;
-//         ").unwrap().0)
-//     );
-// }
+#[test]
+fn error_no_parenthesis_in_assert() {
+    assert_eq!(
+        Ok((
+            vec![
+                Positioned::new(
+                    Assert {
+                        expr: Positioned::new(
+                            ErrExpr(MissingParenthesis(Open)),
+                            Position::new(1, 19),
+                            Position::new(1, 19),
+                        )
+                    },
+                    Position::new(1, 12),
+                    Position::new(1, 25),
+                )
+            ],
+            &[][..],
+            5
+        )),
+        parse(&tokenize("
+            assert 1 + 1;
+        ").unwrap().0)
+    );
+}
 
-// #[test]
-// fn error_no_type_annotation() {
-//     assert_eq!(
-//         Ok((
-//             vec![
-//                 Declaration {
-//                     ident: "x".into(),
-//                     ty: TypeErr(NoTypeAnnotation),
-//                     value: None,
-//                 }
-//             ],
-//             &[][..],
-//             3
-//         )),
-//         parse(&tokenize("
-//             var x;
-//         ").unwrap().0)
-//     );
-// }
+#[test]
+fn error_no_type_annotation() {
+    assert_eq!(
+        Ok((
+            vec![
+                Positioned::new(
+                    Declaration {
+                        ident: "x".into(),
+                        ty: TypeErr(NoTypeAnnotation),
+                        value: None,
+                    },
+                    Position::new(1, 12),
+                    Position::new(1, 18),
+                )
+            ],
+            &[][..],
+            3
+        )),
+        parse(&tokenize("
+            var x;
+        ").unwrap().0)
+    );
+}
 
-// #[test]
-// fn error_missing_type_in_annotation() {
-//     assert_eq!(
-//         Ok((
-//             vec![
+#[test]
+fn error_missing_type_in_annotation() {
+    assert_eq!(
+        Ok((
+            vec![
                 
-//             ],
-//             &[][..],
-//             6
-//         )),
-//         parse(&tokenize("
-//             var x: = 0;
-//         ").unwrap().0)
-//     );
-// }
+            ],
+            &[][..],
+            6
+        )),
+        parse(&tokenize("
+            var x: = 0;
+        ").unwrap().0)
+    );
+}
 
-// #[test]
-// fn error_missing_range_in_for() {
-//     assert_eq!(
-//         Ok((
-//             vec![
+#[test]
+fn error_missing_range_in_for() {
+    assert_eq!(
+        Ok((
+            vec![
                 
-//             ],
-//             &[][..],
-//             8
-//         )),
-//         parse(&tokenize("
-//             for x in do; end for;
-//         ").unwrap().0)
-//     );
-// }
+            ],
+            &[][..],
+            8
+        )),
+        parse(&tokenize("
+            for x in do; end for;
+        ").unwrap().0)
+    );
+}
 
-// #[test]
-// fn error_missing_end_for_in_for() {
-//     assert_eq!(
-//         Ok((
-//             vec![
+#[test]
+fn error_missing_end_for_in_for() {
+    assert_eq!(
+        Ok((
+            vec![
                 
-//             ],
-//             &[][..],
-//             8
-//         )),
-//         parse(&tokenize("
-//             for x in 0..1 do;
-//         ").unwrap().0)
-//     );
-// }
+            ],
+            &[][..],
+            8
+        )),
+        parse(&tokenize("
+            for x in 0..1 do;
+        ").unwrap().0)
+    );
+}
 
-// #[test]
-// fn error_missing_for_in_for() {
-//     assert_eq!(
-//         Ok((
-//             vec![
+#[test]
+fn error_missing_for_in_for() {
+    assert_eq!(
+        Ok((
+            vec![
                 
-//             ],
-//             &[][..],
-//             10
-//         )),
-//         parse(&tokenize("
-//             for x in 0..1 do; end;
-//         ").unwrap().0)
-//     );
-// }
+            ],
+            &[][..],
+            10
+        )),
+        parse(&tokenize("
+            for x in 0..1 do; end;
+        ").unwrap().0)
+    );
+}
 
-// #[test]
-// fn error_missing_variable_in_for() {
-//     assert_eq!(
-//         Ok((
-//             vec![
+#[test]
+fn error_missing_variable_in_for() {
+    assert_eq!(
+        Ok((
+            vec![
                 
-//             ],
-//             &[][..],
-//             10
-//         )),
-//         parse(&tokenize("
-//             for in 0..1 do; end for;
-//         ").unwrap().0)
-//     );
-// }
+            ],
+            &[][..],
+            10
+        )),
+        parse(&tokenize("
+            for in 0..1 do; end for;
+        ").unwrap().0)
+    );
+}
 
-// #[test]
-// fn error_missing_in_in_for() {
-//     assert_eq!(
-//         Ok((
-//             vec![
+#[test]
+fn error_missing_in_in_for() {
+    assert_eq!(
+        Ok((
+            vec![
                 
-//             ],
-//             &[][..],
-//             10
-//         )),
-//         parse(&tokenize("
-//             for x 0..1 do; end for;
-//         ").unwrap().0)
-//     );
-// }
+            ],
+            &[][..],
+            10
+        )),
+        parse(&tokenize("
+            for x 0..1 do; end for;
+        ").unwrap().0)
+    );
+}
 
-// #[test]
-// fn error_keyword_as_type() {
-//     assert_eq!(
-//         Ok((
-//             vec![
-//                 Declaration {
-//                     ident: "x".into(),
-//                     ty: TypeErr(KeywordNotType(Keyword::For)),
-//                     value: None,
-//                 }
-//             ],
-//             &[][..],
-//             5
-//         )),
-//         parse(&tokenize("
-//             var x: for;
-//         ").unwrap().0)
-//     );
-// }
+#[test]
+fn error_keyword_as_type() {
+    assert_eq!(
+        Ok((
+            vec![
+                Positioned::new(
+                    Declaration {
+                        ident: "x".into(),
+                        ty: TypeErr(KeywordNotType(Keyword::For)),
+                        value: None,
+                    },
+                    Position::new(1, 12),
+                    Position::new(1, 23),
+                )
+            ],
+            &[][..],
+            5
+        )),
+        parse(&tokenize("
+            var x: for;
+        ").unwrap().0)
+    );
+}
 
-// #[test]
-// fn error_unknown_type() {
-//     assert_eq!(
-//         Ok((
-//             vec![
-//                 Declaration {
-//                     ident: "x".into(),
-//                     ty: TypeErr(UnknownType("ImaginaryType".into())),
-//                     value: None,
-//                 }
-//             ],
-//             &[][..],
-//             5
-//         )),
-//         parse(&tokenize("
-//             var x: ImaginaryType;
-//         ").unwrap().0)
-//     );
-// }
+#[test]
+fn error_unknown_type() {
+    assert_eq!(
+        Ok((
+            vec![
+                Positioned::new(
+                    Declaration {
+                        ident: "x".into(),
+                        ty: TypeErr(UnknownType("ImaginaryType".into())),
+                        value: None,
+                    },
+                    Position::new(1, 12),
+                    Position::new(1, 33),
+                )
+            ],
+            &[][..],
+            5
+        )),
+        parse(&tokenize("
+            var x: ImaginaryType;
+        ").unwrap().0)
+    );
+}

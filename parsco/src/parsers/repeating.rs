@@ -371,7 +371,7 @@ impl<P, S> Parser<S> for List0<P, S>
           P: Parser<S>,
 {
     type Res = Vec<P::Res>;
-    type Err = Err2<(), ()>;
+    type Err = Err2<(), (Vec<P::Res>, ())>;
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         map(
             (

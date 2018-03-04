@@ -66,7 +66,7 @@ pub fn tokenize(s: &str) -> ParseResult<Vec<Tok>> {
             }
         )
     ), ws(opt(fun(comment)))).parse(s)
-        .map_err(|(err, pos)| (FromErr::from(err), pos))
+        .map_err(|(err, pos)| (LexError::Unknown, pos)) // TODO: Better error
 }
 
 /// Parses single and multiline comments
@@ -75,7 +75,7 @@ fn comment(input: &str) -> ParseResult<()> {
         | fun(multiline_comment)
         | map((tag("//"), take_while0(|c| c != '\n')), |_, _, _| ())
     ).parse(input)
-        .map_err(|(err, pos)| (FromErr::from(err), pos))
+        .map_err(|(err, pos)| (LexError::Unknown, pos)) // TODO: Better error
 }
 
 /// Parses multiline comments
@@ -86,7 +86,7 @@ fn multiline_comment(input: &str) -> ParseResult<()> {
         take_until(tag("*/"))
     ), |_, _, _| ())
         .parse(input)
-        .map_err(|(err, pos)| (FromErr::from(err), pos))
+        .map_err(|(err, pos)| (LexError::Unknown, pos)) // TODO: Better error
 }
 
 /// Handles nested multiline comments
@@ -103,7 +103,7 @@ fn nested_comment(input: &str) -> ParseResult<()> {
         opt(fun(nested_comment))
     ), |_, _, _| ())
         .parse(input)
-        .map_err(|(err, pos)| (FromErr::from(err), pos))
+        .map_err(|(err, pos)| (LexError::Unknown, pos)) // TODO: Better error
 }
 
 /// Lexes single operator
@@ -169,7 +169,7 @@ fn keyword_or_identifier(input: &str) -> ParseResult<Token> {
         }
         Token::Identifier(ident)
     }).parse(input)
-        .map_err(|(err, pos)| (FromErr::from(err), pos))
+        .map_err(|(err, pos)| (LexError::Unknown, pos)) // TODO: Better error
 }
 
 /// Lexes integer literal
@@ -193,7 +193,7 @@ fn str_literal(input: &str) -> ParseResult<Token> {
             .map(Token::Literal)
             .unwrap_or_else(Token::Error)
     ).parse(input)
-        .map_err(|(err, pos)| (FromErr::from(err), pos))
+        .map_err(|(err, pos)| (LexError::Unknown, pos)) // TODO: Better error
 }
 
 /// Parses the contents of string literal
