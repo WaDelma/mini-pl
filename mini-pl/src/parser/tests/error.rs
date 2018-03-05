@@ -261,7 +261,7 @@ fn error_no_parenthesis_in_assert() {
                         expr: Positioned::new(
                             ErrExpr(MissingParenthesis(Open)),
                             Position::new(1, 19),
-                            Position::new(1, 19),
+                            Position::new(1, 20),
                         )
                     },
                     Position::new(1, 12),

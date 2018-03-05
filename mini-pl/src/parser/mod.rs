@@ -39,13 +39,20 @@ pub fn parse(ts: &[Tok]) -> Result<Vec<Positioned<Stmt>>> {
                         );
                         let pos = pos.end - 1;
                         let (from, to) = (statement.from.clone(), statement.to.clone());
-                        Ok(((statement, Tok::new(Punctuation(Semicolon), from, to)), &rest[pos..], pos))
+                        Ok((
+                            (
+                                statement,
+                                Tok::new(Punctuation(Semicolon), from, to)
+                            ),
+                            &rest[pos..],
+                            pos
+                        ))
                     },
                 }
             ),
-            |(mut stmt, semi), _, _| {
-                stmt.to = semi.to;
-                stmt
+            |(mut statement, semicolon), _, _| {
+                statement.to = semicolon.to;
+                statement
             }
         )
     ).parse(ts)
@@ -205,29 +212,26 @@ pub fn stmt(ts: &[Tok]) -> Result<Positioned<Stmt>> {
                         let pos_before = pos.end - 1;
                         match err {
                             V1(_) => {
-                                match take_until::<_, &[Tok]>(sym(Punctuation(Semicolon))).parse(rest) {
-                                    Ok(((_, tok), _, pos2)) => {
-                                        let pos = pos_before + pos2 - 1;
-                                        Ok((
-                                            Positioned::new(
-                                                Expr::ErrExpr(MissingParenthesis(Open)),
-                                                Position::new(0, 0),
-                                                tok.to
-                                            ),
-                                            &rest[pos..],
-                                            pos
-                                        ))
-                                    },
-                                    Err(_) => Ok((
-                                        Positioned::new(
-                                            Expr::ErrExpr(MissingParenthesis(Open)),
-                                            Position::new(0, 0),
-                                            Position::new(0, 0)
-                                        ),
-                                        &rest[pos_before..],
-                                        pos_before
-                                    ))
-                                }
+                                let (from, to) = rest.first()
+                                    .map(|l| (l.from.clone(), l.to.clone()))
+                                    .unwrap_or((
+                                        Position::new(0, 0),
+                                        Position::new(0, 0)
+                                    ));
+                                    
+                                let pos = pos_before + take_until::<_, &[Tok]>(sym(Punctuation(Semicolon)))
+                                    .parse(rest)
+                                    .map(|(_, _, pos2)| pos2 - 1)
+                                    .unwrap_or(0);
+                                Ok((
+                                    Positioned::new(
+                                        Expr::ErrExpr(MissingParenthesis(Open)),
+                                        from,
+                                        to
+                                    ),
+                                    &rest[pos..],
+                                    pos
+                                ))
                             },
                             V2(e) => Err((e, pos)),
                             V3(_) => Ok((
