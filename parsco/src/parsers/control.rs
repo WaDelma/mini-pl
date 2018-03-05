@@ -31,7 +31,7 @@ impl<S, F, P> Parser<S> for Satisfying<P, F, S>
     }
 }
 
-/// Allows to use checking if predicate holds for result of given parser.
+/// Allows to checking if predicate holds for the result of given parser.
 /// 
 /// # Examples
 /// ```rust
@@ -40,6 +40,15 @@ impl<S, F, P> Parser<S> for Satisfying<P, F, S>
 /// assert_eq!(
 ///     Ok(('b', "ar", 1)),
 ///     satisfying(fst(), |c: &char| c.is_alphabetic()).parse("bar")
+/// );
+/// ```
+/// ```rust
+/// use parsco::{Parser, fst, satisfying};
+/// use parsco::common::Err2;
+/// 
+/// assert_eq!(
+///     Err((Err2::V2(()), 0..1)),
+///     satisfying(fst(), |c: &char| c.is_alphabetic()).parse("1ar")
 /// );
 /// ```
 pub fn satisfying<S, P, F>(parser: P, predicate: F) -> Satisfying<P, F, S>
