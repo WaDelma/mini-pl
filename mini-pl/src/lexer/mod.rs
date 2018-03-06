@@ -1,7 +1,10 @@
 use std::char;
 use std::cell::Cell;
 
+use num_bigint::BigInt;
+
 use parsco::{Parser, FromErr, tag, many0, alt, fun, preceded, terminated, take_while0, take_while1, take_until, ws, fst, opt, map, eat, take, flat_map, satisfying, take_nm};
+use parsco::common::{Void, Err2};
 
 use self::tokens::{Token, Tok, Position, LexError, HexadecimalLexError, OctalLexError};
 use self::tokens::Punctuation::*;
@@ -183,9 +186,17 @@ fn keyword_or_identifier(input: &str) -> ParseResult<Token> {
 
 /// Lexes integer literal
 fn integer(input: &str) -> ParseResult<Token> {
-    map(
-        take_while1(|c| char::is_digit(c, 10)),
-        |number: &str, _, _| Token::Literal(Integer(number.parse().unwrap()))
+    flat_map(
+        take_while1(|c| char::is_alphanumeric(c)),
+        |number: &str, rest, pos| {
+            Ok::<_, (Void, _)>((
+                number.parse()
+                    .map(|i| Token::Literal(Integer(i)))
+                    .unwrap_or_else(|e| Token::Error(e.into())),
+                rest,
+                pos
+            ))
+        }
     )
     .parse(input)
     .map_err(|(err, pos)| (FromErr::from(err), pos))

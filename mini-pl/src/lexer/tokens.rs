@@ -3,7 +3,7 @@ use std::num::ParseIntError;
 use std::string::FromUtf8Error;
 use std::str::Utf8Error;
 
-use num_bigint::BigInt;
+use num_bigint::{BigInt, ParseBigIntError};
 
 use parsco::{Sym, FromErr};
 
@@ -122,6 +122,7 @@ pub enum Keyword {
 pub enum LexError {
     HexadecimalLexError(HexadecimalLexError),
     OctalLexError(OctalLexError),
+    InvalidInteger,
     UnknownEscape(String),
     Unknown,
 }
@@ -141,6 +142,12 @@ impl FromErr<::parsco::common::Void> for LexError {
 impl FromErr<LexError> for LexError {
     fn from(l: LexError) -> Self {
         l
+    }
+}
+
+impl From<ParseBigIntError> for LexError {
+    fn from(_: ParseBigIntError) -> Self {
+        LexError::InvalidInteger
     }
 }
 

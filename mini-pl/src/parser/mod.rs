@@ -101,11 +101,8 @@ pub fn stmt(ts: &[Tok]) -> Result<Positioned<Stmt>> {
                 ))
             ),
             |((var, ident), ty, value), _, _| {
-                let to = if let Some(ref expr) = value {
-                    expr.to.clone()
-                } else {
-                    ty.to
-                };
+                let to = value.clone().map(|expr| expr.to)
+                    .unwrap_or(ty.to);
                 Positioned::new(
                     Stmt::Declaration {
                         ident: ident.data,
