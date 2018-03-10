@@ -13,6 +13,7 @@ use self::tokens::Keyword::*;
 use self::tokens::Operator::*;
 use self::tokens::Literal::*;
 use self::tokens::LexError::*;
+use util::UpdateCell;
 
 //TODO: Remove LexError from error type.
 type ParseResult<'a, T> = ::parsco::Result<&'a str, T, self::tokens::LexError>;
@@ -42,22 +43,24 @@ pub fn tokenize(s: &str) -> ParseResult<Vec<Tok>> {
             ),
             |((_, comment_lines, comment_columns), ((token, token_size), preceding_lines, preceding_columns)), _, eaten_chars| {
                 // Increment the line counter by the amount preceding comment and statement takes.
-                let cur_line = line.get();
-                line.set(cur_line + comment_lines + preceding_lines);
+                let cur_line = line.update(|c| c + comment_lines + preceding_lines);
 
-                let mut cur_column = column.get();
-                column.set(if comment_lines + preceding_lines == 0 {
-                    // We didn't advance any lines so we increment column counter by eaten characters.
-                    cur_column + eaten_chars
-                } else {
-                    // Otherwise we reset column counter and move it to where comment/statement left it.
-                    cur_column = 0;
-                    token_size + if preceding_lines == 0 {
-                        comment_columns 
-                    } else {
+                let has_comment_lines = comment_lines > 0;
+                let has_preceding_lines = preceding_lines > 0;
+
+                let cur_column = if has_comment_lines || has_preceding_lines {
+                    // There were lines so we need to move column counter to right place.
+                    column.set(token_size + if has_preceding_lines {
                         preceding_columns
-                    }
-                });
+                    } else {
+                        comment_columns
+                    });
+                    // And the preceding column count is 0.
+                    0
+                } else {
+                    // We didn't advance any lines so we increment column counter by eaten characters.
+                    column.update(|c| c + eaten_chars)
+                };
 
                 Tok {
                     token,
