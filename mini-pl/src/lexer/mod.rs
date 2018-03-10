@@ -1,8 +1,6 @@
 use std::char;
 use std::cell::Cell;
 
-use num_bigint::BigInt;
-
 use parsco::{Parser, FromErr, tag, many0, alt, fun, preceded, terminated, take_while0, take_while1, take_until, ws, fst, opt, map, eat, take, flat_map, satisfying, take_nm};
 use parsco::common::{Void, Err2};
 

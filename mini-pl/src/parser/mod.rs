@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use parsco::common::{Err2, Err3};
 use parsco::*;
 
@@ -29,27 +31,9 @@ pub fn parse(ts: &[Tok]) -> Result<Vec<Positioned<Stmt>>> {
                     fun(stmt),
                     sym(Punctuation(Semicolon))
                 ),
-                |err, rest, pos| match err {
-                    Err2::V1(e) => Err((e, pos)),
-                    Err2::V2((stmt, _)) => {
-                        let statement = Positioned::new(
-                            Stmt::ErrStmt(MissingSemicolon),
-                            stmt.to.clone(),
-                            stmt.to
-                        );
-                        let pos = pos.end - 1;
-                        let (from, to) = (statement.from.clone(), statement.to.clone());
-                        Ok((
-                            (
-                                statement,
-                                Tok::new(Punctuation(Semicolon), from, to)
-                            ),
-                            &rest[pos..],
-                            pos
-                        ))
-                    },
-                }
+                handle_semicolon_error
             ),
+            // Make statements end to be the semicolon
             |(mut statement, semicolon), _, _| {
                 statement.to = semicolon.to;
                 statement
@@ -59,210 +43,295 @@ pub fn parse(ts: &[Tok]) -> Result<Vec<Positioned<Stmt>>> {
         .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
+fn handle_semicolon_error(
+    err: Err2<ParseError, (Positioned<Stmt>, Err2<Tok, ()>)>,
+    rest: &[Tok],
+    pos: Range<usize>
+) -> Result<(Positioned<Stmt>, Tok)> {
+    match err {
+        Err2::V1(e) => Err((e, pos)),
+        Err2::V2((stmt, _)) => {
+            let (from, to) = (stmt.to.clone(), stmt.to);
+            let statement = Positioned::new(
+                Stmt::ErrStmt(MissingSemicolon),
+                from.clone(),
+                to.clone()
+            );
+            let pos = pos.end - 1;
+            Ok((
+                (
+                    statement,
+                    Tok::new(Punctuation(Semicolon), from, to)
+                ),
+                &rest[pos..],
+                pos
+            ))
+        },
+    }
+}
+
 pub fn stmt(ts: &[Tok]) -> Result<Positioned<Stmt>> {
     (alt()
-        | map(
-            (
-                (sym(Keyword(Var)), fun(ident)),
-                flat_map_err(
-                    preceded(
-                        sym(Punctuation(Colon)), fun(ty)
-                    ),
-                    |err, rest, pos| match err {
-                        Err2::V1(Err2::V1(t)) => {
-                            let pos = pos.end - 1;
-                            Ok((
-                                Positioned::new(
-                                    Type::TypeErr(NoTypeAnnotation),
-                                    t.from,
-                                    t.to
-                                ),
-                                &rest[pos..],
-                                pos
-                            ))
-                        },
-                        Err2::V1(_) => {
-                            let pos = pos.end - 1;
-                            Ok((
-                                Positioned::new(
-                                    Type::TypeErr(NoTypeAnnotation),
-                                    Position::new(0, 0),
-                                    Position::new(0, 0)
-                                ),
-                                &rest[pos..],
-                                pos
-                            ))
-                        }
-                        Err2::V2(e) => Err((e, pos)),
-                    }
-                ),
-                opt(preceded(
-                    sym(Operator(Assignment)), fun(expr)
-                ))
-            ),
-            |((var, ident), ty, value), _, _| {
-                let to = value.clone().map(|expr| expr.to)
-                    .unwrap_or(ty.to);
-                Positioned::new(
-                    Stmt::Declaration {
-                        ident: ident.data,
-                        ty: ty.data,
-                        value
-                    },
-                    var.from,
-                    to
-                )
-            }
-        )
-        | map(
-            (
-                fun(ident),
+        | fun(declaration)
+        | fun(assigment)
+        | fun(for_loop)
+        | fun(read)
+        | fun(print)
+        | fun(assert)
+    ).parse(ts)
+}
+
+pub fn declaration(ts: &[Tok]) -> Result<Positioned<Stmt>> {
+    map(
+        (
+            (sym(Keyword(Var)), fun(ident)),
+            flat_map_err(
                 preceded(
-                    sym(Operator(Assignment)),
-                    fun(expr)
-                )
-            ),
-            |(ident, value), _, _| {
-                let (from, to) = (ident.from, value.to.clone());
-                Positioned::new(
-                    Stmt::Assignment {
-                        ident: ident.data,
-                        value
-                    },
-                    from,
-                    to
-                )
-            }
-        )
-        | map(
-            (
-                (
-                    sym(Keyword(For)),
-                    fun(ident),
-                    sym(Keyword(In))
+                    sym(Punctuation(Colon)), fun(ty)
                 ),
-                fun(expr),
-                delimited(
-                    sym(Operator(Range)),
-                    fun(expr),
-                    sym(Keyword(Do))
-                ),
-                (
-                    fun(parse),
-                    (sym(Keyword(End)), sym(Keyword(For)))
-                )
+                handle_type_annotation_error
             ),
-            |((for_, ident, _), range_from, range_to, (stmts, (_, end))), _, _| {
-                let (from, to) = (for_.from, end.to);
-                Positioned::new(
-                    Stmt::Loop {
-                        ident: ident.data,
-                        from: range_from,
-                        to: range_to,
-                        stmts
-                    },
-                    from,
-                    to
-                )
-            }
-        )
-        | map(
-            (
-                sym(Keyword(Read)),
-                fun(ident)
-            ),
-            |(read, ident), _, _| Positioned::new(
-                Stmt::Read {
-                    ident: ident.data
+            opt(preceded(
+                sym(Operator(Assignment)), fun(expr)
+            ))
+        ),
+        |((var, ident), ty, value), _, _| {
+            let to = value.clone()
+                .map(|expr| expr.to)
+                .unwrap_or(ty.to);
+            Positioned::new(
+                Stmt::Declaration {
+                    ident: ident.data,
+                    ty: ty.data,
+                    value
                 },
-                read.from,
-                ident.to
+                var.from,
+                to
             )
-        )
-        | map(
-            (
-                sym(Keyword(Print)),
+        }
+    ).parse(ts)
+        .map_err(|(err, pos)| (ParseError::Unknown, pos)) // TODO: Better error
+}
+
+fn handle_type_annotation_error(
+    err: Err2<
+        Err2<Tok, ()>,
+        (Tok, ParseError)
+    >,
+    rest: &[Tok],
+    pos: Range<usize>
+) -> Result<Positioned<Type>> {
+    match err {
+        Err2::V1(Err2::V1(t)) => {
+            let pos = pos.end - 1;
+            Ok((
+                Positioned::new(
+                    Type::TypeErr(NoTypeAnnotation),
+                    t.from,
+                    t.to
+                ),
+                &rest[pos..],
+                pos
+            ))
+        },
+        Err2::V1(_) => {
+            let pos = pos.end - 1;
+            Ok((
+                Positioned::new(
+                    Type::TypeErr(NoTypeAnnotation),
+                    Position::new(0, 0),
+                    Position::new(0, 0)
+                ),
+                &rest[pos..],
+                pos
+            ))
+        }
+        Err2::V2((_, e)) => Err((e, pos)),
+    }
+}
+
+pub fn assigment(ts: &[Tok]) -> Result<Positioned<Stmt>> {
+    map(
+        (
+            fun(ident),
+            preceded(
+                sym(Operator(Assignment)),
                 fun(expr)
-            ),
-            |(print, expr), _, _| {
-                let (from, to) = (print.from, expr.to.clone());
-                Positioned::new(
-                    Stmt::Print {
-                        expr
-                    },
-                    from,
-                    to,
-                )
-            }
-        )
-        | map(
+            )
+        ),
+        |(ident, value), _, _| {
+            let (from, to) = (ident.from, value.to.clone());
+            Positioned::new(
+                Stmt::Assignment { ident: ident.data, value },
+                from,
+                to
+            )
+        }
+    ).parse(ts)
+        .map_err(|(err, pos)| (ParseError::Unknown, pos)) // TODO: Better error
+}
+
+pub fn for_loop(ts: &[Tok]) -> Result<Positioned<Stmt>> {
+    map(
+        (
             (
-                sym(Keyword(Assert)),
-                flat_map_err(
-                    delimited(
-                        sym(Punctuation(Parenthesis(Open))),
-                        fun(expr),
-                        sym(Punctuation(Parenthesis(Close))),
-                    ),
-                    |err, rest, pos| {
-                        use self::Err3::*;
-                        let pos_before = pos.end - 1;
-                        match err {
-                            V1(_) => {
-                                let (from, to) = rest.first()
-                                    .map(|l| (l.from.clone(), l.to.clone()))
-                                    .unwrap_or((
-                                        Position::new(0, 0),
-                                        Position::new(0, 0)
-                                    ));
-                                    
-                                let pos = pos_before + take_until::<_, &[Tok]>(sym(Punctuation(Semicolon)))
-                                    .parse(rest)
-                                    .map(|(_, _, pos2)| pos2 - 1)
-                                    .unwrap_or(0);
-                                Ok((
-                                    Positioned::new(
-                                        Expr::ErrExpr(MissingParenthesis(Open)),
-                                        from,
-                                        to
-                                    ),
-                                    &rest[pos..],
-                                    pos
-                                ))
-                            },
-                            V2(e) => Err((e, pos)),
-                            V3(_) => Ok((
-                                Positioned::new(
-                                    Expr::ErrExpr(MissingParenthesis(Close)),
-                                    Position::new(0, 0),
-                                    Position::new(0, 0)
-                                ),
-                                &rest[pos_before..],
-                                pos_before
-                            )),
-                        }
-                    }
-                )
+                sym(Keyword(For)),
+                fun(ident),
+                sym(Keyword(In))
             ),
-            |(assert, expr), _, _| {
-                let (from, to) = (assert.from, expr.to.clone());
-                Positioned::new(
-                    Stmt::Assert {
-                        expr
-                    },
-                    from,
-                    to,
-                )
-            }
+            fun(expr),
+            delimited(
+                sym(Operator(Range)),
+                fun(expr),
+                sym(Keyword(Do))
+            ),
+            (
+                fun(parse),
+                (sym(Keyword(End)), sym(Keyword(For)))
+            )
+        ),
+        |((for_, ident, _), range_from, range_to, (stmts, (_, end))), _, _| {
+            let (from, to) = (for_.from, end.to);
+            Positioned::new(
+                Stmt::Loop {
+                    ident: ident.data,
+                    from: range_from,
+                    to: range_to,
+                    stmts
+                },
+                from,
+                to
+            )
+        }
+    ).parse(ts)
+        .map_err(|(err, pos)| (ParseError::Unknown, pos)) // TODO: Better error
+}
+
+pub fn read(ts: &[Tok]) -> Result<Positioned<Stmt>> {
+    map(
+        (
+            sym(Keyword(Read)),
+            fun(ident)
+        ),
+        |(read, ident), _, _| Positioned::new(
+            Stmt::Read {
+                ident: ident.data
+            },
+            read.from,
+            ident.to
         )
     ).parse(ts)
         .map_err(|(err, pos)| (
             match err {
-                Err2::V2((_, (_, e))) => FromErr::from(e),
+                Err2::V2((_, e)) => FromErr::from(e),
                 _ => ParseError::Unknown,
             },
             pos
         ))
+}
+
+pub fn print(ts: &[Tok]) -> Result<Positioned<Stmt>> {
+    map(
+        (
+            sym(Keyword(Print)),
+            fun(expr)
+        ),
+        |(print, expr), _, _| {
+            let (from, to) = (print.from, expr.to.clone());
+            Positioned::new(
+                Stmt::Print {
+                    expr
+                },
+                from,
+                to,
+            )
+        }
+    ).parse(ts)
+        .map_err(|(err, pos)| (
+            match err {
+                Err2::V2((_, e)) => FromErr::from(e),
+                _ => ParseError::Unknown,
+            },
+            pos
+        ))
+}
+
+pub fn assert(ts: &[Tok]) -> Result<Positioned<Stmt>> {
+    map(
+        (
+            sym(Keyword(Assert)),
+            flat_map_err(
+                delimited(
+                    sym(Punctuation(Parenthesis(Open))),
+                    fun(expr),
+                    sym(Punctuation(Parenthesis(Close))),
+                ),
+                handle_parenthesis_missing_error
+            )
+        ),
+        |(assert, expr), _, _| {
+            let (from, to) = (assert.from, expr.to.clone());
+            Positioned::new(
+                Stmt::Assert { expr },
+                from,
+                to,
+            )
+        }
+    ).parse(ts)
+        .map_err(|(err, pos)| (
+            match err {
+                Err2::V2((_, e)) => FromErr::from(e),
+                _ => ParseError::Unknown,
+            },
+            pos
+        ))
+}
+
+pub fn handle_parenthesis_missing_error(
+    err: Err3<
+        Err2<Tok, ()>,
+        (Tok, ParseError),
+        (Tok, Positioned<Expr>, Err2<Tok, ()>)
+    >,
+    rest: &[Tok],
+    pos: Range<usize>
+) -> Result<Positioned<Expr>> {
+    use self::Err3::*;
+    let pos_before = pos.end - 1;
+    match err {
+        V1(_) => {
+            let (from, to) = rest.first()
+                .map(|l| (l.from.clone(), l.to.clone()))
+                .unwrap_or((
+                    Position::new(0, 0),
+                    Position::new(0, 0)
+                ));
+                
+            let pos = pos_before + take_until::<_, &[Tok]>(sym(Punctuation(Semicolon)))
+                .parse(rest)
+                .map(|(_, _, pos2)| pos2 - 1)
+                .unwrap_or(0);
+            Ok((
+                Positioned::new(
+                    Expr::ErrExpr(MissingParenthesis(Open)),
+                    from,
+                    to
+                ),
+                &rest[pos..],
+                pos
+            ))
+        },
+        V2((_, e)) => Err((e, pos)),
+        V3(_) => Ok((
+            Positioned::new(
+                Expr::ErrExpr(MissingParenthesis(Close)),
+                Position::new(0, 0),
+                Position::new(0, 0)
+            ),
+            &rest[pos_before..],
+            pos_before
+        )),
+    }
 }
 
 pub fn expr(ts: &[Tok]) -> Result<Positioned<Expr>> {
@@ -272,11 +341,7 @@ pub fn expr(ts: &[Tok]) -> Result<Positioned<Expr>> {
             |(lhs, op, rhs), _, _| {
                 let (from, to) = (lhs.from.clone(), rhs.to.clone());
                 Positioned::new(
-                    Expr::BinOper {
-                        lhs,
-                        op,
-                        rhs
-                    },
+                    Expr::BinOper { lhs, op, rhs },
                     from,
                     to
                 )
@@ -287,10 +352,7 @@ pub fn expr(ts: &[Tok]) -> Result<Positioned<Expr>> {
             |(op, rhs), _, _| {
                 let (from, to) = (op.from, rhs.to.clone());
                 Positioned::new(
-                    Expr::UnaOper {
-                        op: op.data,
-                        rhs
-                    },
+                    Expr::UnaOper { op: op.data, rhs },
                     from,
                     to
                 )
@@ -300,11 +362,7 @@ pub fn expr(ts: &[Tok]) -> Result<Positioned<Expr>> {
             fun(opnd),
             |o, _, _|  {
                 let (from, to) = (o.from.clone(), o.to.clone());
-                Positioned::new(
-                    Expr::Opnd(o),
-                    from,
-                    to
-                )
+                Positioned::new(Expr::Opnd(o), from, to)
             }
         )
     ).parse(ts)
@@ -314,7 +372,8 @@ pub fn opnd(ts: &[Tok]) -> Result<Positioned<Opnd>> {
     (alt()
         | fun(int)
         | fun(string)
-        | map(fun(ident), |i, _, _| Positioned::new(
+        | map(
+            fun(ident), |i, _, _| Positioned::new(
                 Opnd::Ident(i.data),
                 i.from,
                 i.to
