@@ -23,7 +23,7 @@ pub mod ast;
 #[cfg(test)]
 mod tests;
 
-pub fn parse(ts: &[Tok]) -> Result<Vec<Positioned<Stmt>>> {
+pub fn parse(tokens: &[Tok]) -> Result<Vec<Positioned<Stmt>>> {
     many1(
         map(
             flat_map_err(
@@ -39,7 +39,7 @@ pub fn parse(ts: &[Tok]) -> Result<Vec<Positioned<Stmt>>> {
                 statement
             }
         )
-    ).parse(ts)
+    ).parse(tokens)
         .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
@@ -49,7 +49,7 @@ fn handle_semicolon_error(
     pos: Range<usize>
 ) -> Result<(Positioned<Stmt>, Tok)> {
     match err {
-        Err2::V1(e) => Err((e, pos)),
+        Err2::V1(err) => Err((err, pos)),
         Err2::V2((stmt, _)) => {
             let (from, to) = (stmt.to.clone(), stmt.to);
             let statement = Positioned::new(
@@ -70,7 +70,7 @@ fn handle_semicolon_error(
     }
 }
 
-pub fn stmt(ts: &[Tok]) -> Result<Positioned<Stmt>> {
+pub fn stmt(tokens: &[Tok]) -> Result<Positioned<Stmt>> {
     (alt()
         | fun(declaration)
         | fun(assigment)
@@ -78,10 +78,10 @@ pub fn stmt(ts: &[Tok]) -> Result<Positioned<Stmt>> {
         | fun(read)
         | fun(print)
         | fun(assert)
-    ).parse(ts)
+    ).parse(tokens)
 }
 
-pub fn declaration(ts: &[Tok]) -> Result<Positioned<Stmt>> {
+pub fn declaration(tokens: &[Tok]) -> Result<Positioned<Stmt>> {
     map(
         (
             (sym(Keyword(Var)), fun(ident)),
@@ -109,7 +109,7 @@ pub fn declaration(ts: &[Tok]) -> Result<Positioned<Stmt>> {
                 to
             )
         }
-    ).parse(ts)
+    ).parse(tokens)
         .map_err(|(err, pos)| (ParseError::Unknown, pos)) // TODO: Better error
 }
 
@@ -122,13 +122,13 @@ fn handle_type_annotation_error(
     pos: Range<usize>
 ) -> Result<Positioned<Type>> {
     match err {
-        Err2::V1(Err2::V1(t)) => {
+        Err2::V1(Err2::V1(token)) => {
             let pos = pos.end - 1;
             Ok((
                 Positioned::new(
                     Type::TypeErr(NoTypeAnnotation),
-                    t.from,
-                    t.to
+                    token.from,
+                    token.to
                 ),
                 &rest[pos..],
                 pos
@@ -150,7 +150,7 @@ fn handle_type_annotation_error(
     }
 }
 
-pub fn assigment(ts: &[Tok]) -> Result<Positioned<Stmt>> {
+pub fn assigment(tokens: &[Tok]) -> Result<Positioned<Stmt>> {
     map(
         (
             fun(ident),
@@ -167,11 +167,11 @@ pub fn assigment(ts: &[Tok]) -> Result<Positioned<Stmt>> {
                 to
             )
         }
-    ).parse(ts)
+    ).parse(tokens)
         .map_err(|(err, pos)| (ParseError::Unknown, pos)) // TODO: Better error
 }
 
-pub fn for_loop(ts: &[Tok]) -> Result<Positioned<Stmt>> {
+pub fn for_loop(tokens: &[Tok]) -> Result<Positioned<Stmt>> {
     map(
         (
             (
@@ -190,8 +190,8 @@ pub fn for_loop(ts: &[Tok]) -> Result<Positioned<Stmt>> {
                 (sym(Keyword(End)), sym(Keyword(For)))
             )
         ),
-        |((for_, ident, _), range_from, range_to, (stmts, (_, end))), _, _| {
-            let (from, to) = (for_.from, end.to);
+        |((for_keyword, ident, _), range_from, range_to, (stmts, (_, end))), _, _| {
+            let (from, to) = (for_keyword.from, end.to);
             Positioned::new(
                 Stmt::Loop {
                     ident: ident.data,
@@ -203,24 +203,24 @@ pub fn for_loop(ts: &[Tok]) -> Result<Positioned<Stmt>> {
                 to
             )
         }
-    ).parse(ts)
+    ).parse(tokens)
         .map_err(|(err, pos)| (ParseError::Unknown, pos)) // TODO: Better error
 }
 
-pub fn read(ts: &[Tok]) -> Result<Positioned<Stmt>> {
+pub fn read(tokens: &[Tok]) -> Result<Positioned<Stmt>> {
     map(
         (
             sym(Keyword(Read)),
             fun(ident)
         ),
-        |(read, ident), _, _| Positioned::new(
+        |(read_keyword, ident), _, _| Positioned::new(
             Stmt::Read {
                 ident: ident.data
             },
-            read.from,
+            read_keyword.from,
             ident.to
         )
-    ).parse(ts)
+    ).parse(tokens)
         .map_err(|(err, pos)| (
             match err {
                 Err2::V2((_, e)) => FromErr::from(e),
@@ -230,7 +230,7 @@ pub fn read(ts: &[Tok]) -> Result<Positioned<Stmt>> {
         ))
 }
 
-pub fn print(ts: &[Tok]) -> Result<Positioned<Stmt>> {
+pub fn print(tokens: &[Tok]) -> Result<Positioned<Stmt>> {
     map(
         (
             sym(Keyword(Print)),
@@ -246,17 +246,17 @@ pub fn print(ts: &[Tok]) -> Result<Positioned<Stmt>> {
                 to,
             )
         }
-    ).parse(ts)
+    ).parse(tokens)
         .map_err(|(err, pos)| (
             match err {
-                Err2::V2((_, e)) => FromErr::from(e),
+                Err2::V2((_, err)) => FromErr::from(err),
                 _ => ParseError::Unknown,
             },
             pos
         ))
 }
 
-pub fn assert(ts: &[Tok]) -> Result<Positioned<Stmt>> {
+pub fn assert(tokens: &[Tok]) -> Result<Positioned<Stmt>> {
     map(
         (
             sym(Keyword(Assert)),
@@ -277,10 +277,10 @@ pub fn assert(ts: &[Tok]) -> Result<Positioned<Stmt>> {
                 to,
             )
         }
-    ).parse(ts)
+    ).parse(tokens)
         .map_err(|(err, pos)| (
             match err {
-                Err2::V2((_, e)) => FromErr::from(e),
+                Err2::V2((_, err)) => FromErr::from(err),
                 _ => ParseError::Unknown,
             },
             pos
@@ -301,7 +301,7 @@ pub fn handle_parenthesis_missing_error(
     match err {
         V1(_) => {
             let (from, to) = rest.first()
-                .map(|l| (l.from.clone(), l.to.clone()))
+                .map(|tok| (tok.from.clone(), tok.to.clone()))
                 .unwrap_or((
                     Position::new(0, 0),
                     Position::new(0, 0)
@@ -309,7 +309,7 @@ pub fn handle_parenthesis_missing_error(
                 
             let pos = pos_before + take_until::<_, &[Tok]>(sym(Punctuation(Semicolon)))
                 .parse(rest)
-                .map(|(_, _, pos2)| pos2 - 1)
+                .map(|(_, _, pos)| pos - 1)
                 .unwrap_or(0);
             Ok((
                 Positioned::new(
@@ -321,7 +321,7 @@ pub fn handle_parenthesis_missing_error(
                 pos
             ))
         },
-        V2((_, e)) => Err((e, pos)),
+        V2((_, err)) => Err((err, pos)),
         V3(_) => Ok((
             Positioned::new(
                 Expr::ErrExpr(MissingParenthesis(Close)),
@@ -334,7 +334,7 @@ pub fn handle_parenthesis_missing_error(
     }
 }
 
-pub fn expr(ts: &[Tok]) -> Result<Positioned<Expr>> {
+pub fn expr(tokens: &[Tok]) -> Result<Positioned<Expr>> {
     (alt()
         | map(
             (fun(opnd), fun(binop), fun(opnd)),
@@ -360,23 +360,23 @@ pub fn expr(ts: &[Tok]) -> Result<Positioned<Expr>> {
         )
         | map(
             fun(opnd),
-            |o, _, _|  {
-                let (from, to) = (o.from.clone(), o.to.clone());
-                Positioned::new(Expr::Opnd(o), from, to)
+            |opnd, _, _|  {
+                let (from, to) = (opnd.from.clone(), opnd.to.clone());
+                Positioned::new(Expr::Opnd(opnd), from, to)
             }
         )
-    ).parse(ts)
+    ).parse(tokens)
 }
 
-pub fn opnd(ts: &[Tok]) -> Result<Positioned<Opnd>> {
+pub fn opnd(tokens: &[Tok]) -> Result<Positioned<Opnd>> {
     (alt()
         | fun(int)
         | fun(string)
         | map(
-            fun(ident), |i, _, _| Positioned::new(
-                Opnd::Ident(i.data),
-                i.from,
-                i.to
+            fun(ident), |ident, _, _| Positioned::new(
+                Opnd::Ident(ident.data),
+                ident.from,
+                ident.to
             )
         )
         | flat_map_err(
@@ -393,7 +393,7 @@ pub fn opnd(ts: &[Tok]) -> Result<Positioned<Opnd>> {
             |err, rest, pos| match err {
                 // TODO: We want to return Err here, but what is its value?
                 Err3::V1(_) => Err((Unknown, pos)),
-                Err3::V2((_, e)) => Err((e, pos)),
+                Err3::V2((_, err)) => Err((err, pos)),
                 Err3::V3((_, expr, _)) => Ok((
                     Positioned::new(
                         Opnd::OpndErr(MissingEndParenthesis),
@@ -409,7 +409,7 @@ pub fn opnd(ts: &[Tok]) -> Result<Positioned<Opnd>> {
             constant(()),
             |_, rest: &[Tok], _| {
                 let (from, to) = rest.last()
-                    .map(|l| (l.from.clone(), l.to.clone()))
+                    .map(|last| (last.from.clone(), last.to.clone()))
                     .unwrap_or((
                         Position::new(0, 0),
                         Position::new(0, 0)
@@ -421,94 +421,70 @@ pub fn opnd(ts: &[Tok]) -> Result<Positioned<Opnd>> {
                 )
             }
         )
-    ).parse(ts)
-        .map_err(|(e, r)| (FromErr::from(e), r))
+    ).parse(tokens)
+        .map_err(|(err, pos)| (FromErr::from(err), pos))
 }
 
-pub fn ident(ts: &[Tok]) -> Result<Positioned<Ident>> {
-    fst().parse(ts)
-        .map_err(|(e, r)| (FromErr::from(e), r))
-        .and_then(|(t, s, p)| if let Identifier(ref tok) = *t.sym() {
+pub fn ident(tokens: &[Tok]) -> Result<Positioned<Ident>> {
+    fst().parse(tokens)
+        .map_err(|(err, pos)| (FromErr::from(err), pos))
+        .and_then(|(fst, rest, pos)| if let Identifier(ref tok) = *fst.sym() {
             Ok((
                 Positioned::new(
                     tok.clone(),
-                    t.from.clone(),
-                    t.to.clone()
+                    fst.from.clone(),
+                    fst.to.clone()
                 ),
-                s,
-                p
+                rest,
+                pos
             ))
         } else {
-            Err((Unknown, 0..p))
+            Err((Unknown, 0..pos))
         })
 }
 
-pub fn ty(ts: &[Tok]) -> Result<Positioned<Type>> {
-    fst().parse(ts)
-        .map_err(|(e, r)| (FromErr::from(e), r))
-        .and_then(|(t, s, p)| {
-            let (from, to) = (t.from.clone(), t.to.clone());
-            if let Keyword(ref tok) = *t.sym() {
-                Ok((
-                    Positioned::new(
-                        match *tok {
-                            Int => Type::Integer,
-                            Bool => Type::Bool,
-                            Str => Type::Str,
-                            ref k => Type::TypeErr(KeywordNotType(k.clone())),
-                        },
-                        from,
-                        to
-                    ),
-                    s,
-                    p
-                ))
-            } else {
-                match *t.sym() {
-                    Identifier(ref i) => Ok((
-                        Positioned::new(
-                            Type::TypeErr(UnknownType(i.clone())),
-                            from,
-                            to
-                        ),
-                        s,
-                        p
-                    )),
-                    _ => Err((Unknown, 0..p))   
-                }
-            }
+pub fn ty(tokens: &[Tok]) -> Result<Positioned<Type>> {
+    fst().parse(tokens)
+        .map_err(|(err, pos)| (FromErr::from(err), pos))
+        .and_then(|(fst, rest, pos)| {
+            let (from, to) = (fst.from.clone(), fst.to.clone());
+            Ok((
+                Positioned::new(Type::from_token(&fst.token), from, to),
+                rest,
+                pos
+            ))
         })
 }
 
-pub fn int(ts: &[Tok]) -> Result<Positioned<Opnd>> {
-    fst().parse(ts)
-        .map_err(|(e, r)| (FromErr::from(e), r))
-        .and_then(|(t, s, p)| if let Literal(Integer(ref i)) = *t.sym() {
+pub fn int(tokens: &[Tok]) -> Result<Positioned<Opnd>> {
+    fst().parse(tokens)
+        .map_err(|(err, pos)| (FromErr::from(err), pos))
+        .and_then(|(fst, rest, pos)| if let Literal(Integer(ref int)) = *fst.sym() {
             Ok((
                 Positioned::new(
-                    Opnd::Int(i.clone()),
-                    t.from.clone(),
-                    t.to.clone()
+                    Opnd::Int(int.clone()),
+                    fst.from.clone(),
+                    fst.to.clone()
                 ),
-                s,
-                p
+                rest,
+                pos
             ))
         } else {
-            Err((Unknown, 0..p))
+            Err((Unknown, 0..pos))
         })
 }
 
-pub fn string(ts: &[Tok]) -> Result<Positioned<Opnd>> {
-    fst().parse(ts)
-        .map_err(|(e, r)| (FromErr::from(e), r))
-        .and_then(|(t, s, p)| if let Literal(StringLit(ref tok)) = *t.sym() {
+pub fn string(tokens: &[Tok]) -> Result<Positioned<Opnd>> {
+    fst().parse(tokens)
+        .map_err(|(err, pos)| (FromErr::from(err), pos))
+        .and_then(|(fst, rest, p)| if let Literal(StringLit(ref str_lit)) = *fst.sym() {
             Ok((
                 Positioned::new(
-                    Opnd::StrLit(tok.clone()),
-                    t.from.clone(),
-                    t.to.clone()
+                    Opnd::StrLit(str_lit.clone()),
+                    fst.from.clone(),
+                    fst.to.clone()
                 ),
-                s,
+                rest,
                 p
             ))
         } else {
@@ -516,31 +492,31 @@ pub fn string(ts: &[Tok]) -> Result<Positioned<Opnd>> {
         })
 }
 
-pub fn binop(ts: &[Tok]) -> Result<BinOp> {
-    fst().parse(ts)
-        .map_err(|(e, r)| (FromErr::from(e), r))
-        .and_then(|(t, s, p)| if let Operator(ref o) = *t.sym() {
-            Ok((BinOp::from_oper(o).ok_or((Unknown, 0..p))?, s, p))
+pub fn binop(tokens: &[Tok]) -> Result<BinOp> {
+    fst().parse(tokens)
+        .map_err(|(err, pos)| (FromErr::from(err), pos))
+        .and_then(|(fst, rest, pos)| if let Operator(ref oper) = *fst.sym() {
+            Ok((BinOp::from_oper(oper).ok_or((Unknown, 0..pos))?, rest, pos))
         } else {
-            Err((Unknown, 0..p))
+            Err((Unknown, 0..pos))
         })
 }
 
-pub fn unaop(ts: &[Tok]) -> Result<Positioned<UnaOp>> {
-    fst().parse(ts)
-        .map_err(|(e, r)| (FromErr::from(e), r))
-        .and_then(|(t, s, p)| if let Operator(ref o) = *t.sym() {
+pub fn unaop(tokens: &[Tok]) -> Result<Positioned<UnaOp>> {
+    fst().parse(tokens)
+        .map_err(|(err, pos)| (FromErr::from(err), pos))
+        .and_then(|(fst, rest, pos)| if let Operator(ref oper) = *fst.sym() {
             Ok((
                 Positioned::new(
-                    UnaOp::from_oper(o)
-                        .ok_or((Unknown, 0..p))?,
-                    t.from.clone(),
-                    t.to.clone()
+                    UnaOp::from_oper(oper)
+                        .ok_or((Unknown, 0..pos))?,
+                    fst.from.clone(),
+                    fst.to.clone()
                 ),
-                s,
-                p
+                rest,
+                pos
             ))
         } else {
-            Err((Unknown, 0..p))
+            Err((Unknown, 0..pos))
         })
 }

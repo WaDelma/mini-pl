@@ -173,7 +173,7 @@ fn keyword_or_identifier(input: &str) -> ParseResult<Token> {
         satisfying(fst(), |c: &char| c.is_alphabetic()),
         take_while0(|c| char::is_alphanumeric(c) || c == '_')
     ), |(fst, rest), _, _| {
-        let ident = format!("{}{}", fst, rest);
+        let ident = fst.to_string() + rest;
         // Check that identifier wasn't keyword
         if let Ok((keyword, after_keyword, _)) = keyword(&ident) {
             if after_keyword.is_empty() {

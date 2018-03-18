@@ -5,7 +5,7 @@ use parsco::FromErr;
 use std::fmt;
 
 use Ident;
-use lexer::tokens::{Operator, Position, Keyword, Side};
+use lexer::tokens::{Token, Operator, Position, Keyword, Side};
 
 #[derive(Clone, PartialEq)]
 pub struct Positioned<T> {
@@ -242,8 +242,30 @@ pub enum Type {
     Bool
 }
 
+
+impl Type {
+    pub fn from_token(tok: &Token) -> Self {
+        use self::Keyword::*;
+        if let Token::Keyword(ref tok) = *tok {
+            match *tok {
+                Int => Type::Integer,
+                Bool => Type::Bool,
+                Str => Type::Str,
+                ref k => Type::TypeErr(TypeError::KeywordNotType(k.clone())),
+            }
+        } else {
+            match *tok {
+                Token::Identifier(ref i) => Type::TypeErr(TypeError::UnknownType(i.clone())),
+                _ => Type::TypeErr(TypeError::InvalidToken(tok.clone())),
+            }
+        }
+        
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum TypeError {
+    InvalidToken(Token),
     UnknownType(String),
     KeywordNotType(Keyword),
     NoTypeAnnotation
