@@ -110,4 +110,8 @@ impl<T> Context<T> {
         self.used_scopes.push(_scope.expect("There should be at least one scope."));
         result
     }
+    
+    pub fn clear(&mut self) {
+        self.scopes.clear();
+    }
 }

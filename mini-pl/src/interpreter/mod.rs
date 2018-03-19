@@ -6,7 +6,7 @@ use self::repr::{Ty, Value, TypedValue};
 use self::repr::Value::*;
 
 pub mod context;
-mod repr;
+pub mod repr;
 #[cfg(test)]
 mod tests;
 
