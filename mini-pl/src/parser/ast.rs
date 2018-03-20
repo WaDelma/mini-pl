@@ -37,10 +37,6 @@ pub enum Stmt {
     }
 }
 
-pub struct Expression {
-
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
     ErrExpr(ExprError),

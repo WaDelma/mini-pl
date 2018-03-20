@@ -19,9 +19,11 @@ use termion::raw::{IntoRawMode, RawTerminal};
 use mini_pl::lexer::tokenize;
 use mini_pl::lexer::tokens::Token;
 use mini_pl::parser::parse;
+use mini_pl::parser::ast::{Stmt, Expr, Opnd};
 use mini_pl::interpreter::interpret;
 use mini_pl::interpreter::context::{Context, Io};
 use mini_pl::interpreter::repr::TypedValue;
+use mini_pl::util::Positioned;
 
 use std::io::{Write, stdout, Stdout, stdin, Stdin};
 use std::iter::repeat;
@@ -161,6 +163,106 @@ fn interpret_line(line: &str, memory: &mut Context<TypedValue>, stdio: &mut Repl
             return Ok(false);
         }
     };
+
+    // TODO: Make this work.
+    // let mut errors = false;
+    // for err in find_parse_errors(ast) {
+    //     if !errors {
+    //         stdio.stdout.cwriteln(error_style(), "Parsing failed:")?;
+    //         errors = true;
+    //     }
+    //     stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", err))?;
+    // }
+    // if errors {
+    //     return Ok(false);
+    // }
+
+    fn parse_error_opnd(opnd: &Positioned<Opnd>, stdio: &mut ReplStdio) -> Result<bool> {
+        use self::Opnd::*;
+        match opnd.data {
+            OpndErr(_) => {
+                stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", opnd))?;
+                Ok(true)
+            }
+            Int(_) | StrLit(_) | Ident(_) => Ok(false),
+            Expr(ref expr) => parse_error_expr(&*expr, stdio),
+        }
+    }
+
+    fn parse_error_expr(expr: &Positioned<Expr>, stdio: &mut ReplStdio) -> Result<bool> {
+        use self::Expr::*;
+        match expr.data {
+            ErrExpr(_) => {
+                stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", expr))?;
+                Ok(true)
+            },
+            BinOper {
+                ref lhs,
+                ref rhs,
+                ..
+            } => Ok(
+                parse_error_opnd(lhs, stdio)? |
+                parse_error_opnd(rhs, stdio)?
+            ),
+            UnaOper {
+                ref rhs,
+                ..
+            } => parse_error_opnd(rhs, stdio),
+            Opnd(ref opnd) => parse_error_opnd(opnd, stdio),
+        }
+    }
+
+    fn parse_error_stmts(stmts: &[Positioned<Stmt>], stdio: &mut ReplStdio) -> Result<bool> {
+        use self::Stmt::*;
+        let mut error = false;
+        for stmt in stmts {
+            match stmt.data {
+                ErrStmt(_) => {
+                    stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", stmt))?;
+                    error = true;
+                },
+                Declaration {
+                    value: ref e,
+                    ..
+                } => if let Some(ref e) = *e {
+                    error |= parse_error_expr(e, stdio)?;
+                },
+                Assignment {
+                    ref value,
+                    ..
+                } => {
+                    error |= parse_error_expr(value, stdio)?;
+                },
+                Loop {
+                    ref from,
+                    ref to,
+                    ref stmts,
+                    ..
+                } => {
+                    error |= parse_error_expr(from, stdio)?;
+                    error |= parse_error_expr(to, stdio)?;
+                    error |= parse_error_stmts(&stmts[..], stdio)?;
+                },
+                Read { .. } => {},
+                Print {
+                    ref expr
+                } => {
+                    error |= parse_error_expr(expr, stdio)?;
+                },
+                Assert {
+                    ref expr
+                } => {
+                    error |= parse_error_expr(expr, stdio)?;
+                },
+            }
+        }
+        Ok(error)
+    }
+    
+    if parse_error_stmts(&ast[..], stdio)? {
+        return Ok(false);
+    }
+
     interpret(&ast[..], memory, stdio);
     Ok(true)
 }
