@@ -5,31 +5,8 @@ use parsco::FromErr;
 use std::fmt;
 
 use Ident;
-use lexer::tokens::{Token, Operator, Position, Keyword, Side};
-
-#[derive(Clone, PartialEq)]
-pub struct Positioned<T> {
-    pub data: T,
-    pub from: Position,
-    pub to: Position,
-}
-
-impl<T: fmt::Debug> fmt::Debug for Positioned<T> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        // TODO: self.data should use formating args...
-        write!(fmt, "{:#?} at {:?}..{:?}", self.data, self.from, self.to)
-    }
-}
-
-impl<T> Positioned<T> {
-    pub fn new(data: T, from: Position, to: Position) -> Self {
-        Positioned {
-            data,
-            from,
-            to
-        }
-    }
-}
+use lexer::tokens::{Token, Operator, Keyword, Side};
+use util::Positioned;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Stmt {

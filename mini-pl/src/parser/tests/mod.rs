@@ -1,7 +1,6 @@
 use lexer::tokenize;
-use lexer::tokens::Position;
+use util::{Positioned, Position};
 
-use super::ast::Positioned;
 use super::ast::Stmt::*;
 use super::ast::Expr::*;
 use super::ast::Opnd::*;

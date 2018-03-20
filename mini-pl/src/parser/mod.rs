@@ -4,26 +4,27 @@ use parsco::common::{Err2, Err3};
 use parsco::*;
 
 use Ident;
-use lexer::tokens::{Tok, Position};
+use util::{Positioned, Position};
+use lexer::tokens::Token;
 use lexer::tokens::Token::*;
 use lexer::tokens::Punctuation::*;
 use lexer::tokens::Side::*;
 use lexer::tokens::Keyword::*;
 use lexer::tokens::Operator::*;
 use lexer::tokens::Literal::*;
-use self::ast::{Positioned, Stmt, Expr, Type, Opnd, BinOp, UnaOp, ParseError};
+use self::ast::{Stmt, Expr, Type, Opnd, BinOp, UnaOp, ParseError};
 use self::ast::OpndError::*;
 use self::ast::ParseError::*;
 use self::ast::TypeError::*;
 use self::ast::ExprError::*;
 
-type Result<'a, T> = ::parsco::Result<&'a [Tok], T, ParseError>;
+type Result<'a, T> = ::parsco::Result<&'a [Positioned<Token>], T, ParseError>;
 
 pub mod ast;
 #[cfg(test)]
 mod tests;
 
-pub fn parse(tokens: &[Tok]) -> Result<Vec<Positioned<Stmt>>> {
+pub fn parse(tokens: &[Positioned<Token>]) -> Result<Vec<Positioned<Stmt>>> {
     many1(
         map(
             flat_map_err(
@@ -44,10 +45,10 @@ pub fn parse(tokens: &[Tok]) -> Result<Vec<Positioned<Stmt>>> {
 }
 
 fn handle_semicolon_error(
-    err: Err2<ParseError, (Positioned<Stmt>, Err2<Tok, ()>)>,
-    rest: &[Tok],
+    err: Err2<ParseError, (Positioned<Stmt>, Err2<Positioned<Token>, ()>)>,
+    rest: &[Positioned<Token>],
     pos: Range<usize>
-) -> Result<(Positioned<Stmt>, Tok)> {
+) -> Result<(Positioned<Stmt>, Positioned<Token>)> {
     match err {
         Err2::V1(err) => Err((err, pos)),
         Err2::V2((stmt, _)) => {
@@ -61,7 +62,7 @@ fn handle_semicolon_error(
             Ok((
                 (
                     statement,
-                    Tok::new(Punctuation(Semicolon), from, to)
+                    Positioned::new(Punctuation(Semicolon), from, to)
                 ),
                 &rest[pos..],
                 pos
@@ -70,7 +71,7 @@ fn handle_semicolon_error(
     }
 }
 
-pub fn stmt(tokens: &[Tok]) -> Result<Positioned<Stmt>> {
+pub fn stmt(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
     (alt()
         | fun(declaration)
         | fun(assigment)
@@ -81,7 +82,7 @@ pub fn stmt(tokens: &[Tok]) -> Result<Positioned<Stmt>> {
     ).parse(tokens)
 }
 
-pub fn declaration(tokens: &[Tok]) -> Result<Positioned<Stmt>> {
+pub fn declaration(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
     map(
         (
             (sym(Keyword(Var)), fun(ident)),
@@ -115,10 +116,10 @@ pub fn declaration(tokens: &[Tok]) -> Result<Positioned<Stmt>> {
 
 fn handle_type_annotation_error(
     err: Err2<
-        Err2<Tok, ()>,
-        (Tok, ParseError)
+        Err2<Positioned<Token>, ()>,
+        (Positioned<Token>, ParseError)
     >,
-    rest: &[Tok],
+    rest: &[Positioned<Token>],
     pos: Range<usize>
 ) -> Result<Positioned<Type>> {
     match err {
@@ -150,7 +151,7 @@ fn handle_type_annotation_error(
     }
 }
 
-pub fn assigment(tokens: &[Tok]) -> Result<Positioned<Stmt>> {
+pub fn assigment(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
     map(
         (
             fun(ident),
@@ -171,7 +172,7 @@ pub fn assigment(tokens: &[Tok]) -> Result<Positioned<Stmt>> {
         .map_err(|(err, pos)| (ParseError::Unknown, pos)) // TODO: Better error
 }
 
-pub fn for_loop(tokens: &[Tok]) -> Result<Positioned<Stmt>> {
+pub fn for_loop(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
     map(
         (
             (
@@ -207,7 +208,7 @@ pub fn for_loop(tokens: &[Tok]) -> Result<Positioned<Stmt>> {
         .map_err(|(err, pos)| (ParseError::Unknown, pos)) // TODO: Better error
 }
 
-pub fn read(tokens: &[Tok]) -> Result<Positioned<Stmt>> {
+pub fn read(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
     map(
         (
             sym(Keyword(Read)),
@@ -230,7 +231,7 @@ pub fn read(tokens: &[Tok]) -> Result<Positioned<Stmt>> {
         ))
 }
 
-pub fn print(tokens: &[Tok]) -> Result<Positioned<Stmt>> {
+pub fn print(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
     map(
         (
             sym(Keyword(Print)),
@@ -256,7 +257,7 @@ pub fn print(tokens: &[Tok]) -> Result<Positioned<Stmt>> {
         ))
 }
 
-pub fn assert(tokens: &[Tok]) -> Result<Positioned<Stmt>> {
+pub fn assert(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
     map(
         (
             sym(Keyword(Assert)),
@@ -289,11 +290,11 @@ pub fn assert(tokens: &[Tok]) -> Result<Positioned<Stmt>> {
 
 pub fn handle_parenthesis_missing_error(
     err: Err3<
-        Err2<Tok, ()>,
-        (Tok, ParseError),
-        (Tok, Positioned<Expr>, Err2<Tok, ()>)
+        Err2<Positioned<Token>, ()>,
+        (Positioned<Token>, ParseError),
+        (Positioned<Token>, Positioned<Expr>, Err2<Positioned<Token>, ()>)
     >,
-    rest: &[Tok],
+    rest: &[Positioned<Token>],
     pos: Range<usize>
 ) -> Result<Positioned<Expr>> {
     use self::Err3::*;
@@ -307,7 +308,7 @@ pub fn handle_parenthesis_missing_error(
                     Position::new(0, 0)
                 ));
                 
-            let pos = pos_before + take_until::<_, &[Tok]>(sym(Punctuation(Semicolon)))
+            let pos = pos_before + take_until::<_, &[Positioned<_>]>(sym(Punctuation(Semicolon)))
                 .parse(rest)
                 .map(|(_, _, pos)| pos - 1)
                 .unwrap_or(0);
@@ -334,7 +335,7 @@ pub fn handle_parenthesis_missing_error(
     }
 }
 
-pub fn expr(tokens: &[Tok]) -> Result<Positioned<Expr>> {
+pub fn expr(tokens: &[Positioned<Token>]) -> Result<Positioned<Expr>> {
     (alt()
         | map(
             (fun(opnd), fun(binop), fun(opnd)),
@@ -368,7 +369,7 @@ pub fn expr(tokens: &[Tok]) -> Result<Positioned<Expr>> {
     ).parse(tokens)
 }
 
-pub fn opnd(tokens: &[Tok]) -> Result<Positioned<Opnd>> {
+pub fn opnd(tokens: &[Positioned<Token>]) -> Result<Positioned<Opnd>> {
     (alt()
         | fun(int)
         | fun(string)
@@ -407,7 +408,7 @@ pub fn opnd(tokens: &[Tok]) -> Result<Positioned<Opnd>> {
         )
         | map(
             constant(()),
-            |_, rest: &[Tok], _| {
+            |_, rest: &[Positioned<_>], _| {
                 let (from, to) = rest.last()
                     .map(|last| (last.from.clone(), last.to.clone()))
                     .unwrap_or((
@@ -425,7 +426,7 @@ pub fn opnd(tokens: &[Tok]) -> Result<Positioned<Opnd>> {
         .map_err(|(err, pos)| (FromErr::from(err), pos))
 }
 
-pub fn ident(tokens: &[Tok]) -> Result<Positioned<Ident>> {
+pub fn ident(tokens: &[Positioned<Token>]) -> Result<Positioned<Ident>> {
     fst().parse(tokens)
         .map_err(|(err, pos)| (FromErr::from(err), pos))
         .and_then(|(fst, rest, pos)| if let Identifier(ref tok) = *fst.sym() {
@@ -443,20 +444,20 @@ pub fn ident(tokens: &[Tok]) -> Result<Positioned<Ident>> {
         })
 }
 
-pub fn ty(tokens: &[Tok]) -> Result<Positioned<Type>> {
+pub fn ty(tokens: &[Positioned<Token>]) -> Result<Positioned<Type>> {
     fst().parse(tokens)
         .map_err(|(err, pos)| (FromErr::from(err), pos))
         .and_then(|(fst, rest, pos)| {
             let (from, to) = (fst.from.clone(), fst.to.clone());
             Ok((
-                Positioned::new(Type::from_token(&fst.token), from, to),
+                Positioned::new(Type::from_token(&fst.data), from, to),
                 rest,
                 pos
             ))
         })
 }
 
-pub fn int(tokens: &[Tok]) -> Result<Positioned<Opnd>> {
+pub fn int(tokens: &[Positioned<Token>]) -> Result<Positioned<Opnd>> {
     fst().parse(tokens)
         .map_err(|(err, pos)| (FromErr::from(err), pos))
         .and_then(|(fst, rest, pos)| if let Literal(Integer(ref int)) = *fst.sym() {
@@ -474,7 +475,7 @@ pub fn int(tokens: &[Tok]) -> Result<Positioned<Opnd>> {
         })
 }
 
-pub fn string(tokens: &[Tok]) -> Result<Positioned<Opnd>> {
+pub fn string(tokens: &[Positioned<Token>]) -> Result<Positioned<Opnd>> {
     fst().parse(tokens)
         .map_err(|(err, pos)| (FromErr::from(err), pos))
         .and_then(|(fst, rest, p)| if let Literal(StringLit(ref str_lit)) = *fst.sym() {
@@ -492,7 +493,7 @@ pub fn string(tokens: &[Tok]) -> Result<Positioned<Opnd>> {
         })
 }
 
-pub fn binop(tokens: &[Tok]) -> Result<BinOp> {
+pub fn binop(tokens: &[Positioned<Token>]) -> Result<BinOp> {
     fst().parse(tokens)
         .map_err(|(err, pos)| (FromErr::from(err), pos))
         .and_then(|(fst, rest, pos)| if let Operator(ref oper) = *fst.sym() {
@@ -502,7 +503,7 @@ pub fn binop(tokens: &[Tok]) -> Result<BinOp> {
         })
 }
 
-pub fn unaop(tokens: &[Tok]) -> Result<Positioned<UnaOp>> {
+pub fn unaop(tokens: &[Positioned<Token>]) -> Result<Positioned<UnaOp>> {
     fst().parse(tokens)
         .map_err(|(err, pos)| (FromErr::from(err), pos))
         .and_then(|(fst, rest, pos)| if let Operator(ref oper) = *fst.sym() {

@@ -2,16 +2,16 @@ use std::char;
 use std::cell::Cell;
 
 use parsco::{Parser, FromErr, tag, many0, alt, fun, preceded, terminated, take_while0, take_while1, take_until, ws, fst, opt, map, eat, take, flat_map, satisfying, take_nm};
-use parsco::common::{Void, Err2};
+use parsco::common::Void;
 
-use self::tokens::{Token, Tok, Position, LexError, HexadecimalLexError, OctalLexError};
+use self::tokens::{Token, LexError, HexadecimalLexError, OctalLexError};
 use self::tokens::Punctuation::*;
 use self::tokens::Side::*;
 use self::tokens::Keyword::*;
 use self::tokens::Operator::*;
 use self::tokens::Literal::*;
 use self::tokens::LexError::*;
-use util::UpdateCell;
+use util::{Positioned, Position, UpdateCell};
 
 //TODO: Remove LexError from error type.
 type ParseResult<'a, T> = ::parsco::Result<&'a str, T, self::tokens::LexError>;
@@ -21,7 +21,7 @@ pub mod tokens;
 mod tests;
 
 /// Lexes given string to mini-pl tokens
-pub fn tokenize(s: &str) -> ParseResult<Vec<Tok>> {
+pub fn tokenize(s: &str) -> ParseResult<Vec<Positioned<Token>>> {
     // These variables keep track the line and column were at lexing.
     let line = Cell::new(0);
     let column = Cell::new(0);
@@ -60,8 +60,8 @@ pub fn tokenize(s: &str) -> ParseResult<Vec<Tok>> {
                     column.update(|c| c + eaten_chars)
                 };
 
-                Tok {
-                    token,
+                Positioned {
+                    data: token,
                     from: Position {
                         line: cur_line + comment_lines,
                         column: cur_column + comment_columns,

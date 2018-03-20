@@ -1,6 +1,7 @@
 use num_bigint::BigInt;
 
-use parser::ast::{Stmt, Positioned, Expr, Opnd};
+use util::Positioned;
+use parser::ast::{Stmt, Expr, Opnd};
 use self::context::{Context, Io};
 use self::repr::{Ty, Value, TypedValue};
 use self::repr::Value::*;

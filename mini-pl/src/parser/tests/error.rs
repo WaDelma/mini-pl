@@ -1,18 +1,17 @@
 use lexer::tokenize;
-use lexer::tokens::{Keyword, Position};
+use lexer::tokens::Keyword;
 use lexer::tokens::Side::*;
+use util::{Positioned, Position};
 
 use super::super::ast::Stmt::*;
 use super::super::ast::Expr::*;
 use super::super::ast::Opnd::*;
 use super::super::ast::Type::*;
-use super::super::ast::BinOp::*;
-use super::super::ast::UnaOp::*;
 use super::super::ast::OpndError::*;
 use super::super::ast::ExprError::*;
 use super::super::ast::ParseError::*;
 use super::super::ast::TypeError::*;
-use super::super::{Positioned, parse};
+use super::super::parse;
 
 #[test]
 fn error_missing_expr() {

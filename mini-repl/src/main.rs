@@ -17,6 +17,7 @@ use termion::input::TermRead;
 use termion::raw::{IntoRawMode, RawTerminal};
 
 use mini_pl::lexer::tokenize;
+use mini_pl::lexer::tokens::Token;
 use mini_pl::parser::parse;
 use mini_pl::interpreter::interpret;
 use mini_pl::interpreter::context::{Context, Io};
@@ -56,11 +57,11 @@ arg_enum! {
     }
 }
 
-const REPL_COMMANDS: [(&str, &str); 4] = [
+const REPL_COMMANDS: [(&str, &str); 3] = [
     (":h", "In-repl help"),
     (":q", "Exit the repl"),
     (":c", "Clears the code from the repl session"),
-    (":t <variable>", "Tells the type of the variable"),
+    // (":t <variable>", "Tells the type of the variable"),
 ];
 
 fn main() {
@@ -108,7 +109,7 @@ fn fancy_plain<'a>(args: &ArgMatches, fancy: &'a str, plain: &'a str) -> &'a str
 }
 
 fn repl_symbol<'a>(args: &'a ArgMatches) -> &'a str {
-    args.value_of("symbol").unwrap_or_else(|| fancy_plain(args, "₻⅌⧽", "mp>"))
+    args.value_of("symbol").unwrap_or_else(|| fancy_plain(args, "ᵯ℘⧽", "mp>"))
 }
 
 fn print_repl_symbol<W: Write>(s: &mut W, args: &ArgMatches) -> Result<()> {
@@ -139,6 +140,19 @@ fn interpret_line(line: &str, memory: &mut Context<TypedValue>, stdio: &mut Repl
             return Ok(false);
         }
     };
+
+    let mut errors = false;
+    for err in tokens.iter().filter_map(|t| if let Token::Error(_) = t.data { Some(t) } else { None }) {
+        if !errors {
+            stdio.stdout.cwriteln(error_style(), "Lexing failed:")?;
+            errors = true;
+        }
+        stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", err))?;
+    }
+    if errors {
+        return Ok(false);
+    }
+
     let ast = match parse(&tokens[..]) {
         Ok((ast, _, _)) => ast,
         Err((e, _)) => {

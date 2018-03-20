@@ -1,8 +1,5 @@
-use super::super::{Tok, Token, LexError, InvalidInteger, Position, tokenize};
-use super::super::tokens::Literal;
+use super::super::{Token, LexError, tokenize};
 use super::tok;
-
-use std::num::ParseIntError;
 
 #[test]
 fn error_invalid_escape() {
