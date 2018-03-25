@@ -1,4 +1,4 @@
-use util::{Positioned, Position};
+use util::Positioned;
 
 use Ident;
 use parser::ast::{Stmt, Expr, Opnd, BinOp, UnaOp, ParseError, OpndError, ExprError, TypeError};
@@ -7,8 +7,12 @@ use interpreter::context::Context;
 
 use self::AnalysisError::*;
 
+#[cfg(test)]
+mod tests;
+
+#[derive(Debug, PartialEq)]
 pub enum AnalysisError {
-    UnkownVariable(Ident),
+    UnknownVariable(Ident),
     MutationOfImmutable(Ident),
     TypeMismatch(Type, Type),
     IOMismatch(Type),
@@ -121,7 +125,7 @@ fn analyze_stmt(stmt: &Positioned<Stmt>, ctx: &mut Context<(Type, Mutability)>, 
                 errors.push(stmt.clone_with_data(TypeMismatch(ty, expr_ty)));
             }
         } else {
-            errors.push(stmt.clone_with_data(UnkownVariable(ident.clone())));
+            errors.push(stmt.clone_with_data(UnknownVariable(ident.clone())));
         },
         Loop {
             ref ident,
@@ -150,7 +154,7 @@ fn analyze_stmt(stmt: &Positioned<Stmt>, ctx: &mut Context<(Type, Mutability)>, 
                 errors.push(stmt.clone_with_data(IOMismatch(ty)));
             }
         } else {
-            errors.push(stmt.clone_with_data(UnkownVariable(ident.clone())));
+            errors.push(stmt.clone_with_data(UnknownVariable(ident.clone())));
         },
         Print {
             ref expr,
@@ -250,7 +254,7 @@ fn analyze_opnd(opnd: &Positioned<Opnd>, ctx: &mut Context<(Type, Mutability)>, 
         Ident(ref ident) => if let Some(ty) = ctx.get(ident) {
             ty.0
         } else {
-            errors.push(opnd.clone_with_data(UnkownVariable(ident.clone())));
+            errors.push(opnd.clone_with_data(UnknownVariable(ident.clone())));
             Type::Bottom
         },
         Expr(ref expr) => analyze_expr(expr, ctx, errors),

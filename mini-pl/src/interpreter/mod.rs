@@ -53,9 +53,7 @@ fn interpret_stmt<IO: Io>(stmt: &Positioned<Stmt>, ctx: &mut Context<TypedValue>
         } => {
             let mut from = interpret_expr(&from.data, ctx).integer().clone();
             let to = interpret_expr(&to.data, ctx).integer().clone();
-            ctx.get_mut(ident)
-                .expect("Non-existent control variable")
-                .set(Integer(from.clone()));
+            ctx.create(ident.clone(), TypedValue::from_value(Integer(from.clone())));
             ctx.freeze(ident);
             while from <= to {
                 interpret(stmts, ctx, stdio);
@@ -96,7 +94,7 @@ fn interpret_stmt<IO: Io>(stmt: &Positioned<Stmt>, ctx: &mut Context<TypedValue>
                 Integer(ref i) => stdio.write(&i.to_string()),
                 Str(ref s) => stdio.write(s),
                 Unknown => panic!("Use of uninitialized value."),
-                ref v => panic!("Use of wrong type of value {}", v),
+                ref v => panic!("Use of wrong type of value `{}`", v),
             }
         },
         Assert {

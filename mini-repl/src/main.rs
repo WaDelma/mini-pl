@@ -20,6 +20,7 @@ use mini_pl::lexer::tokenize;
 use mini_pl::lexer::tokens::Token;
 use mini_pl::parser::parse;
 use mini_pl::parser::ast::{Stmt, Expr, Opnd};
+use mini_pl::analyzer::{Type, Mutability, analyze};
 use mini_pl::interpreter::interpret;
 use mini_pl::interpreter::context::{Context, Io};
 use mini_pl::interpreter::repr::TypedValue;
@@ -133,7 +134,7 @@ fn print_help<W: Write>(s: &mut W, args: &ArgMatches) -> Result<()> {
     Ok(())
 }
 
-fn interpret_line(line: &str, memory: &mut Context<TypedValue>, stdio: &mut ReplStdio) -> Result<bool> {
+fn interpret_line(line: &str, memory: &mut Context<TypedValue>, check_ctx: &mut Context<(Type, Mutability)>, stdio: &mut ReplStdio) -> Result<bool> {
     let tokens = match tokenize(line) {
         Ok((tokens, _, _)) => tokens,
         Err((e, _)) => {
@@ -164,107 +165,19 @@ fn interpret_line(line: &str, memory: &mut Context<TypedValue>, stdio: &mut Repl
         }
     };
 
-    // TODO: Make this work.
-    // let mut errors = false;
-    // for err in find_parse_errors(ast) {
-    //     if !errors {
-    //         stdio.stdout.cwriteln(error_style(), "Parsing failed:")?;
-    //         errors = true;
-    //     }
-    //     stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", err))?;
-    // }
-    // if errors {
-    //     return Ok(false);
-    // }
-
-    fn parse_error_opnd(opnd: &Positioned<Opnd>, stdio: &mut ReplStdio) -> Result<bool> {
-        use self::Opnd::*;
-        match opnd.data {
-            OpndErr(_) => {
-                stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", opnd))?;
-                Ok(true)
-            }
-            Int(_) | StrLit(_) | Ident(_) => Ok(false),
-            Expr(ref expr) => parse_error_expr(&*expr, stdio),
+    let mut no_error = true;
+    for e in analyze(&ast[..], check_ctx) {
+        if no_error {
+            stdio.stdout.cwriteln(error_style(), "Analysis failed:")?;
+            no_error = false;
         }
+        stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", e))?;
     }
 
-    fn parse_error_expr(expr: &Positioned<Expr>, stdio: &mut ReplStdio) -> Result<bool> {
-        use self::Expr::*;
-        match expr.data {
-            ErrExpr(_) => {
-                stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", expr))?;
-                Ok(true)
-            },
-            BinOper {
-                ref lhs,
-                ref rhs,
-                ..
-            } => Ok(
-                parse_error_opnd(lhs, stdio)? |
-                parse_error_opnd(rhs, stdio)?
-            ),
-            UnaOper {
-                ref rhs,
-                ..
-            } => parse_error_opnd(rhs, stdio),
-            Opnd(ref opnd) => parse_error_opnd(opnd, stdio),
-        }
+    if no_error {
+        interpret(&ast[..], memory, stdio);
     }
-
-    fn parse_error_stmts(stmts: &[Positioned<Stmt>], stdio: &mut ReplStdio) -> Result<bool> {
-        use self::Stmt::*;
-        let mut error = false;
-        for stmt in stmts {
-            match stmt.data {
-                ErrStmt(_) => {
-                    stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", stmt))?;
-                    error = true;
-                },
-                Declaration {
-                    value: ref e,
-                    ..
-                } => if let Some(ref e) = *e {
-                    error |= parse_error_expr(e, stdio)?;
-                },
-                Assignment {
-                    ref value,
-                    ..
-                } => {
-                    error |= parse_error_expr(value, stdio)?;
-                },
-                Loop {
-                    ref from,
-                    ref to,
-                    ref stmts,
-                    ..
-                } => {
-                    error |= parse_error_expr(from, stdio)?;
-                    error |= parse_error_expr(to, stdio)?;
-                    error |= parse_error_stmts(&stmts[..], stdio)?;
-                },
-                Read { .. } => {},
-                Print {
-                    ref expr
-                } => {
-                    error |= parse_error_expr(expr, stdio)?;
-                },
-                Assert {
-                    ref expr
-                } => {
-                    error |= parse_error_expr(expr, stdio)?;
-                },
-            }
-        }
-        Ok(error)
-    }
-    
-    if parse_error_stmts(&ast[..], stdio)? {
-        return Ok(false);
-    }
-
-    interpret(&ast[..], memory, stdio);
-    Ok(true)
+    Ok(no_error)
 }
 
 struct ReplStdio<'a> {
@@ -294,6 +207,7 @@ fn run(args: ArgMatches) -> Result<()> {
 
     let mut history = History::new();
     let mut memory = Context::<TypedValue>::new();
+    let mut check_ctx = Context::<(Type, Mutability)>::new();
 
     out.cwrite(logo_theme(), &format!("{}", fancy_plain(&args, "⌘", "~")))?;
     out.cwriteln(welcome_theme(), &format!(" Welcome to the repl for Mini-pl {}!", crate_version!()))?;
@@ -310,13 +224,14 @@ fn run(args: ArgMatches) -> Result<()> {
                             "h" => print_help(&mut out, &args)?,
                             "c" => {
                                 memory.clear();
+                                check_ctx.clear();
                                 out.cwrite(note_style(), fancy_plain(&args, "⚠", "!"))?;
                                 out.cwriteln(note_style(), " Cleared all code from the session")?
                             },
                             _ => out.cwriteln(error_style(), "Unknown repl command")?,
                         }
                     } else {
-                        interpret_line(history.current(), &mut memory, &mut ReplStdio {
+                        interpret_line(history.current(), &mut memory, &mut check_ctx, &mut ReplStdio {
                             stdout: &mut out,
                         })?;
                     }
