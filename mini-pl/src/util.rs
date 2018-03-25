@@ -44,6 +44,14 @@ impl<T> Positioned<T> {
             to
         }
     }
+
+    pub fn clone_with_data<P>(&self, data: P) -> Positioned<P> {
+        Positioned {
+            data,
+            from: self.from.clone(),
+            to: self.to.clone()
+        }
+    }
 }
 
 pub trait UpdateCell<T> {
