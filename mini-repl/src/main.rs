@@ -6,7 +6,6 @@ extern crate failure;
 #[macro_use]
 extern crate failure_derive;
 extern crate unicode_width;
-
 use unicode_width::UnicodeWidthStr;
 
 use clap::{Arg, App, ArgMatches};
@@ -26,6 +25,8 @@ use mini_pl::interpreter::context::{Context, Io};
 use mini_pl::interpreter::repr::TypedValue;
 use mini_pl::util::Positioned;
 
+use std::mem::replace;
+use std::panic::{self, UnwindSafe, catch_unwind};
 use std::io::{Write, stdout, Stdout, stdin, Stdin};
 use std::iter::repeat;
 use std::str;
@@ -134,55 +135,92 @@ fn print_help<W: Write>(s: &mut W, args: &ArgMatches) -> Result<()> {
     Ok(())
 }
 
-fn interpret_line(line: &str, memory: &mut Context<TypedValue>, check_ctx: &mut Context<(Type, Mutability)>, stdio: &mut ReplStdio) -> Result<bool> {
-    let tokens = match tokenize(line) {
-        Ok((tokens, _, _)) => tokens,
-        Err((e, _)) => {
-            stdio.stdout.cwriteln(error_style(), "Lexing failed:")?;
-            stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", e))?;
-            return Ok(false);
+fn interpret_line(line: &str, memory: &mut Context<TypedValue>, check_ctx: &mut Context<(Type, Mutability)>, stdout: &mut RawTerminal<Stdout>) -> Result<bool> {
+    let new_memory = memory.clone();
+    let new_check_ctx = check_ctx.clone();
+    let prev_hook = panic::take_hook();
+    // TODO: This is not valid and doesn't work. Figure out how to do custom panic printing with RawTerminal from termion.
+    let unsafe_stdout = ::std::sync::Mutex::new(unsafe { ::std::mem::transmute::<&mut RawTerminal<Stdout>, &'static mut RawTerminal<Stdout>>(stdout) });
+    panic::set_hook(Box::new(move |panic_info| {
+        let mut unsafe_stdout = unsafe_stdout.lock().unwrap();
+        unsafe_stdout.cwriteln(error_style(), "Internal interpreter error:").unwrap();
+        let info = panic_info.payload().downcast_ref::<&str>().unwrap();
+        unsafe_stdout.cwriteln(error_style(), info).unwrap();
+    }));
+    let result = {
+        let mut stdio = ReplStdio {
+            stdout,
+        };
+        match catch_unwind(move || {
+            let mut memory = new_memory;
+            let mut check_ctx = new_check_ctx;
+
+            (|| -> Result<_> {
+                let tokens = match tokenize(line) {
+                    Ok((tokens, _, _)) => tokens,
+                    Err((e, _)) => {
+                        stdio.stdout.cwriteln(error_style(), "Lexing failed:")?;
+                        stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", e))?;
+                        return Ok(false);
+                    }
+                };
+
+                let mut errors = false;
+                for err in tokens.iter().filter_map(|t| if let Token::Error(_) = t.data { Some(t) } else { None }) {
+                    if !errors {
+                        stdio.stdout.cwriteln(error_style(), "Lexing failed:")?;
+                        errors = true;
+                    }
+                    stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", err))?;
+                }
+                if errors {
+                    return Ok(false);
+                }
+
+                let ast = match parse(&tokens[..]) {
+                    Ok((ast, _, _)) => ast,
+                    Err((e, _)) => {
+                        stdio.stdout.cwriteln(error_style(), "Parsing failed:")?;
+                        stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", e))?;
+                        return Ok(false);
+                    }
+                };
+
+                let mut no_error = true;
+                for e in analyze(&ast[..], &mut check_ctx) {
+                    if no_error {
+                        stdio.stdout.cwriteln(error_style(), "Analysis failed:")?;
+                        no_error = false;
+                    }
+                    stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", e))?;
+                }
+
+                if no_error {
+                    interpret(&ast[..], &mut memory, &mut stdio);
+                }
+                Ok(no_error)
+            })().map(|b| (b, memory, check_ctx))
+        }) {
+            Ok(r) => match r {
+                Ok((b, m, c)) => {
+                    replace(memory, m);
+                    replace(check_ctx, c);
+                    Ok(b)
+                },
+                Err(e) => Err(e),
+            },
+            Err(_) => Ok(false),
         }
     };
-
-    let mut errors = false;
-    for err in tokens.iter().filter_map(|t| if let Token::Error(_) = t.data { Some(t) } else { None }) {
-        if !errors {
-            stdio.stdout.cwriteln(error_style(), "Lexing failed:")?;
-            errors = true;
-        }
-        stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", err))?;
-    }
-    if errors {
-        return Ok(false);
-    }
-
-    let ast = match parse(&tokens[..]) {
-        Ok((ast, _, _)) => ast,
-        Err((e, _)) => {
-            stdio.stdout.cwriteln(error_style(), "Parsing failed:")?;
-            stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", e))?;
-            return Ok(false);
-        }
-    };
-
-    let mut no_error = true;
-    for e in analyze(&ast[..], check_ctx) {
-        if no_error {
-            stdio.stdout.cwriteln(error_style(), "Analysis failed:")?;
-            no_error = false;
-        }
-        stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", e))?;
-    }
-
-    if no_error {
-        interpret(&ast[..], memory, stdio);
-    }
-    Ok(no_error)
+    panic::set_hook(prev_hook);
+    result
 }
 
 struct ReplStdio<'a> {
     stdout: &'a mut RawTerminal<Stdout>,
 }
+
+impl<'a> UnwindSafe for ReplStdio<'a> {}
 
 impl<'a> Io for ReplStdio<'a> {
     fn write<S: AsRef<[u8]>>(&mut self, s: &S) {
@@ -231,9 +269,7 @@ fn run(args: ArgMatches) -> Result<()> {
                             _ => out.cwriteln(error_style(), "Unknown repl command")?,
                         }
                     } else {
-                        interpret_line(history.current(), &mut memory, &mut check_ctx, &mut ReplStdio {
-                            stdout: &mut out,
-                        })?;
+                        interpret_line(history.current(), &mut memory, &mut check_ctx, &mut out)?;
                     }
                     history.proceed();
                 }

@@ -36,6 +36,7 @@ impl<'a> Io for (&'a str, Vec<u8>, Vec<u8>) {
     }
 }
 
+#[derive(Clone)]
 pub struct Context<T> {
     scopes: Vec<HashMap<Ident, (T, bool)>>,
     #[cfg(test)]
