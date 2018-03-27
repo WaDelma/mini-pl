@@ -1,3 +1,5 @@
+//! Tokens of mini-pl.
+//! 
 use std::num::ParseIntError;
 use std::string::FromUtf8Error;
 use std::str::Utf8Error;

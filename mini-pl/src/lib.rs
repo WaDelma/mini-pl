@@ -1,3 +1,9 @@
+//! # Mini-pl
+//! 
+//! Lexer, parser, static analyzer and interpreter for mini-pl language.
+//! Each of these are implemented as separate pass to faciliate cleaner code.
+// #![deny(missing_docs)]
+
 extern crate parsco;
 extern crate char_stream;
 extern crate num_traits;
@@ -24,4 +30,6 @@ pub mod analyzer;
 pub mod interpreter;
 pub mod util;
 
+/// New type for identifier which is just a `String`.
+// TODO: Optimise memory usage by doing interning.
 pub type Ident = String;

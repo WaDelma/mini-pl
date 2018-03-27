@@ -1,3 +1,11 @@
+//! Turns input string to vector of tokens of mini-pl language.
+//! 
+//! Lexing also records the line and column positions of the tokens in the input string.
+//! 
+//! Handled lexing errors are inserted as special tokens and unhandled tokenization errors
+//! will bubble out as `Err` variant of the result.
+//! 
+//! There shouldn't be any panics while tokenizing.
 use std::char;
 use std::cell::Cell;
 

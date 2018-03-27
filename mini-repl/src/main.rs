@@ -18,16 +18,14 @@ use termion::raw::{IntoRawMode, RawTerminal};
 use mini_pl::lexer::tokenize;
 use mini_pl::lexer::tokens::Token;
 use mini_pl::parser::parse;
-use mini_pl::parser::ast::{Stmt, Expr, Opnd};
 use mini_pl::analyzer::{Type, Mutability, analyze};
 use mini_pl::interpreter::interpret;
 use mini_pl::interpreter::context::{Context, Io};
 use mini_pl::interpreter::repr::TypedValue;
-use mini_pl::util::Positioned;
 
 use std::mem::replace;
 use std::panic::{self, UnwindSafe, catch_unwind};
-use std::io::{Write, stdout, Stdout, stdin, Stdin};
+use std::io::{Write, stdout, Stdout, stdin};
 use std::iter::repeat;
 use std::str;
 
@@ -65,7 +63,6 @@ const REPL_COMMANDS: [(&str, &str); 3] = [
     (":h", "In-repl help"),
     (":q", "Exit the repl"),
     (":c", "Clears the code from the repl session"),
-    // (":t <variable>", "Tells the type of the variable"),
 ];
 
 fn main() {
@@ -139,13 +136,20 @@ fn interpret_line(line: &str, memory: &mut Context<TypedValue>, check_ctx: &mut 
     let new_memory = memory.clone();
     let new_check_ctx = check_ctx.clone();
     let prev_hook = panic::take_hook();
-    // TODO: This is not valid and doesn't work. Figure out how to do custom panic printing with RawTerminal from termion.
-    let unsafe_stdout = ::std::sync::Mutex::new(unsafe { ::std::mem::transmute::<&mut RawTerminal<Stdout>, &'static mut RawTerminal<Stdout>>(stdout) });
     panic::set_hook(Box::new(move |panic_info| {
-        let mut unsafe_stdout = unsafe_stdout.lock().unwrap();
-        unsafe_stdout.cwriteln(error_style(), "Internal interpreter error:").unwrap();
-        let info = panic_info.payload().downcast_ref::<&str>().unwrap();
-        unsafe_stdout.cwriteln(error_style(), info).unwrap();
+        let mut out = ::stdout();
+        out.cwriteln(error_style(), "Internal interpreter error:").unwrap();
+        if let Some(info) = panic_info.payload().downcast_ref::<String>() {
+            out.cwriteln(clear_style(), &format!("{}", info)).unwrap();
+        } else if let Some(info) = panic_info.payload().downcast_ref::<&str>() {
+            out.cwriteln(clear_style(), &format!("{}", info)).unwrap();
+        } else {
+            out.cwriteln(clear_style(), "Unknown error").unwrap();
+        }
+        // TODO: Seems useless
+        // if let Some(location) = panic_info.location() {
+        //     out.cwriteln(clear_style(), &format!("in {} at line {}.", location.file(), location.line())).unwrap();
+        // }
     }));
     let result = {
         let mut stdio = ReplStdio {
@@ -203,8 +207,10 @@ fn interpret_line(line: &str, memory: &mut Context<TypedValue>, check_ctx: &mut 
         }) {
             Ok(r) => match r {
                 Ok((b, m, c)) => {
-                    replace(memory, m);
-                    replace(check_ctx, c);
+                    if b {
+                        replace(memory, m);
+                        replace(check_ctx, c);
+                    }
                     Ok(b)
                 },
                 Err(e) => Err(e),

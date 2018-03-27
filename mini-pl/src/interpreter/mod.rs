@@ -1,3 +1,7 @@
+//! Interprets the ast provided.
+//! 
+// TODO: Better documentation
+
 use num_bigint::BigInt;
 
 use util::Positioned;
@@ -53,14 +57,16 @@ fn interpret_stmt<IO: Io>(stmt: &Positioned<Stmt>, ctx: &mut Context<TypedValue>
         } => {
             let mut from = interpret_expr(&from.data, ctx).integer().clone();
             let to = interpret_expr(&to.data, ctx).integer().clone();
-            ctx.create(ident.clone(), TypedValue::from_value(Integer(from.clone())));
+            ctx.get_mut(ident)
+                .expect("Non-existent loop control variable")
+                .set(Integer(from.clone()));
             ctx.freeze(ident);
             while from <= to {
                 interpret(stmts, ctx, stdio);
                 from = from + &BigInt::from(1);
                 ctx.thaw(ident);
                 ctx.get_mut(ident)
-                    .expect("Non-existent control variable")
+                    .expect("Non-existent loop control variable")
                     .set(Integer(from.clone()));
                 ctx.freeze(ident);
             }

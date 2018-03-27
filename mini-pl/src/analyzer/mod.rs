@@ -1,3 +1,15 @@
+//! Performs static analysis on the ast.
+//! 
+//! Ensures that:
+//!     - Right types are used in right place
+//!     - Variables are declared before use
+//!     - Variables aren't redeclared
+//!     - Loop control variable is not modified
+//! 
+//! The static analysis will also gather all the errors that happened while parsing from the ast.
+//! 
+//! Static analysis should only panic on programming errors in it.
+
 use util::Positioned;
 
 use Ident;
@@ -13,6 +25,7 @@ mod tests;
 #[derive(Debug, PartialEq)]
 pub enum AnalysisError {
     UnknownVariable(Ident),
+    DublicateDeclaration(Ident),
     MutationOfImmutable(Ident),
     TypeMismatch(Type, Type),
     IOMismatch(Type),
@@ -96,6 +109,9 @@ fn analyze_stmt(stmt: &Positioned<Stmt>, ctx: &mut Context<(Type, Mutability)>, 
             ref ty,
             ref value,
         } => {
+            if let Some(_) = ctx.get(ident) {
+                errors.push(stmt.clone_with_data(DublicateDeclaration(ident.clone())));
+            }
             let ty = match *ty {
                 AstType::TypeErr(ref e) => {
                     errors.push(stmt.clone_with_data(e.clone().into()));
@@ -133,6 +149,17 @@ fn analyze_stmt(stmt: &Positioned<Stmt>, ctx: &mut Context<(Type, Mutability)>, 
             ref to,
             ref stmts,
         } => {
+            if let Some(&mut (ref ty, ref mut mutability)) = ctx.get_mut(ident) {
+                if !Type::Integer.is_compatible(&ty) {
+                    errors.push(stmt.clone_with_data(TypeMismatch(Type::Integer, *ty)));
+                }
+                if mutability == &Mutability::Immutable {
+                    errors.push(stmt.clone_with_data(MutationOfImmutable(ident.clone())));
+                }
+                *mutability = Mutability::Immutable;
+            } else {
+                errors.push(stmt.clone_with_data(UnknownVariable(ident.clone())));
+            }
             ctx.create(ident.clone(), (Type::Integer, Mutability::Immutable));
             let from = analyze_expr(from, ctx, errors);
             if !Type::Integer.is_compatible(&from) {
@@ -143,6 +170,19 @@ fn analyze_stmt(stmt: &Positioned<Stmt>, ctx: &mut Context<(Type, Mutability)>, 
                 errors.push(stmt.clone_with_data(TypeMismatch(Type::Integer, to)));
             }
             analyze_stmts(stmts, ctx, errors);
+            if let Some(&mut (ref ty, ref mut mutability)) = ctx.get_mut(ident) {
+                if !Type::Integer.is_compatible(&ty) {
+                    // Because variable cannot be redeclared this shouldn't happen.
+                    panic!("Type of loop control variable changed");
+                }
+                // NOTE: If there is two concecutive for-loops inside a for-loop each using
+                // the same control variable, then only error for the first of the inner for-loops
+                // will cause error.
+                *mutability = Mutability::Mutable;
+            } else {
+                // There is no way to undeclare variable, so this should be impossible.
+                panic!("Loop control variable disappeared");
+            }
         },
         Read {
             ref ident,

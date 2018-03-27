@@ -1,3 +1,11 @@
+//! Turns vector of tokens to vector of statements which is the top level structure for the ast.
+//!
+//! Parsing also records the line and column positions of the ast nodes in the original code using
+//! information provided by the lexer.
+//! Handled parsing errors are represented as special nodes in the ast and
+//! unhandled parsing errors will bubble out as `Err` variant of the result.
+//! 
+//! There shouldn't be any panics while parsing.
 use std::ops::Range;
 
 use parsco::common::{Err2, Err3};
