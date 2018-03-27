@@ -1,9 +1,12 @@
 use std::cell::Cell;
 use std::fmt;
 
+/// Line and column position
 #[derive(Clone, PartialEq)]
 pub struct Position {
+    /// Line number
     pub line: usize,
+    /// Column number
     pub column: usize,
 }
 
@@ -14,6 +17,7 @@ impl fmt::Debug for Position {
 }
 
 impl Position {
+    /// Creates new position from line and column
     pub fn new(line: usize, column: usize) -> Self {
         Position {
             line,
@@ -22,10 +26,14 @@ impl Position {
     }
 }
 
+/// Wraps data that is resides between two line-column pairs
 #[derive(Clone, PartialEq)]
 pub struct Positioned<T> {
+    /// Data that is positioned
     pub data: T,
+    /// Line-column pair that after which data resides
     pub from: Position,
+    /// Line-column pair that before which data resides
     pub to: Position,
 }
 

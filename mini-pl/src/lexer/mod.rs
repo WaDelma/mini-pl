@@ -2,8 +2,8 @@
 //! 
 //! Lexing also records the line and column positions of the tokens in the input string.
 //! 
-//! Handled lexing errors are inserted as special tokens and unhandled tokenization errors
-//! will bubble out as `Err` variant of the result.
+//! Handled tokenization errors are inserted as special tokens and unhandled errors
+//! will bubble out as `Err` variant of the `Result` enum.
 //! 
 //! There shouldn't be any panics while tokenizing.
 use std::char;
@@ -86,7 +86,7 @@ pub fn tokenize(s: &str) -> ParseResult<Vec<Positioned<Token>>> {
 }
 
 /// Parses single and multiline comments
-fn comment(input: &str) -> ParseResult<()> {
+pub fn comment(input: &str) -> ParseResult<()> {
     (alt()
         | fun(multiline_comment)
         | map((tag("//"), take_while0(|c| c != '\n')), |_, _, _| ())
@@ -95,7 +95,7 @@ fn comment(input: &str) -> ParseResult<()> {
 }
 
 /// Parses multiline comments
-fn multiline_comment(input: &str) -> ParseResult<()> {
+pub fn multiline_comment(input: &str) -> ParseResult<()> {
     map((
         tag("/*"),
         opt(fun(nested_comment)),
@@ -106,7 +106,7 @@ fn multiline_comment(input: &str) -> ParseResult<()> {
 }
 
 /// Handles nested multiline comments
-fn nested_comment(input: &str) -> ParseResult<()> {
+pub fn nested_comment(input: &str) -> ParseResult<()> {
     map((
         satisfying(
             take_until(alt()
@@ -127,7 +127,7 @@ fn nested_comment(input: &str) -> ParseResult<()> {
 }
 
 /// Lexes single operator
-fn operator(input: &str) -> ParseResult<Token> {
+pub fn operator(input: &str) -> ParseResult<Token> {
     map(alt()
             | eat(tag("+"), Addition)
             | eat(tag("-"), Substraction)
@@ -145,7 +145,7 @@ fn operator(input: &str) -> ParseResult<Token> {
 }
 
 /// Lexes single punctuation
-fn punctuation(input: &str) -> ParseResult<Token> {
+pub fn punctuation(input: &str) -> ParseResult<Token> {
     map(alt()
             | eat(tag(";"), Semicolon)
             | eat(tag(":"), Colon)
@@ -157,7 +157,7 @@ fn punctuation(input: &str) -> ParseResult<Token> {
 }
 
 /// Lexes reserved keywords
-fn keyword(input: &str) -> ParseResult<Token> {
+pub fn keyword(input: &str) -> ParseResult<Token> {
     map(alt()
             | eat(tag("var"), Var)
             | eat(tag("for"), For)
@@ -176,7 +176,7 @@ fn keyword(input: &str) -> ParseResult<Token> {
 }
 
 /// Lexes either identifier or keyword
-fn keyword_or_identifier(input: &str) -> ParseResult<Token> {
+pub fn keyword_or_identifier(input: &str) -> ParseResult<Token> {
     map((
         satisfying(fst(), |c: &char| c.is_alphabetic()),
         take_while0(|c| char::is_alphanumeric(c) || c == '_')
@@ -194,7 +194,7 @@ fn keyword_or_identifier(input: &str) -> ParseResult<Token> {
 }
 
 /// Lexes integer literal
-fn integer(input: &str) -> ParseResult<Token> {
+pub fn integer(input: &str) -> ParseResult<Token> {
     flat_map(
         take_while1(|c| char::is_alphanumeric(c)),
         |number: &str, rest, pos| {
@@ -212,7 +212,7 @@ fn integer(input: &str) -> ParseResult<Token> {
 }
 
 /// Lexes string literal
-fn str_literal(input: &str) -> ParseResult<Token> {
+pub fn str_literal(input: &str) -> ParseResult<Token> {
     map(preceded(
             tag(r#"""#),
             fun(str_contents),
@@ -226,7 +226,7 @@ fn str_literal(input: &str) -> ParseResult<Token> {
 }
 
 /// Parses the contents of string literal
-fn str_contents(input: &str) -> ParseResult<StrOrLexErr> {
+pub fn str_contents(input: &str) -> ParseResult<StrOrLexErr> {
     use self::StrOrLexErr::*;
     flat_map(take_until(
         alt()
@@ -306,7 +306,7 @@ fn str_contents(input: &str) -> ParseResult<StrOrLexErr> {
 }
 
 /// Trasforms given hexadecimal code to character corresponding to it
-fn hex_as_char(x: &str) -> Result<String, HexadecimalLexError> {
+pub fn hex_as_char(x: &str) -> Result<String, HexadecimalLexError> {
     use self::HexadecimalLexError::*;
     Ok(char::from_u32(
         u32::from_str_radix(x, 16)?
@@ -314,7 +314,7 @@ fn hex_as_char(x: &str) -> Result<String, HexadecimalLexError> {
 }
 
 /// Trasforms given octal code to byte corresponding to it
-fn oct_as_byte(x: &str) -> Result<String, OctalLexError> {
+pub fn oct_as_byte(x: &str) -> Result<String, OctalLexError> {
     use self::OctalLexError::*;
     Ok(char::from_u32(
         u8::from_str_radix(x, 8)? as u32
@@ -322,15 +322,16 @@ fn oct_as_byte(x: &str) -> Result<String, OctalLexError> {
 }
 
 /// Trasforms given hexadecimal code to byte corresponding to it
-fn hex_as_byte(x: &str) -> Result<String, HexadecimalLexError> {
+pub fn hex_as_byte(x: &str) -> Result<String, HexadecimalLexError> {
     use self::HexadecimalLexError::*;
     Ok(char::from_u32(
         u8::from_str_radix(x, 16)? as u32
     ).ok_or(InvalidUtf8)?.to_string())
 }
 
+/// Helper enum for parsing contents of string literal.
 #[derive(Clone)]
-enum StrOrLexErr {
+pub enum StrOrLexErr {
     Str(String),
     LexErr(LexError),
 }

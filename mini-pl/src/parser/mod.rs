@@ -32,6 +32,7 @@ pub mod ast;
 #[cfg(test)]
 mod tests;
 
+/// Parses given list of tokens to ast
 pub fn parse(tokens: &[Positioned<Token>]) -> Result<Vec<Positioned<Stmt>>> {
     many1(
         map(
@@ -52,7 +53,8 @@ pub fn parse(tokens: &[Positioned<Token>]) -> Result<Vec<Positioned<Stmt>>> {
         .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
-fn handle_semicolon_error(
+/// Handles missing semicolon at the end of statement
+pub fn handle_semicolon_error(
     err: Err2<ParseError, (Positioned<Stmt>, Err2<Positioned<Token>, ()>)>,
     rest: &[Positioned<Token>],
     pos: Range<usize>
@@ -79,6 +81,7 @@ fn handle_semicolon_error(
     }
 }
 
+/// Parses single statement
 pub fn stmt(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
     (alt()
         | fun(declaration)
@@ -90,6 +93,7 @@ pub fn stmt(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
     ).parse(tokens)
 }
 
+/// Parses single variable declaration
 pub fn declaration(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
     map(
         (
@@ -122,7 +126,8 @@ pub fn declaration(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
         .map_err(|(err, pos)| (ParseError::Unknown, pos)) // TODO: Better error
 }
 
-fn handle_type_annotation_error(
+/// Handles error in the type annotation in variable definition
+pub fn handle_type_annotation_error(
     err: Err2<
         Err2<Positioned<Token>, ()>,
         (Positioned<Token>, ParseError)
@@ -159,6 +164,7 @@ fn handle_type_annotation_error(
     }
 }
 
+/// Parses single variable assignment
 pub fn assigment(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
     map(
         (
@@ -180,6 +186,7 @@ pub fn assigment(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
         .map_err(|(err, pos)| (ParseError::Unknown, pos)) // TODO: Better error
 }
 
+/// Parses single for-loop
 pub fn for_loop(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
     map(
         (
@@ -216,6 +223,7 @@ pub fn for_loop(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
         .map_err(|(err, pos)| (ParseError::Unknown, pos)) // TODO: Better error
 }
 
+/// Parses single read statement
 pub fn read(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
     map(
         (
@@ -239,6 +247,7 @@ pub fn read(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
         ))
 }
 
+/// Parses single print statement
 pub fn print(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
     map(
         (
@@ -265,6 +274,7 @@ pub fn print(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
         ))
 }
 
+/// Parses single assert statement
 pub fn assert(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
     map(
         (
@@ -296,6 +306,7 @@ pub fn assert(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
         ))
 }
 
+/// Handles missing parenthesis in assert statement
 pub fn handle_parenthesis_missing_error(
     err: Err3<
         Err2<Positioned<Token>, ()>,
@@ -343,6 +354,7 @@ pub fn handle_parenthesis_missing_error(
     }
 }
 
+/// Parses single expression
 pub fn expr(tokens: &[Positioned<Token>]) -> Result<Positioned<Expr>> {
     (alt()
         | map(
@@ -377,6 +389,7 @@ pub fn expr(tokens: &[Positioned<Token>]) -> Result<Positioned<Expr>> {
     ).parse(tokens)
 }
 
+/// Parses single operand
 pub fn opnd(tokens: &[Positioned<Token>]) -> Result<Positioned<Opnd>> {
     (alt()
         | fun(int)
@@ -434,6 +447,7 @@ pub fn opnd(tokens: &[Positioned<Token>]) -> Result<Positioned<Opnd>> {
         .map_err(|(err, pos)| (FromErr::from(err), pos))
 }
 
+/// Parses single identifier
 pub fn ident(tokens: &[Positioned<Token>]) -> Result<Positioned<Ident>> {
     fst().parse(tokens)
         .map_err(|(err, pos)| (FromErr::from(err), pos))
@@ -452,6 +466,7 @@ pub fn ident(tokens: &[Positioned<Token>]) -> Result<Positioned<Ident>> {
         })
 }
 
+/// Parses single type
 pub fn ty(tokens: &[Positioned<Token>]) -> Result<Positioned<Type>> {
     fst().parse(tokens)
         .map_err(|(err, pos)| (FromErr::from(err), pos))
@@ -465,6 +480,7 @@ pub fn ty(tokens: &[Positioned<Token>]) -> Result<Positioned<Type>> {
         })
 }
 
+/// Parses single integer literal
 pub fn int(tokens: &[Positioned<Token>]) -> Result<Positioned<Opnd>> {
     fst().parse(tokens)
         .map_err(|(err, pos)| (FromErr::from(err), pos))
@@ -483,6 +499,7 @@ pub fn int(tokens: &[Positioned<Token>]) -> Result<Positioned<Opnd>> {
         })
 }
 
+/// Parses single string literal
 pub fn string(tokens: &[Positioned<Token>]) -> Result<Positioned<Opnd>> {
     fst().parse(tokens)
         .map_err(|(err, pos)| (FromErr::from(err), pos))
@@ -501,6 +518,7 @@ pub fn string(tokens: &[Positioned<Token>]) -> Result<Positioned<Opnd>> {
         })
 }
 
+/// Parses single binary operator
 pub fn binop(tokens: &[Positioned<Token>]) -> Result<BinOp> {
     fst().parse(tokens)
         .map_err(|(err, pos)| (FromErr::from(err), pos))
@@ -511,6 +529,7 @@ pub fn binop(tokens: &[Positioned<Token>]) -> Result<BinOp> {
         })
 }
 
+/// Parses single unary operator
 pub fn unaop(tokens: &[Positioned<Token>]) -> Result<Positioned<UnaOp>> {
     fst().parse(tokens)
         .map_err(|(err, pos)| (FromErr::from(err), pos))

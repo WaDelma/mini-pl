@@ -1,10 +1,11 @@
 //! Performs static analysis on the ast.
 //! 
 //! Ensures that:
-//!     - Right types are used in right place
-//!     - Variables are declared before use
-//!     - Variables aren't redeclared
-//!     - Loop control variable is not modified
+//! 
+//! - Right types are used in right place
+//! - Variables are declared before use
+//! - Variables aren't redeclared
+//! - Loop control variable is not modified
 //! 
 //! The static analysis will also gather all the errors that happened while parsing from the ast.
 //! 

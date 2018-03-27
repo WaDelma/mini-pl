@@ -1,3 +1,7 @@
+//! Ast of mini-pl
+//! 
+//! Ast nodes are grouped to different enums to give more structured types instead of one flat one.
+//! This grouping is especially useful for defining expression sub-trees.
 use num_bigint::BigInt;
 
 use parsco::FromErr;
@@ -8,52 +12,88 @@ use Ident;
 use lexer::tokens::{Token, Operator, Keyword, Side};
 use util::Positioned;
 
+/// Statement nodes
+/// 
+/// Also contains node for errors that can happen while parsing statement
 #[derive(Clone, Debug, PartialEq)]
 pub enum Stmt {
+    /// An error that can happen while parsing statements
     ErrStmt(ParseError),
+    /// Variable declaration
     Declaration {
+        /// Name of the variable
         ident: Ident,
+        /// Type of the variable
         ty: Type,
+        /// Declaration may or might not assign expression as it's value
         value: Option<Positioned<Expr>>,
     },
+    /// Variable assignment
     Assignment {
+        /// Name of the variable
         ident: Ident,
+        /// Expression which value will be assigned to the variable
         value: Positioned<Expr>,
     },
+    /// For-loop
     Loop {
+        /// Name of the loop control variable
         ident: Ident,
+        /// Expression that determines the starting point of range iteration
         from: Positioned<Expr>,
+        /// Expression that determines the ending point of range iteration
         to: Positioned<Expr>,
+        /// The body of the for-loop
         stmts: Vec<Positioned<Stmt>>,
     },
+    /// Read from stdin
     Read {
+        /// Variable that the value is read to
         ident: Ident,
     },
+    /// Print to stdout
     Print {
+        /// Expression which value will be printed out
         expr: Positioned<Expr>,
     },
+    /// Condition assertion
     Assert {
+        /// Expression which value will be asserted
         expr: Positioned<Expr>,
     }
 }
 
+/// Expression nodes
+/// 
+/// Also contains node for errors that can happen while parsing expression
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
+    /// Errors that can happen while parsing expressions
     ErrExpr(ExprError),
+    /// Binary operation
     BinOper {
+        /// Left-hand side of the operator
         lhs: Positioned<Opnd>,
+        /// Binary operator
         op: BinOp,
+        /// Right-hand side of the operator
         rhs: Positioned<Opnd>,
     },
+    /// Unary operation
     UnaOper {
+        /// Unary operator
         op: UnaOp,
+        /// Right-hand side of the operator
         rhs: Positioned<Opnd>,
     },
+    /// Free standing operand
     Opnd(Positioned<Opnd>),
 }
 
+/// Errors that can happen while parsing expressions
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExprError {
+    /// Expression is missing parenthesis
     MissingParenthesis(Side),
 }
 
@@ -80,18 +120,29 @@ impl fmt::Display for Expr {
     }
 }
 
+/// Operand nodes
+/// 
+/// Also contains node for errors that can happen while parsing operand
 #[derive(Clone, PartialEq)]
 pub enum Opnd {
+    /// Errors that can happen while parsing operands
     OpndErr(OpndError),
+    /// Integer literal
     Int(BigInt),
+    /// String literal
     StrLit(String),
+    /// Variable identifier
     Ident(Ident),
+    /// Operand can contain recursively expressions
     Expr(Box<Positioned<Expr>>),
 }
 
+/// Errors that can happen while parsing operands
 #[derive(Clone, Debug, PartialEq)]
 pub enum OpndError {
+    /// Operand is missing end parenthesis
     MissingEndParenthesis,
+    /// Operand is invalid
     InvalidOperand,
 }
 
@@ -141,14 +192,22 @@ impl fmt::Debug for Opnd {
     }
 }
 
+/// Binary operators
 #[derive(Clone, Debug, PartialEq)]
 pub enum BinOp {
+    /// Equality comparison
     Equality,
+    /// Less-than comparison
     LessThan,
+    /// Addition/concanation operator
     Addition,
+    /// Substraction operator
     Substraction,
+    /// Multiplication operator
     Multiplication,
+    /// Division operator
     Division,
+    /// And operator
     And,
 }
 
@@ -168,6 +227,9 @@ impl fmt::Display for BinOp {
 }
 
 impl BinOp {
+    /// Create binary operator from operator token.
+    /// 
+    /// Returns `None` if token wasn't binary operator
     pub fn from_oper(o: &Operator) -> Option<Self> {
         use self::Operator::*;
         Some(match *o {
@@ -183,8 +245,10 @@ impl BinOp {
     }
 }
 
+/// Unary operators
 #[derive(Clone, Debug, PartialEq)]
 pub enum UnaOp {
+    /// Negation operator
     Not,
 }
 
@@ -198,6 +262,9 @@ impl fmt::Display for UnaOp {
 }
 
 impl UnaOp {
+    /// Create unary operator from operator token.
+    /// 
+    /// Returns `None` if token wasn't unary operator
     pub fn from_oper(o: &Operator) -> Option<Self> {
         use self::Operator::*;
         Some(match *o {
@@ -207,46 +274,64 @@ impl UnaOp {
     }
 }
 
+/// Possible types
+/// 
+/// Also contains node for errors that can happen while parsing types
 #[derive(Clone, Debug, PartialEq)]
 pub enum Type {
+    /// Errors that can happen while parsing type
     TypeErr(TypeError),
+    /// Integer type
     Integer,
+    /// String type
     Str,
+    /// Boolean type
     Bool
 }
 
-
 impl Type {
+    /// Create type from token
+    /// 
+    /// If the token wasn't type, returns type error token
     pub fn from_token(tok: &Token) -> Self {
         use self::Keyword::*;
+        use self::TypeError::*;
         if let Token::Keyword(ref tok) = *tok {
             match *tok {
                 Int => Type::Integer,
                 Bool => Type::Bool,
                 Str => Type::Str,
-                ref k => Type::TypeErr(TypeError::KeywordNotType(k.clone())),
+                ref k => Type::TypeErr(KeywordNotType(k.clone())),
             }
         } else {
             match *tok {
-                Token::Identifier(ref i) => Type::TypeErr(TypeError::UnknownType(i.clone())),
-                _ => Type::TypeErr(TypeError::InvalidToken(tok.clone())),
+                Token::Identifier(ref i) => Type::TypeErr(UnknownType(i.clone())),
+                _ => Type::TypeErr(InvalidToken(tok.clone())),
             }
         }
         
     }
 }
 
+/// Errors that can happen while parsing type
 #[derive(Clone, Debug, PartialEq)]
 pub enum TypeError {
+    /// Invalid token while parsing type
     InvalidToken(Token),
+    /// Unknown type parsed
     UnknownType(String),
+    /// Keyword that isn't type
     KeywordNotType(Keyword),
+    /// No type annotation present
     NoTypeAnnotation
 }
 
+/// Errors that can happen while parsing statement
 #[derive(Debug, Clone, PartialEq)]
 pub enum ParseError {
+    /// Unknown error
     Unknown,
+    /// Semicolon missing at the end of statement
     MissingSemicolon,
 }
 
