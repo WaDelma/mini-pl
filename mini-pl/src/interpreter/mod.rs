@@ -1,6 +1,6 @@
 //! Interprets the ast provided.
 //! 
-// TODO: Better documentation
+//! Panics on all errors.
 
 use num_bigint::BigInt;
 
@@ -14,14 +14,16 @@ pub mod repr;
 #[cfg(test)]
 mod tests;
 
+/// Interprets given ast in given context with given IO.
 pub fn interpret<IO: Io>(stmts: &[Positioned<Stmt>], ctx: &mut Context<TypedValue>, stdio: &mut IO) {
     for stmt in stmts {
         interpret_stmt(stmt, ctx, stdio);
     }
 }
 
+/// Interprets single statement
 // TODO: Use stdio for printing errors. Also test error reporting. Also row and column numbers for errors.
-fn interpret_stmt<IO: Io>(stmt: &Positioned<Stmt>, ctx: &mut Context<TypedValue>, stdio: &mut IO) {
+pub fn interpret_stmt<IO: Io>(stmt: &Positioned<Stmt>, ctx: &mut Context<TypedValue>, stdio: &mut IO) {
     use self::Stmt::*;
     match stmt.data {
         ErrStmt(ref e) => panic!("Error while parsing: {:?}", e),
@@ -59,17 +61,13 @@ fn interpret_stmt<IO: Io>(stmt: &Positioned<Stmt>, ctx: &mut Context<TypedValue>
             ctx.get_mut(ident)
                 .expect("Non-existent loop control variable")
                 .set(Integer(from.clone()));
-            ctx.freeze(ident);
             while from <= to {
                 interpret(stmts, ctx, stdio);
                 from = from + &BigInt::from(1);
-                ctx.thaw(ident);
                 ctx.get_mut(ident)
                     .expect("Non-existent loop control variable")
                     .set(Integer(from.clone()));
-                ctx.freeze(ident);
             }
-            ctx.thaw(ident);
         },
         Read {
             ref ident,
@@ -117,7 +115,8 @@ fn interpret_stmt<IO: Io>(stmt: &Positioned<Stmt>, ctx: &mut Context<TypedValue>
     }
 }
 
-fn interpret_expr(expr: &Expr, ctx: &mut Context<TypedValue>) -> TypedValue {
+/// Interprets single expression
+pub fn interpret_expr(expr: &Expr, ctx: &mut Context<TypedValue>) -> TypedValue {
     use self::Expr::*;
     use parser::ast::BinOp::*;
     use parser::ast::UnaOp::*;
@@ -167,7 +166,8 @@ fn interpret_expr(expr: &Expr, ctx: &mut Context<TypedValue>) -> TypedValue {
     }
 }
 
-fn interpret_opnd(opnd: &Opnd, ctx: &mut Context<TypedValue>) -> TypedValue {
+/// Interprets single operand
+pub fn interpret_opnd(opnd: &Opnd, ctx: &mut Context<TypedValue>) -> TypedValue {
     use self::Opnd::*;
     match *opnd {
         OpndErr(ref e) => panic!("Error: {:?}", e),

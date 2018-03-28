@@ -332,7 +332,9 @@ pub fn hex_as_byte(x: &str) -> Result<String, HexadecimalLexError> {
 /// Helper enum for parsing contents of string literal.
 #[derive(Clone)]
 pub enum StrOrLexErr {
+    /// Part of string literal
     Str(String),
+    /// Lex error that happened while lexing contents of string literal
     LexErr(LexError),
 }
 

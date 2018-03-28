@@ -3,7 +3,7 @@
 //! Lexer, parser, static analyzer and interpreter for mini-pl language.
 //! 
 //! Each of these are implemented as separate pass to faciliate cleaner code.
-// #![deny(missing_docs)]
+#![deny(missing_docs)]
 
 extern crate parsco;
 extern crate char_stream;

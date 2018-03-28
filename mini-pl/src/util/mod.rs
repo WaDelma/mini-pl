@@ -52,6 +52,7 @@ impl<T: fmt::Debug> fmt::Debug for Positioned<T> {
 }
 
 impl<T> Positioned<T> {
+    /// Creates new positioned piece of data
     pub fn new(data: T, from: Position, to: Position) -> Self {
         Positioned {
             data,
@@ -60,6 +61,7 @@ impl<T> Positioned<T> {
         }
     }
 
+    /// Creates different type of data with the same position
     pub fn clone_with_data<P>(&self, data: P) -> Positioned<P> {
         Positioned {
             data,
@@ -69,7 +71,9 @@ impl<T> Positioned<T> {
     }
 }
 
+/// Trait for adding `update` function for cell types
 pub trait UpdateCell<T> {
+    /// Updates contents of a cell by applying given function to them
     fn update<F>(&self, f: F) -> T
         where F: FnOnce(T) -> T;
 }
@@ -92,11 +96,15 @@ fn cell_update() {
     assert_eq!(1, old);
 }
 
+/// Trait for abstracting console IO
 pub trait Io {
+    /// Writes bytes to output
     fn write<S: AsRef<[u8]>>(&mut self, s: &S);
+    /// Reads string until a whitespace from input
     fn read_to_whitespace(&mut self) -> String;
 }
 
+/// Stdio type that implements `Io` trait.
 pub struct Stdio;
 
 impl Io for Stdio {

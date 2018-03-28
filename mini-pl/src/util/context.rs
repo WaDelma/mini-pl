@@ -1,17 +1,19 @@
-use std::collections::HashMap;
-use std::convert::AsRef;
+//! Context that works as symbol table for the interpreter.
 
+use std::collections::HashMap;
 
 use Ident;
 
+/// Context that contains variables and their corresponding data
 #[derive(Clone)]
 pub struct Context<T> {
-    scopes: Vec<HashMap<Ident, (T, bool)>>,
+    scopes: Vec<HashMap<Ident, T>>,
     #[cfg(test)]
-    used_scopes: Vec<HashMap<Ident, (T, bool)>>,
+    used_scopes: Vec<HashMap<Ident, T>>,
 }
 
 impl<T> Context<T> {
+    /// Creats new empty context
     pub fn new() -> Self {
         Context {
             scopes: vec![HashMap::new()],
@@ -20,57 +22,32 @@ impl<T> Context<T> {
         }
     }
 
+    /// Creates new identifier with specified value in context
+    /// 
+    /// Returns overwritten value if any.
     pub fn create(&mut self, ident: Ident, value: T) -> Option<T> {
         self.scopes.last_mut()
             .unwrap()
-            .insert(ident, (value, false))
-            .map(|(v, _)| v)
+            .insert(ident, value)
     }
 
+    /// Gets value associated with identifier
     pub fn get(&self, ident: &Ident) -> Option<&T> {
         self.scopes.iter()
             .rev()
             .filter_map(|s| s.get(ident))
             .next()
-            .map(|&(ref v, _)| v)
     }
 
+    /// Mutably gets value associated with identifier
     pub fn get_mut(&mut self, ident: &Ident) -> Option<&mut T> {
         self.scopes.iter_mut()
             .rev()
             .filter_map(|s| s.get_mut(ident))
-            .map(|&mut (ref mut s, f)| if f {
-                panic!("Cannot mutate value of frozen identifier.");
-            } else {
-                s
-            })
             .next()
     }
 
-    pub fn freeze(&mut self, ident: &Ident) -> Option<bool> {
-        self.scopes.iter_mut()
-            .rev()
-            .filter_map(|s| s.get_mut(ident))
-            .next()
-            .map(|&mut (_, ref mut t)| {
-                let orig = *t;
-                *t = true;
-                orig == true
-            })
-    }
-
-    pub fn thaw(&mut self, ident: &Ident) -> Option<bool> {
-        self.scopes.iter_mut()
-            .rev()
-            .filter_map(|s| s.get_mut(ident))
-            .next()
-            .map(|&mut (_, ref mut t)| {
-                let orig = *t;
-                *t = false;
-                orig == false
-            })
-    }
-
+    /// Executes code in inner scope
     pub fn scope<F: FnOnce(&mut Context<T>) -> R, R>(&mut self, f: F) -> R {
         self.scopes.push(HashMap::new());
         let result = f(self);
@@ -80,6 +57,7 @@ impl<T> Context<T> {
         result
     }
     
+    /// Clears context
     pub fn clear(&mut self) {
         self.scopes.clear();
     }
