@@ -63,6 +63,35 @@ pub enum Stmt {
     }
 }
 
+/// Errors that can happen while parsing statement
+#[derive(Debug, Clone, PartialEq)]
+pub enum ParseError {
+    /// Unknown error
+    Unknown,
+    /// Invalid assignment operator
+    InvalidAssignment,
+    /// Semicolon missing at the end of statement
+    MissingSemicolon,
+}
+
+impl FromErr<()> for ParseError {
+    fn from(_: ()) -> Self {
+        ParseError::Unknown
+    }
+}
+
+impl FromErr<ParseError> for ParseError {
+    fn from(l: ParseError) -> Self {
+        l
+    }
+}
+
+impl FromErr<::parsco::common::Void> for ParseError {
+    fn from(_: ::parsco::common::Void) -> Self {
+        unreachable!("Void is never type.")
+    }
+}
+
 /// Expression nodes
 /// 
 /// Also contains node for errors that can happen while parsing expression
@@ -324,31 +353,4 @@ pub enum TypeError {
     KeywordNotType(Keyword),
     /// No type annotation present
     NoTypeAnnotation
-}
-
-/// Errors that can happen while parsing statement
-#[derive(Debug, Clone, PartialEq)]
-pub enum ParseError {
-    /// Unknown error
-    Unknown,
-    /// Semicolon missing at the end of statement
-    MissingSemicolon,
-}
-
-impl FromErr<()> for ParseError {
-    fn from(_: ()) -> Self {
-        ParseError::Unknown
-    }
-}
-
-impl FromErr<ParseError> for ParseError {
-    fn from(l: ParseError) -> Self {
-        l
-    }
-}
-
-impl FromErr<::parsco::common::Void> for ParseError {
-    fn from(_: ::parsco::common::Void) -> Self {
-        unreachable!("Void is never type.")
-    }
 }

@@ -104,6 +104,7 @@ pub fn declaration(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
                 ),
                 handle_type_annotation_error
             ),
+            // TODO: Handle badly formed assignment erroring
             opt(preceded(
                 sym(Operator(Assignment)), fun(expr)
             ))
@@ -166,24 +167,64 @@ pub fn handle_type_annotation_error(
 
 /// Parses single variable assignment
 pub fn assigment(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
-    map(
-        (
-            fun(ident),
-            preceded(
+    flat_map_err(
+        map(
+            (
+                fun(ident),
                 sym(Operator(Assignment)),
                 fun(expr)
-            )
+            ),
+            |(ident, _, value), _, _| {
+                let (from, to) = (ident.from, value.to.clone());
+                Positioned::new(
+                    Stmt::Assignment { ident: ident.data, value },
+                    from,
+                    to
+                )
+            }
         ),
-        |(ident, value), _, _| {
-            let (from, to) = (ident.from, value.to.clone());
-            Positioned::new(
-                Stmt::Assignment { ident: ident.data, value },
-                from,
-                to
-            )
-        }
+        handle_missing_assignment_operator_error
     ).parse(tokens)
-        .map_err(|(err, pos)| (ParseError::Unknown, pos)) // TODO: Better error
+}
+
+/// Handles missing assignment operator when assigning to a variable
+pub fn handle_missing_assignment_operator_error(
+    err: Err3<
+        ParseError,
+        (
+            Positioned<String>,
+            Err2<Positioned<Token>, ()>
+        ),
+        (
+            Positioned<String>,
+            Positioned<Token>,
+            ParseError
+        )
+    >,
+    rest: &[Positioned<Token>],
+    pos: Range<usize>
+) -> Result<Positioned<Stmt>> {
+    match err {
+        Err3::V2((_, Err2::V1(e))) => {
+            let (from, to) = (e.to.clone(), e.to);
+            let statement = Positioned::new(
+                Stmt::ErrStmt(InvalidAssignment),
+                from.clone(),
+                to.clone()
+            );
+            // TODO: This gets stuck if there is no semicolon
+            let pos = take_until::<_, &[Positioned<_>]>(sym(Punctuation(Semicolon)))
+                .parse(rest)
+                .map(|(_, _, pos)| pos - 1)
+                .unwrap_or(0);
+            Ok((
+                statement,
+                &rest[pos..],
+                pos
+            ))
+        },
+        _ => Err((ParseError::Unknown, pos)), // TODO: Better error
+    }
 }
 
 /// Parses single for-loop
