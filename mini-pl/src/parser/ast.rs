@@ -18,7 +18,7 @@ use util::Positioned;
 #[derive(Clone, Debug, PartialEq)]
 pub enum Stmt {
     /// An error that can happen while parsing statements
-    ErrStmt(ParseError),
+    ErrStmt(StmtError),
     /// Variable declaration
     Declaration {
         /// Name of the variable
@@ -65,7 +65,7 @@ pub enum Stmt {
 
 /// Errors that can happen while parsing statement
 #[derive(Debug, Clone, PartialEq)]
-pub enum ParseError {
+pub enum StmtError {
     /// Unknown error
     Unknown,
     /// Invalid assignment operator
@@ -74,19 +74,19 @@ pub enum ParseError {
     MissingSemicolon,
 }
 
-impl FromErr<()> for ParseError {
+impl FromErr<()> for StmtError {
     fn from(_: ()) -> Self {
-        ParseError::Unknown
+        StmtError::Unknown
     }
 }
 
-impl FromErr<ParseError> for ParseError {
-    fn from(l: ParseError) -> Self {
+impl FromErr<StmtError> for StmtError {
+    fn from(l: StmtError) -> Self {
         l
     }
 }
 
-impl FromErr<::parsco::common::Void> for ParseError {
+impl FromErr<::parsco::common::Void> for StmtError {
     fn from(_: ::parsco::common::Void) -> Self {
         unreachable!("Void is never type.")
     }

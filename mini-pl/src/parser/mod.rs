@@ -20,13 +20,13 @@ use lexer::tokens::Side::*;
 use lexer::tokens::Keyword::*;
 use lexer::tokens::Operator::*;
 use lexer::tokens::Literal::*;
-use self::ast::{Stmt, Expr, Type, Opnd, BinOp, UnaOp, ParseError};
+use self::ast::{Stmt, Expr, Type, Opnd, BinOp, UnaOp, StmtError};
 use self::ast::OpndError::*;
-use self::ast::ParseError::*;
+use self::ast::StmtError::*;
 use self::ast::TypeError::*;
 use self::ast::ExprError::*;
 
-type Result<'a, T> = ::parsco::Result<&'a [Positioned<Token>], T, ParseError>;
+type Result<'a, T> = ::parsco::Result<&'a [Positioned<Token>], T, StmtError>;
 
 pub mod ast;
 #[cfg(test)]
@@ -55,7 +55,7 @@ pub fn parse(tokens: &[Positioned<Token>]) -> Result<Vec<Positioned<Stmt>>> {
 
 /// Handles missing semicolon at the end of statement
 pub fn handle_semicolon_error(
-    err: Err2<ParseError, (Positioned<Stmt>, Err2<Positioned<Token>, ()>)>,
+    err: Err2<StmtError, (Positioned<Stmt>, Err2<Positioned<Token>, ()>)>,
     rest: &[Positioned<Token>],
     pos: Range<usize>
 ) -> Result<(Positioned<Stmt>, Positioned<Token>)> {
@@ -100,11 +100,12 @@ pub fn declaration(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
             (sym(Keyword(Var)), fun(ident)),
             flat_map_err(
                 preceded(
+                    // TODO: Handle missing colon
                     sym(Punctuation(Colon)), fun(ty)
                 ),
                 handle_type_annotation_error
             ),
-            // TODO: Handle badly formed assignment erroring
+            // TODO: Handle missing assignment operator
             opt(preceded(
                 sym(Operator(Assignment)), fun(expr)
             ))
@@ -124,14 +125,14 @@ pub fn declaration(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
             )
         }
     ).parse(tokens)
-        .map_err(|(err, pos)| (ParseError::Unknown, pos)) // TODO: Better error
+        .map_err(|(err, pos)| (StmtError::Unknown, pos)) // TODO: Better error
 }
 
 /// Handles error in the type annotation in variable definition
 pub fn handle_type_annotation_error(
     err: Err2<
         Err2<Positioned<Token>, ()>,
-        (Positioned<Token>, ParseError)
+        (Positioned<Token>, StmtError)
     >,
     rest: &[Positioned<Token>],
     pos: Range<usize>
@@ -190,7 +191,7 @@ pub fn assigment(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
 /// Handles missing assignment operator when assigning to a variable
 pub fn handle_missing_assignment_operator_error(
     err: Err3<
-        ParseError,
+        StmtError,
         (
             Positioned<String>,
             Err2<Positioned<Token>, ()>
@@ -198,7 +199,7 @@ pub fn handle_missing_assignment_operator_error(
         (
             Positioned<String>,
             Positioned<Token>,
-            ParseError
+            StmtError
         )
     >,
     rest: &[Positioned<Token>],
@@ -212,18 +213,17 @@ pub fn handle_missing_assignment_operator_error(
                 from.clone(),
                 to.clone()
             );
-            // TODO: This gets stuck if there is no semicolon
             let pos = take_until::<_, &[Positioned<_>]>(sym(Punctuation(Semicolon)))
                 .parse(rest)
                 .map(|(_, _, pos)| pos - 1)
-                .unwrap_or(0);
+                .unwrap_or(pos.end);
             Ok((
                 statement,
                 &rest[pos..],
                 pos
             ))
         },
-        _ => Err((ParseError::Unknown, pos)), // TODO: Better error
+        _ => Err((StmtError::Unknown, pos)), // TODO: Better error
     }
 }
 
@@ -261,7 +261,7 @@ pub fn for_loop(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
             )
         }
     ).parse(tokens)
-        .map_err(|(err, pos)| (ParseError::Unknown, pos)) // TODO: Better error
+        .map_err(|(err, pos)| (StmtError::Unknown, pos)) // TODO: Better error
 }
 
 /// Parses single read statement
@@ -282,7 +282,7 @@ pub fn read(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
         .map_err(|(err, pos)| (
             match err {
                 Err2::V2((_, e)) => FromErr::from(e),
-                _ => ParseError::Unknown,
+                _ => StmtError::Unknown,
             },
             pos
         ))
@@ -309,7 +309,7 @@ pub fn print(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
         .map_err(|(err, pos)| (
             match err {
                 Err2::V2((_, err)) => FromErr::from(err),
-                _ => ParseError::Unknown,
+                _ => StmtError::Unknown,
             },
             pos
         ))
@@ -341,7 +341,7 @@ pub fn assert(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
         .map_err(|(err, pos)| (
             match err {
                 Err2::V2((_, err)) => FromErr::from(err),
-                _ => ParseError::Unknown,
+                _ => StmtError::Unknown,
             },
             pos
         ))
@@ -351,7 +351,7 @@ pub fn assert(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
 pub fn handle_parenthesis_missing_error(
     err: Err3<
         Err2<Positioned<Token>, ()>,
-        (Positioned<Token>, ParseError),
+        (Positioned<Token>, StmtError),
         (Positioned<Token>, Positioned<Expr>, Err2<Positioned<Token>, ()>)
     >,
     rest: &[Positioned<Token>],

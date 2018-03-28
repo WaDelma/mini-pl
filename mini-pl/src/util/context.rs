@@ -1,40 +1,8 @@
 use std::collections::HashMap;
 use std::convert::AsRef;
-use std::io::{stdout, Write};
 
-use char_stream::CharStream;
 
 use Ident;
-
-pub trait Io {
-    fn write<S: AsRef<[u8]>>(&mut self, s: &S);
-    fn read_to_whitespace(&mut self) -> String;
-}
-
-pub struct Stdio;
-
-impl Io for Stdio {
-    fn write<S: AsRef<[u8]>>(&mut self, s: &S) {
-        stdout().write(s.as_ref()).unwrap();
-    }
-    fn read_to_whitespace(&mut self) -> String {
-        CharStream::from_stdin()
-            .take_while(|c| !c.is_whitespace())
-            .collect::<String>()
-    }
-}
-
-impl<'a> Io for (&'a str, Vec<u8>, Vec<u8>) {
-    fn write<S: AsRef<[u8]>>(&mut self, s: &S) {
-        self.1.extend(s.as_ref());
-    }
-
-    fn read_to_whitespace(&mut self) -> String {
-        self.0.chars()
-            .take_while(|c| !c.is_whitespace())
-            .collect::<String>()
-    }
-}
 
 #[derive(Clone)]
 pub struct Context<T> {

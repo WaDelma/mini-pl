@@ -1,5 +1,12 @@
+//! Utilities used by rest of the interpreter
+
 use std::cell::Cell;
 use std::fmt;
+use std::io::{stdout, Write};
+
+use char_stream::CharStream;
+
+pub mod context;
 
 /// Line and column position
 #[derive(Clone, PartialEq)]
@@ -83,4 +90,34 @@ fn cell_update() {
     let old = cell.update(|v| v + 1);
     assert_eq!(2, cell.get());
     assert_eq!(1, old);
+}
+
+pub trait Io {
+    fn write<S: AsRef<[u8]>>(&mut self, s: &S);
+    fn read_to_whitespace(&mut self) -> String;
+}
+
+pub struct Stdio;
+
+impl Io for Stdio {
+    fn write<S: AsRef<[u8]>>(&mut self, s: &S) {
+        stdout().write(s.as_ref()).unwrap();
+    }
+    fn read_to_whitespace(&mut self) -> String {
+        CharStream::from_stdin()
+            .take_while(|c| !c.is_whitespace())
+            .collect::<String>()
+    }
+}
+
+impl<'a> Io for (&'a str, Vec<u8>, Vec<u8>) {
+    fn write<S: AsRef<[u8]>>(&mut self, s: &S) {
+        self.1.extend(s.as_ref());
+    }
+
+    fn read_to_whitespace(&mut self) -> String {
+        self.0.chars()
+            .take_while(|c| !c.is_whitespace())
+            .collect::<String>()
+    }
 }

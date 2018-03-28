@@ -7,9 +7,9 @@ use super::super::ast::Stmt::*;
 use super::super::ast::Expr::*;
 use super::super::ast::Opnd::*;
 use super::super::ast::Type::*;
-use super::super::ast::OpndError::*;
+use super::super::ast::StmtError::*;
 use super::super::ast::ExprError::*;
-use super::super::ast::ParseError::*;
+use super::super::ast::OpndError::*;
 use super::super::ast::TypeError::*;
 use super::super::parse;
 

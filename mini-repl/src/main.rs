@@ -20,7 +20,8 @@ use mini_pl::lexer::tokens::Token;
 use mini_pl::parser::parse;
 use mini_pl::analyzer::{Type, Mutability, analyze};
 use mini_pl::interpreter::interpret;
-use mini_pl::interpreter::context::{Context, Io};
+use mini_pl::util::context::Context;
+use mini_pl::util::Io;
 use mini_pl::interpreter::repr::TypedValue;
 
 use std::mem::replace;

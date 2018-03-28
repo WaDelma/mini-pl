@@ -4,13 +4,12 @@
 
 use num_bigint::BigInt;
 
-use util::Positioned;
+use util::{Positioned, Io};
+use util::context::Context;
 use parser::ast::{Stmt, Expr, Opnd};
-use self::context::{Context, Io};
 use self::repr::{Ty, Value, TypedValue};
 use self::repr::Value::*;
 
-pub mod context;
 pub mod repr;
 #[cfg(test)]
 mod tests;
@@ -31,7 +30,7 @@ fn interpret_stmt<IO: Io>(stmt: &Positioned<Stmt>, ctx: &mut Context<TypedValue>
             ref ty,
             ref value,
         } => {
-            let mut decl = TypedValue::new(Unknown, Ty::from(ty.clone())).expect("Unknown should be valid value for any type.");
+            let mut decl = TypedValue::default(Ty::from(ty.clone()));
             if let Some(v) = value.as_ref().map(|e| interpret_expr(&e.data, ctx)) {
                 if !decl.set_typed(v) {
                     panic!("Invalid type");

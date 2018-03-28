@@ -1,7 +1,7 @@
 use util::{Positioned, Position};
+use util::context::Context;
 use lexer::tokenize;
 use parser::parse;
-use interpreter::context::Context;
 use super::super::{AnalysisError, Type, Mutability, analyze};
 use super::super::AnalysisError::*;
 
@@ -133,8 +133,8 @@ fn recursive_variable_in_expr() {
         vec![
             Positioned::new(
                 UnknownVariable("x".into()), // TODO: Separate error for recursive case?
-                Position::new(1, 27),
-                Position::new(1, 28)
+                Position::new(1, 26),
+                Position::new(1, 27)
             )
         ]
     );
@@ -151,6 +151,28 @@ fn unknown_variable_in_expr() {
                 UnknownVariable("y".into()),
                 Position::new(1, 31),
                 Position::new(1, 32)
+            )
+        ]
+    );
+}
+
+#[test]
+fn loop_in_loop() {
+    assert_eq!(
+        analyze_code(r#"
+            var x: int;
+            for x in 0..10 do
+                for x in 0..10 do
+                    print x;
+                end for;
+            end for;
+        "#).0,
+        vec![
+            Positioned::new(
+                MutationOfImmutable("x".into()),
+                // TODO: More accurate error position
+                Position::new(3, 16),
+                Position::new(5, 24)
             )
         ]
     );

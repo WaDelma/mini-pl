@@ -3,9 +3,9 @@ use num_bigint::BigInt;
 use lexer::tokenize;
 use parser::parse;
 use analyzer::analyze;
+use util::context::Context;
 
 use super::interpret;
-use super::context::Context;
 use super::repr::TypedValue;
 use super::repr::Value::*;
 

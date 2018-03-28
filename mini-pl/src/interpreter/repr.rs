@@ -3,7 +3,7 @@ use num_bigint::BigInt;
 use std::fmt;
 
 use parser::ast::{Type, Expr, Opnd};
-use super::context::Context;
+use util::context::Context;
 
 impl Expr {
     pub fn pretty_print(&self, ctx: &Context<TypedValue>) -> String {
@@ -48,6 +48,18 @@ pub struct TypedValue {
 }
 
 impl TypedValue {
+    pub fn default(ty: Ty) -> Self {
+        use self::Ty::*;
+        TypedValue {
+            value: match ty {
+                Integer => Value::Integer(0.into()),
+                Str => Value::Str("".into()),
+                Bool => Value::Bool(false),
+            },
+            ty,
+        }
+    }
+
     pub fn new(value: Value, ty: Ty) -> Option<Self> {
         let mut result = TypedValue {
             value: Value::Unknown,

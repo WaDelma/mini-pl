@@ -14,33 +14,47 @@
 use util::Positioned;
 
 use Ident;
-use parser::ast::{Stmt, Expr, Opnd, BinOp, UnaOp, ParseError, OpndError, ExprError, TypeError};
+use parser::ast::{Stmt, Expr, Opnd, BinOp, UnaOp, StmtError, OpndError, ExprError, TypeError};
 use parser::ast::Type as AstType;
-use interpreter::context::Context;
+use util::context::Context;
 
 use self::AnalysisError::*;
 
 #[cfg(test)]
 mod tests;
 
+/// Errors that can happen while analyzing mini-pl code
 #[derive(Debug, PartialEq)]
 pub enum AnalysisError {
+    /// Undeclared variable used
     UnknownVariable(Ident),
+    /// Re-declaration of a variable
     DublicateDeclaration(Ident),
+    /// Mutation of immutable loop control variable
     MutationOfImmutable(Ident),
+    /// Using type in context which need different one
     TypeMismatch(Type, Type),
+    /// Type mismatch while using print/read
+    /// 
+    /// Because read and write can use both integers and strings, this is separate to type mismatch.
     IOMismatch(Type),
+    /// Binary operation on unsupported type
     UnableToBinOp(Type, BinOp),
+    /// Unary operation on unsupported type
     UnableToUnaOp(Type, UnaOp),
-    ParseErr(ParseError),
+    /// Error that happened while parsing statement
+    StmtErr(StmtError),
+    /// Error that happened while parsing expression
     ExprErr(ExprError),
+    /// Error that happened while parsing operand
     OpndErr(OpndError),
+    /// Error that happened while parsing type error
     TypeErr(TypeError),
 }
 
-impl From<ParseError> for AnalysisError {
-    fn from(e: ParseError) -> Self {
-        AnalysisError::ParseErr(e)
+impl From<StmtError> for AnalysisError {
+    fn from(e: StmtError) -> Self {
+        AnalysisError::StmtErr(e)
     }
 }
 
@@ -62,21 +76,34 @@ impl From<TypeError> for AnalysisError {
     }
 }
 
+/// Mutability of variable
+/// 
+/// This is used for loop control variable
 #[derive(Clone, PartialEq)]
 pub enum Mutability {
+    /// Variable is mutable and can be assigned/read to
     Mutable,
+    /// Loop control variable cannot be modified inside a loop
     Immutable,
 }
 
+/// Type of variable
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Type {
+    /// Type that is compatible with all other types.
+    /// 
+    /// Used if there is type errors.
     Bottom,
+    /// Integer type
     Integer,
+    /// String type
     Str,
+    /// Boolean type
     Bool
 }
 
 impl Type {
+    /// Checks if type is compatible with another
     fn is_compatible(&self, ty: &Type) -> bool {
         use self::Type::*;
         match (*self, *ty) {
@@ -89,19 +116,24 @@ impl Type {
     }
 }
 
+/// Performs static analysis on given ast in given context.
+/// 
+/// Returns vector of analysis errors that were detected in the ast
 pub fn analyze(ast: &[Positioned<Stmt>], ctx: &mut Context<(Type, Mutability)>) -> Vec<Positioned<AnalysisError>> {
     let mut errors = vec![];
     analyze_stmts(ast, ctx, &mut errors);
     errors
 }
 
-fn analyze_stmts(stmts: &[Positioned<Stmt>], ctx: &mut Context<(Type, Mutability)>, errors: &mut Vec<Positioned<AnalysisError>>) {
+/// Performs static analysis on give ast in given context and adds analysis errors to given vector.
+pub fn analyze_stmts(stmts: &[Positioned<Stmt>], ctx: &mut Context<(Type, Mutability)>, errors: &mut Vec<Positioned<AnalysisError>>) {
     for stmt in stmts {
         analyze_stmt(stmt, ctx, errors);
     }
 }
 
-fn analyze_stmt(stmt: &Positioned<Stmt>, ctx: &mut Context<(Type, Mutability)>, errors: &mut Vec<Positioned<AnalysisError>>) {
+/// Performs static analysis on single statement
+pub fn analyze_stmt(stmt: &Positioned<Stmt>, ctx: &mut Context<(Type, Mutability)>, errors: &mut Vec<Positioned<AnalysisError>>) {
     use self::Stmt::*;
     match stmt.data {
         ErrStmt(ref e) => errors.push(stmt.clone_with_data(e.clone().into())),
@@ -122,13 +154,13 @@ fn analyze_stmt(stmt: &Positioned<Stmt>, ctx: &mut Context<(Type, Mutability)>, 
                 AstType::Str => Type::Str,
                 AstType::Bool => Type::Bool,
             };
-            ctx.create(ident.clone(), (ty.clone(), Mutability::Mutable));
             if let Some(ref value) = *value {
                 let expr_ty = analyze_expr(value, ctx, errors);
                 if !ty.is_compatible(&expr_ty) {
                     errors.push(stmt.clone_with_data(TypeMismatch(ty.clone(), expr_ty)));
                 }
             }
+            ctx.create(ident.clone(), (ty.clone(), Mutability::Mutable));
         },
         Assignment {
             ref ident,
@@ -216,7 +248,8 @@ fn analyze_stmt(stmt: &Positioned<Stmt>, ctx: &mut Context<(Type, Mutability)>, 
     }
 }
 
-fn analyze_expr(expr: &Positioned<Expr>, ctx: &mut Context<(Type, Mutability)>, errors: &mut Vec<Positioned<AnalysisError>>) -> Type {
+/// Performs static analysis on single expression
+pub fn analyze_expr(expr: &Positioned<Expr>, ctx: &mut Context<(Type, Mutability)>, errors: &mut Vec<Positioned<AnalysisError>>) -> Type {
     use self::Expr::*;
     use parser::ast::BinOp::*;
     use parser::ast::UnaOp::*;
@@ -283,7 +316,8 @@ fn analyze_expr(expr: &Positioned<Expr>, ctx: &mut Context<(Type, Mutability)>, 
     }
 }
 
-fn analyze_opnd(opnd: &Positioned<Opnd>, ctx: &mut Context<(Type, Mutability)>, errors: &mut Vec<Positioned<AnalysisError>>) -> Type {
+/// Performs static analysis on single operand
+pub fn analyze_opnd(opnd: &Positioned<Opnd>, ctx: &mut Context<(Type, Mutability)>, errors: &mut Vec<Positioned<AnalysisError>>) -> Type {
     use self::Opnd::*;
     match opnd.data {
         OpndErr(ref e) => {

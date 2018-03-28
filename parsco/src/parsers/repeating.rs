@@ -250,6 +250,19 @@ impl<'b, P, S> Parser<S> for TakeUntil<P>
 ///         take_until(tag("'"))
 ///     ).parse("'Hello, World!'")
 /// );
+/// ```
+/// ```rust
+/// use parsco::{Parser, tag, take_until, preceded};
+/// use parsco::common::Err2;
+/// 
+/// assert_eq!(
+///     Err((Err2::V2(("'", ())), 1..14)),
+///     preceded(
+///         tag("'"),
+///         take_until(tag("'"))
+///     ).parse("'Hello, World!")
+/// );
+/// ```
 pub fn take_until<P, S>(parser: P) -> TakeUntil<P>
     where S: Parseable,
           P: Parser<S>,
