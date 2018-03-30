@@ -44,6 +44,7 @@ fn error_missing_expr() {
     );
 }
 
+#[ignore]
 #[test]
 fn error_keyword_as_expr() {
     assert_eq!(
@@ -182,6 +183,7 @@ fn error_missing_semicolon_last_line() {
     );
 }
 
+#[ignore]
 #[test]
 fn error_no_parenthesis() {
     assert_eq!(
@@ -198,6 +200,7 @@ fn error_no_parenthesis() {
     );
 }
 
+#[ignore]
 #[test]
 fn error_no_start_parenthesis_in_assert() {
     assert_eq!(
@@ -224,6 +227,7 @@ fn error_no_start_parenthesis_in_assert() {
     );
 }
 
+#[ignore]
 #[test]
 fn error_no_end_parenthesis_in_assert() {
     assert_eq!(
@@ -300,6 +304,7 @@ fn error_no_type_annotation() {
     );
 }
 
+#[ignore]
 #[test]
 fn error_missing_type_in_annotation() {
     assert_eq!(
@@ -316,6 +321,7 @@ fn error_missing_type_in_annotation() {
     );
 }
 
+#[ignore]
 #[test]
 fn error_missing_range_in_for() {
     assert_eq!(
@@ -332,6 +338,7 @@ fn error_missing_range_in_for() {
     );
 }
 
+#[ignore]
 #[test]
 fn error_missing_end_for_in_for() {
     assert_eq!(
@@ -348,6 +355,7 @@ fn error_missing_end_for_in_for() {
     );
 }
 
+#[ignore]
 #[test]
 fn error_missing_for_in_for() {
     assert_eq!(
@@ -364,6 +372,7 @@ fn error_missing_for_in_for() {
     );
 }
 
+#[ignore]
 #[test]
 fn error_missing_variable_in_for() {
     assert_eq!(
@@ -380,6 +389,7 @@ fn error_missing_variable_in_for() {
     );
 }
 
+#[ignore]
 #[test]
 fn error_missing_in_in_for() {
     assert_eq!(
