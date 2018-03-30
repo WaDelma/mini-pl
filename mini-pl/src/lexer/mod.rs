@@ -33,55 +33,60 @@ pub fn tokenize(s: &str) -> ParseResult<Vec<Positioned<Token>>> {
     // These variables keep track the line and column were at lexing.
     let line = Cell::new(0);
     let column = Cell::new(0);
-    terminated(many0(
-        map(
-            (
-                ws(opt(fun(comment))),
-                ws(map(
-                    alt()
-                        | fun(operator)
-                        | fun(punctuation)
-                        | fun(keyword_or_identifier)
-                        | fun(integer)
-                        | fun(str_literal),
-                    |token, _, place| (token, place)
-                ))
-            ),
-            |((_, comment_lines, comment_columns), ((token, token_size), preceding_lines, preceding_columns)), _, eaten_chars| {
-                // Increment the line counter by the amount preceding comment and statement takes.
-                let cur_line = line.update(|c| c + comment_lines + preceding_lines);
+    terminated(
+        many0(
+            map(
+                (
+                    // Handles comment before first token and between tokens
+                    ws(opt(fun(comment))),
+                    ws(map(
+                        alt()
+                            | fun(operator)
+                            | fun(punctuation)
+                            | fun(keyword_or_identifier)
+                            | fun(integer)
+                            | fun(str_literal),
+                        |token, _, place| (token, place)
+                    ))
+                ),
+                |((_, comment_lines, comment_columns), ((token, token_size), preceding_lines, preceding_columns)), _, eaten_chars| {
+                    // Increment the line counter by the amount preceding comment and statement takes.
+                    let cur_line = line.update(|c| c + comment_lines + preceding_lines);
 
-                let has_comment_lines = comment_lines > 0;
-                let has_preceding_lines = preceding_lines > 0;
+                    let has_comment_lines = comment_lines > 0;
+                    let has_preceding_lines = preceding_lines > 0;
 
-                let cur_column = if has_comment_lines || has_preceding_lines {
-                    // There were lines so we need to move column counter to right place.
-                    column.set(token_size + if has_preceding_lines {
-                        preceding_columns
+                    let cur_column = if has_comment_lines || has_preceding_lines {
+                        // There were lines so we need to move column counter to right place.
+                        column.set(token_size + if has_preceding_lines {
+                            preceding_columns
+                        } else {
+                            comment_columns
+                        });
+                        // And the preceding column count is 0.
+                        0
                     } else {
-                        comment_columns
-                    });
-                    // And the preceding column count is 0.
-                    0
-                } else {
-                    // We didn't advance any lines so we increment column counter by eaten characters.
-                    column.update(|c| c + eaten_chars)
-                };
+                        // We didn't advance any lines so we increment column counter by eaten characters.
+                        column.update(|c| c + eaten_chars)
+                    };
 
-                Positioned {
-                    data: token,
-                    from: Position {
-                        line: cur_line + comment_lines,
-                        column: cur_column + comment_columns,
-                    },
-                    to: Position {
-                        line: line.get(),
-                        column: column.get(),
-                    },
+                    Positioned {
+                        data: token,
+                        from: Position {
+                            line: cur_line + comment_lines,
+                            column: cur_column + comment_columns,
+                        },
+                        to: Position {
+                            line: line.get(),
+                            column: column.get(),
+                        },
+                    }
                 }
-            }
-        )
-    ), ws(opt(fun(comment)))).parse(s)
+            )
+        ),
+        // Handles comment after last token
+        ws(opt(fun(comment)))
+    ).parse(s)
         .map_err(|(err, pos)| (LexError::Unknown, pos)) // TODO: Better error
 }
 
@@ -182,7 +187,7 @@ pub fn keyword_or_identifier(input: &str) -> ParseResult<Token> {
         take_while0(|c| char::is_alphanumeric(c) || c == '_')
     ), |(fst, rest), _, _| {
         let ident = fst.to_string() + rest;
-        // Check that identifier wasn't keyword
+        // Check that is the identifier actually a keyword
         if let Ok((keyword, after_keyword, _)) = keyword(&ident) {
             if after_keyword.is_empty() {
                 return keyword;
@@ -196,7 +201,7 @@ pub fn keyword_or_identifier(input: &str) -> ParseResult<Token> {
 /// Lexes integer literal
 pub fn integer(input: &str) -> ParseResult<Token> {
     flat_map(
-        take_while1(|c| char::is_alphanumeric(c)),
+        take_while1(char::is_alphanumeric),
         |number: &str, rest, pos| {
             Ok::<_, (Void, _)>((
                 number.parse()

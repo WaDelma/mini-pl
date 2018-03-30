@@ -136,6 +136,7 @@ pub fn analyze_stmts(stmts: &[Positioned<Stmt>], ctx: &mut Context<(Type, Mutabi
 pub fn analyze_stmt(stmt: &Positioned<Stmt>, ctx: &mut Context<(Type, Mutability)>, errors: &mut Vec<Positioned<AnalysisError>>) {
     use self::Stmt::*;
     match stmt.data {
+        // Collect errors generated when parsing statements
         ErrStmt(ref e) => errors.push(stmt.clone_with_data(e.clone().into())),
         Declaration {
             ref ident,
@@ -143,9 +144,11 @@ pub fn analyze_stmt(stmt: &Positioned<Stmt>, ctx: &mut Context<(Type, Mutability
             ref value,
         } => {
             if let Some(_) = ctx.get(ident) {
+                // Variable was declared previously
                 errors.push(stmt.clone_with_data(DublicateDeclaration(ident.clone())));
             }
             let ty = match *ty {
+                // Collect errors generated when parsing types
                 AstType::TypeErr(ref e) => {
                     errors.push(stmt.clone_with_data(e.clone().into()));
                     Type::Bottom
@@ -157,6 +160,7 @@ pub fn analyze_stmt(stmt: &Positioned<Stmt>, ctx: &mut Context<(Type, Mutability
             if let Some(ref value) = *value {
                 let expr_ty = analyze_expr(value, ctx, errors);
                 if !ty.is_compatible(&expr_ty) {
+                    // Type returned by the expression cannot be assigned to the variable
                     errors.push(stmt.clone_with_data(TypeMismatch(ty.clone(), expr_ty)));
                 }
             }
@@ -167,13 +171,16 @@ pub fn analyze_stmt(stmt: &Positioned<Stmt>, ctx: &mut Context<(Type, Mutability
             ref value,
         } => if let Some((ty, mutability)) = ctx.get(ident).cloned() {
             if mutability == Mutability::Immutable {
+                // Variable is loop control one and cannot be assigned to
                 errors.push(stmt.clone_with_data(MutationOfImmutable(ident.clone())));
             }
             let expr_ty = analyze_expr(value, ctx, errors);
             if !ty.is_compatible(&expr_ty) {
+                // Type returned by the expression cannot be assigned to the variable
                 errors.push(stmt.clone_with_data(TypeMismatch(ty, expr_ty)));
             }
         } else {
+            // Variable hasn't been declared yet
             errors.push(stmt.clone_with_data(UnknownVariable(ident.clone())));
         },
         Loop {
@@ -184,22 +191,30 @@ pub fn analyze_stmt(stmt: &Positioned<Stmt>, ctx: &mut Context<(Type, Mutability
         } => {
             if let Some(&mut (ref ty, ref mut mutability)) = ctx.get_mut(ident) {
                 if !Type::Integer.is_compatible(&ty) {
+                    // Loop control variable should be integer
                     errors.push(stmt.clone_with_data(TypeMismatch(Type::Integer, *ty)));
                 }
                 if mutability == &Mutability::Immutable {
+                    // Loop control variable cannot be used again in inner loop
                     errors.push(stmt.clone_with_data(MutationOfImmutable(ident.clone())));
                 }
                 *mutability = Mutability::Immutable;
             } else {
+        // Collect errors generated when parsing statements
+                // Loop control variable hasn't been declared yet
                 errors.push(stmt.clone_with_data(UnknownVariable(ident.clone())));
             }
             ctx.create(ident.clone(), (Type::Integer, Mutability::Immutable));
             let from = analyze_expr(from, ctx, errors);
             if !Type::Integer.is_compatible(&from) {
+                // Type returned by the expression isn't integer
+                // so it cannot be used as starting point of the range
                 errors.push(stmt.clone_with_data(TypeMismatch(Type::Integer, from)));
             }
             let to = analyze_expr(to, ctx, errors);
             if !Type::Integer.is_compatible(&to) {
+                // Type returned by the expression isn't integer
+                // so it cannot be used as ending point of the range
                 errors.push(stmt.clone_with_data(TypeMismatch(Type::Integer, to)));
             }
             analyze_stmts(stmts, ctx, errors);
@@ -221,12 +236,16 @@ pub fn analyze_stmt(stmt: &Positioned<Stmt>, ctx: &mut Context<(Type, Mutability
             ref ident,
         } => if let Some((ty, mutability)) = ctx.get(ident).cloned() {
             if mutability == Mutability::Immutable {
+                // Variable is loop control one and cannot be read to
                 errors.push(stmt.clone_with_data(MutationOfImmutable(ident.clone())));
             }
             if !(ty.is_compatible(&Type::Integer) || ty.is_compatible(&Type::Str)) {
+                // Type of the variable isn't integer or string
+                // which are the only types supported by read
                 errors.push(stmt.clone_with_data(IOMismatch(ty)));
             }
         } else {
+            // Variable hasn't been declared yet
             errors.push(stmt.clone_with_data(UnknownVariable(ident.clone())));
         },
         Print {
@@ -234,6 +253,8 @@ pub fn analyze_stmt(stmt: &Positioned<Stmt>, ctx: &mut Context<(Type, Mutability
         } => {
             let ty = analyze_expr(expr, ctx, errors);
             if !(ty.is_compatible(&Type::Integer) || ty.is_compatible(&Type::Str)) {
+                // Type returned by the expression isn't integer or string
+                // which are the only types supported by print
                 errors.push(stmt.clone_with_data(IOMismatch(ty)));
             }
         },
@@ -242,6 +263,8 @@ pub fn analyze_stmt(stmt: &Positioned<Stmt>, ctx: &mut Context<(Type, Mutability
         } => {
             let ty = analyze_expr(expr, ctx, errors);
             if !Type::Bool.is_compatible(&ty) {
+                // Type returned by the expression isn't boolean
+                // which is the only type supported by assert
                 errors.push(stmt.clone_with_data(TypeMismatch(Type::Bool, ty)));
             }
         },
@@ -256,10 +279,12 @@ pub fn analyze_expr(expr: &Positioned<Expr>, ctx: &mut Context<(Type, Mutability
     let handle_compatibility = |lhs: Type, rhs, result, errors: &mut Vec<_>| if lhs.is_compatible(&rhs) {
         result
     } else {
+        // Type wasn't compatible with give one
         errors.push(expr.clone_with_data(TypeMismatch(lhs, rhs)));
         Type::Bottom
     };
     match expr.data {
+        // Collect errors generated when parsing expressions
         ErrExpr(ref e) => {
             errors.push(expr.clone_with_data(e.clone().into()));
             Type::Bottom
@@ -274,6 +299,7 @@ pub fn analyze_expr(expr: &Positioned<Expr>, ctx: &mut Context<(Type, Mutability
             match *op {
                 Equality | LessThan => handle_compatibility(lhs, rhs, Type::Bool, errors),
                 Addition => if Type::Integer.is_compatible(&lhs) || Type::Str.is_compatible(&lhs) {
+                    // If `lhs` is bottom take `rhs` which might be concrete.
                     let output = if Type::Bottom == lhs {
                         rhs
                     } else {
@@ -281,18 +307,21 @@ pub fn analyze_expr(expr: &Positioned<Expr>, ctx: &mut Context<(Type, Mutability
                     };
                     handle_compatibility(lhs, rhs, output, errors)
                 } else {
+                    // Addition is only supported by integers and strings
                     errors.push(expr.clone_with_data(UnableToBinOp(lhs, Addition)));
                     Type::Bottom
                 },
                 Substraction | Multiplication | Division => if Type::Integer.is_compatible(&lhs) {
                     handle_compatibility(lhs, rhs, Type::Integer, errors)
                 } else {
+                    // Substraction, multiplication and division are only supported by integers
                     errors.push(expr.clone_with_data(UnableToBinOp(lhs, op.clone())));
                     Type::Bottom
                 },
                 And => if Type::Bool.is_compatible(&lhs) {
                     handle_compatibility(lhs, rhs, Type::Bool, errors)
                 } else {
+                    /// And is only supported by booleans
                     errors.push(expr.clone_with_data(UnableToBinOp(lhs, And)));
                     Type::Bottom
                 },
@@ -307,6 +336,7 @@ pub fn analyze_expr(expr: &Positioned<Expr>, ctx: &mut Context<(Type, Mutability
                 Not => if Type::Bool.is_compatible(&rhs) {
                     Type::Bool
                 } else {
+                    // Not is only supported by booleans
                     errors.push(expr.clone_with_data(UnableToUnaOp(rhs, Not)));
                     Type::Bottom
                 },
@@ -320,6 +350,7 @@ pub fn analyze_expr(expr: &Positioned<Expr>, ctx: &mut Context<(Type, Mutability
 pub fn analyze_opnd(opnd: &Positioned<Opnd>, ctx: &mut Context<(Type, Mutability)>, errors: &mut Vec<Positioned<AnalysisError>>) -> Type {
     use self::Opnd::*;
     match opnd.data {
+        // Collect errors generated when parsing operands
         OpndErr(ref e) => {
             errors.push(opnd.clone_with_data(e.clone().into()));
             Type::Bottom
@@ -329,6 +360,7 @@ pub fn analyze_opnd(opnd: &Positioned<Opnd>, ctx: &mut Context<(Type, Mutability
         Ident(ref ident) => if let Some(ty) = ctx.get(ident) {
             ty.0
         } else {
+            // Variable hasn't been declared yet
             errors.push(opnd.clone_with_data(UnknownVariable(ident.clone())));
             Type::Bottom
         },

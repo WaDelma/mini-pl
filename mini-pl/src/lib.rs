@@ -10,6 +10,8 @@ extern crate char_stream;
 extern crate num_traits;
 extern crate num_bigint;
 
+// Replace standard library provided `assert_eq` macro with one that does pretty printing.
+// TODO: Remove this uggly hack
 #[cfg(test)]
 macro_rules! assert_eq {
     ($left:expr, $right:expr) => {
