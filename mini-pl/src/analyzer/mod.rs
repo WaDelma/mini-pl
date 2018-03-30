@@ -200,7 +200,7 @@ pub fn analyze_stmt(stmt: &Positioned<Stmt>, ctx: &mut Context<(Type, Mutability
                 }
                 *mutability = Mutability::Immutable;
             } else {
-        // Collect errors generated when parsing statements
+                // Collect errors generated when parsing statements
                 // Loop control variable hasn't been declared yet
                 errors.push(stmt.clone_with_data(UnknownVariable(ident.clone())));
             }
@@ -321,7 +321,7 @@ pub fn analyze_expr(expr: &Positioned<Expr>, ctx: &mut Context<(Type, Mutability
                 And => if Type::Bool.is_compatible(&lhs) {
                     handle_compatibility(lhs, rhs, Type::Bool, errors)
                 } else {
-                    /// And is only supported by booleans
+                    // And is only supported by booleans
                     errors.push(expr.clone_with_data(UnableToBinOp(lhs, And)));
                     Type::Bottom
                 },

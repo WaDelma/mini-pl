@@ -76,16 +76,6 @@ impl History {
         }
     }
 
-    pub fn write_str(&mut self, s: &str) {
-        if self.cursor < self.history.len() {
-            self.next = self.history[self.cursor].clone();
-            self.to_future();
-            self.next.push_str(s);
-        } else {
-            self.next.push_str(s);
-        }
-    }
-
     pub fn erase(&mut self) -> Option<char> {
         if self.cursor < self.history.len() {
             self.next = self.history[self.cursor].clone();

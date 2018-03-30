@@ -87,7 +87,7 @@ pub fn tokenize(s: &str) -> ParseResult<Vec<Positioned<Token>>> {
         // Handles comment after last token
         ws(opt(fun(comment)))
     ).parse(s)
-        .map_err(|(err, pos)| (LexError::Unknown, pos)) // TODO: Better error
+        .map_err(|(_err, pos)| (LexError::Unknown, pos)) // TODO: Better error
 }
 
 /// Parses single and multiline comments
@@ -96,7 +96,7 @@ pub fn comment(input: &str) -> ParseResult<()> {
         | fun(multiline_comment)
         | map((tag("//"), take_while0(|c| c != '\n')), |_, _, _| ())
     ).parse(input)
-        .map_err(|(err, pos)| (LexError::Unknown, pos)) // TODO: Better error
+        .map_err(|(_err, pos)| (LexError::Unknown, pos)) // TODO: Better error
 }
 
 /// Parses multiline comments
@@ -107,7 +107,7 @@ pub fn multiline_comment(input: &str) -> ParseResult<()> {
         take_until(tag("*/"))
     ), |_, _, _| ())
         .parse(input)
-        .map_err(|(err, pos)| (LexError::Unknown, pos)) // TODO: Better error
+        .map_err(|(_err, pos)| (LexError::Unknown, pos)) // TODO: Better error
 }
 
 /// Handles nested multiline comments
@@ -128,7 +128,7 @@ pub fn nested_comment(input: &str) -> ParseResult<()> {
         opt(fun(nested_comment))
     ), |_, _, _| ())
         .parse(input)
-        .map_err(|(err, pos)| (LexError::Unknown, pos)) // TODO: Better error
+        .map_err(|(_err, pos)| (LexError::Unknown, pos)) // TODO: Better error
 }
 
 /// Lexes single operator
@@ -195,7 +195,7 @@ pub fn keyword_or_identifier(input: &str) -> ParseResult<Token> {
         }
         Token::Identifier(ident)
     }).parse(input)
-        .map_err(|(err, pos)| (LexError::Unknown, pos)) // TODO: Better error
+        .map_err(|(_err, pos)| (LexError::Unknown, pos)) // TODO: Better error
 }
 
 /// Lexes integer literal
@@ -227,7 +227,7 @@ pub fn str_literal(input: &str) -> ParseResult<Token> {
             .map(Token::Literal)
             .unwrap_or_else(Token::Error)
     ).parse(input)
-        .map_err(|(err, pos)| (LexError::Unknown, pos)) // TODO: Better error
+        .map_err(|(_err, pos)| (LexError::Unknown, pos)) // TODO: Better error
 }
 
 /// Parses the contents of string literal

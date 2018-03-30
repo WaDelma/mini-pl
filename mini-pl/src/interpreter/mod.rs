@@ -27,11 +27,7 @@ pub fn interpret_stmt<IO: Io>(stmt: &Positioned<Stmt>, ctx: &mut Context<TypedVa
     use self::Stmt::*;
     match stmt.data {
         ErrStmt(ref e) => panic!("Error while parsing: {:?}", e),
-        Declaration {
-            ref ident,
-            ref ty,
-            ref value,
-        } => {
+        Declaration { ref ident, ref ty, ref value } => {
             let mut decl = TypedValue::default(Ty::from(ty.clone()));
             if let Some(v) = value.as_ref().map(|e| interpret_expr(&e.data, ctx)) {
                 if !decl.set_typed(v) {
@@ -40,22 +36,14 @@ pub fn interpret_stmt<IO: Io>(stmt: &Positioned<Stmt>, ctx: &mut Context<TypedVa
             }
             ctx.create(ident.clone(), decl);
         },
-        Assignment {
-            ref ident,
-            ref value,
-        } => {
+        Assignment { ref ident, ref value } => {
             let value = interpret_expr(&value.data, ctx);
             let error = &format!("Tried to assign to non-existent variable ´{}´ value ´{}´.", ident, value);
             ctx.get_mut(ident)
                 .expect(error)
                 .set_typed(value);
         },
-        Loop {
-            ref ident,
-            ref from,
-            ref to,
-            ref stmts,
-        } => {
+        Loop { ref ident, ref from, ref to, ref stmts } => {
             let mut from = interpret_expr(&from.data, ctx).integer().clone();
             let to = interpret_expr(&to.data, ctx).integer().clone();
             ctx.get_mut(ident)
@@ -65,13 +53,11 @@ pub fn interpret_stmt<IO: Io>(stmt: &Positioned<Stmt>, ctx: &mut Context<TypedVa
                 interpret(stmts, ctx, stdio);
                 from = from + &BigInt::from(1);
                 ctx.get_mut(ident)
-                    .expect("Non-existent loop control variable")
+                    .expect("Loop control variable dissappeared")
                     .set(Integer(from.clone()));
             }
         },
-        Read {
-            ref ident,
-        } => {
+        Read { ref ident } => {
             let tv = ctx.get_mut(ident).expect("Tried to read to a non-existent variable");
             match tv.ty().clone() {
                 Ty::Integer => {
@@ -89,9 +75,7 @@ pub fn interpret_stmt<IO: Io>(stmt: &Positioned<Stmt>, ctx: &mut Context<TypedVa
                 ty => panic!("Cannot read into variable with type `{}`.", ty),
             }
         },
-        Print {
-            ref expr,
-        } => {
+        Print { ref expr } => {
             let value = interpret_expr(&expr.data, ctx);
             match *value.value() {
                 Integer(ref i) => stdio.write(&i.to_string()),
@@ -100,9 +84,7 @@ pub fn interpret_stmt<IO: Io>(stmt: &Positioned<Stmt>, ctx: &mut Context<TypedVa
                 ref v => panic!("Use of wrong type of value `{}`", v),
             }
         },
-        Assert {
-            ref expr,
-        } => {
+        Assert { ref expr } => {
             let value = interpret_expr(&expr.data, ctx);
             match *value.value() {
                 Bool(ref b) => if !b {
@@ -122,11 +104,7 @@ pub fn interpret_expr(expr: &Expr, ctx: &mut Context<TypedValue>) -> TypedValue 
     use parser::ast::UnaOp::*;
     match *expr {
         ErrExpr(ref e) => panic!("Invalid expression: {:?}", e),
-        BinOper {
-            ref lhs,
-            ref op,
-            ref rhs,
-        } => {
+        BinOper { ref lhs, ref op, ref rhs } => {
             let lhs = interpret_opnd(&lhs.data, ctx);
             let rhs = interpret_opnd(&rhs.data, ctx);
             TypedValue::from_value(match *op {
@@ -153,10 +131,7 @@ pub fn interpret_expr(expr: &Expr, ctx: &mut Context<TypedValue>) -> TypedValue 
                 And => Bool(lhs.boolean() & rhs.boolean()),
             })
         },
-        UnaOper {
-            ref op,
-            ref rhs,
-        } => {
+        UnaOper { ref op, ref rhs } => {
             let rhs = interpret_opnd(&rhs.data, ctx);
             match *op {
                 Not => TypedValue::from_value(Value::Bool(!rhs.boolean())),

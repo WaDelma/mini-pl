@@ -124,7 +124,7 @@ pub fn declaration(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
             )
         }
     ).parse(tokens)
-        .map_err(|(err, pos)| (StmtError::Unknown, pos)) // TODO: Better error
+        .map_err(|(_err, pos)| (StmtError::Unknown, pos)) // TODO: Better error
 }
 
 /// Handles error in the type annotation in variable definition
@@ -248,7 +248,7 @@ pub fn for_loop(tokens: &[Positioned<Token>]) -> Result<Positioned<Stmt>> {
             )
         }
     ).parse(tokens)
-        .map_err(|(err, pos)| (StmtError::Unknown, pos)) // TODO: Better error
+        .map_err(|(_err, pos)| (StmtError::Unknown, pos)) // TODO: Better error
 }
 
 /// Parses single read statement

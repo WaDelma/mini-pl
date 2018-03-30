@@ -13,17 +13,10 @@ impl Expr {
         use self::Expr::*;
         match *self {
             ErrExpr(ref e) => panic!("Invalid expression: {:?}", e),
-            BinOper {
-                ref lhs,
-                ref op,
-                ref rhs,
-            } => {
+            BinOper { ref lhs, ref op, ref rhs } => {
                 format!("{} {} {}", lhs.data.pretty_print(ctx), op, rhs.data.pretty_print(ctx))
             },
-            UnaOper {
-                ref op,
-                ref rhs,
-            } => {
+            UnaOper { ref op, ref rhs } => {
                 format!("{}{}", op, rhs.data.pretty_print(ctx))
             },
             Opnd(ref opnd) => format!("({})", opnd.data.pretty_print(ctx)),
