@@ -31,6 +31,6 @@ pub mod analyzer;
 pub mod interpreter;
 pub mod util;
 
-/// New type for identifier which is just a `String`.
+/// New type for identifier, which is just a `String`.
 // TODO: Optimise memory usage by doing interning.
 pub type Ident = String;

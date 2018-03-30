@@ -2,6 +2,7 @@ use util::{Positioned, Position};
 use util::context::Context;
 use lexer::tokenize;
 use parser::parse;
+use parser::ast::{BinOp, UnaOp};
 use super::super::{AnalysisError, Type, Mutability, analyze};
 use super::super::AnalysisError::*;
 
@@ -125,6 +126,39 @@ fn type_mismatch_in_expr() {
 }
 
 #[test]
+fn binary_operator_on_unsupported_type() {
+    assert_eq!(
+        analyze_code(r#"
+            var x: bool := 1 = 1;
+            print x + x;
+        "#).0,
+        vec![
+            Positioned::new(
+                UnableToBinOp(Type::Bool, BinOp::Addition),
+                Position::new(2, 18),
+                Position::new(2, 23)
+            )
+        ]
+    );
+}
+
+#[test]
+fn unary_operator_on_unsupported_type() {
+    assert_eq!(
+        analyze_code(r#"
+            print !24;
+        "#).0,
+        vec![
+            Positioned::new(
+                UnableToUnaOp(Type::Integer, UnaOp::Not),
+                Position::new(1, 18),
+                Position::new(1, 21)
+            )
+        ]
+    );
+}
+
+#[test]
 fn recursive_variable_in_expr() {
     assert_eq!(
         analyze_code(r#"
@@ -173,6 +207,24 @@ fn loop_in_loop() {
                 // TODO: More accurate error position
                 Position::new(3, 16),
                 Position::new(5, 24)
+            )
+        ]
+    );
+}
+
+
+#[test]
+fn dublicate_declaration() {
+    assert_eq!(
+        analyze_code(r#"
+            var x: int;
+            var x: int;
+        "#).0,
+        vec![
+            Positioned::new(
+                DublicateDeclaration("x".into()),
+                Position::new(2, 12),
+                Position::new(2, 23)
             )
         ]
     );
