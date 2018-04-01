@@ -22,14 +22,14 @@ use self::tokens::LexError::*;
 use util::{Positioned, Position, UpdateCell};
 
 //TODO: Remove LexError from error type.
-type ParseResult<'a, T> = ::parsco::Result<&'a str, T, self::tokens::LexError>;
+type LexResult<'a, T> = ::parsco::Result<&'a str, T, self::tokens::LexError>;
 
 pub mod tokens;
 #[cfg(test)]
 mod tests;
 
 /// Lexes given string to mini-pl tokens
-pub fn tokenize(s: &str) -> ParseResult<Vec<Positioned<Token>>> {
+pub fn tokenize(s: &str) -> LexResult<Vec<Positioned<Token>>> {
     // These variables keep track the line and column were at lexing.
     let line = Cell::new(0);
     let column = Cell::new(0);
@@ -91,7 +91,7 @@ pub fn tokenize(s: &str) -> ParseResult<Vec<Positioned<Token>>> {
 }
 
 /// Parses single and multiline comments
-pub fn comment(input: &str) -> ParseResult<()> {
+pub fn comment(input: &str) -> LexResult<()> {
     (alt()
         | fun(multiline_comment)
         | map((tag("//"), take_while0(|c| c != '\n')), |_, _, _| ())
@@ -100,7 +100,7 @@ pub fn comment(input: &str) -> ParseResult<()> {
 }
 
 /// Parses multiline comments
-pub fn multiline_comment(input: &str) -> ParseResult<()> {
+pub fn multiline_comment(input: &str) -> LexResult<()> {
     map((
         tag("/*"),
         opt(fun(nested_comment)),
@@ -111,7 +111,7 @@ pub fn multiline_comment(input: &str) -> ParseResult<()> {
 }
 
 /// Handles nested multiline comments
-pub fn nested_comment(input: &str) -> ParseResult<()> {
+pub fn nested_comment(input: &str) -> LexResult<()> {
     map((
         satisfying(
             take_until(alt()
@@ -132,7 +132,7 @@ pub fn nested_comment(input: &str) -> ParseResult<()> {
 }
 
 /// Lexes single operator
-pub fn operator(input: &str) -> ParseResult<Token> {
+pub fn operator(input: &str) -> LexResult<Token> {
     map(alt()
             | eat(tag("+"), Addition)
             | eat(tag("-"), Substraction)
@@ -150,7 +150,7 @@ pub fn operator(input: &str) -> ParseResult<Token> {
 }
 
 /// Lexes single punctuation
-pub fn punctuation(input: &str) -> ParseResult<Token> {
+pub fn punctuation(input: &str) -> LexResult<Token> {
     map(alt()
             | eat(tag(";"), Semicolon)
             | eat(tag(":"), Colon)
@@ -162,7 +162,7 @@ pub fn punctuation(input: &str) -> ParseResult<Token> {
 }
 
 /// Lexes reserved keywords
-pub fn keyword(input: &str) -> ParseResult<Token> {
+pub fn keyword(input: &str) -> LexResult<Token> {
     map(alt()
             | eat(tag("var"), Var)
             | eat(tag("for"), For)
@@ -181,7 +181,7 @@ pub fn keyword(input: &str) -> ParseResult<Token> {
 }
 
 /// Lexes either identifier or keyword
-pub fn keyword_or_identifier(input: &str) -> ParseResult<Token> {
+pub fn keyword_or_identifier(input: &str) -> LexResult<Token> {
     map((
         satisfying(fst(), |c: &char| c.is_alphabetic()),
         take_while0(|c| char::is_alphanumeric(c) || c == '_')
@@ -199,7 +199,7 @@ pub fn keyword_or_identifier(input: &str) -> ParseResult<Token> {
 }
 
 /// Lexes integer literal
-pub fn integer(input: &str) -> ParseResult<Token> {
+pub fn integer(input: &str) -> LexResult<Token> {
     flat_map(
         take_while1(char::is_alphanumeric),
         |number: &str, rest, pos| {
@@ -217,7 +217,7 @@ pub fn integer(input: &str) -> ParseResult<Token> {
 }
 
 /// Lexes string literal
-pub fn str_literal(input: &str) -> ParseResult<Token> {
+pub fn str_literal(input: &str) -> LexResult<Token> {
     map(preceded(
             tag(r#"""#),
             fun(str_contents),
@@ -231,7 +231,7 @@ pub fn str_literal(input: &str) -> ParseResult<Token> {
 }
 
 /// Parses the contents of string literal
-pub fn str_contents(input: &str) -> ParseResult<StrOrLexErr> {
+pub fn str_contents(input: &str) -> LexResult<StrOrLexErr> {
     use self::StrOrLexErr::*;
     flat_map(take_until(
         alt()
