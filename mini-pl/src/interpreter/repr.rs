@@ -1,44 +1,44 @@
+//! Interpretation time representation of mini-pl
+
 use num_bigint::BigInt;
 
 use std::fmt;
 
 use parser::ast::{Type, Expr, Opnd};
-use super::context::Context;
+use util::context::Context;
 
 impl Expr {
+    /// Pretty prints expression in given interpretion time context
     pub fn pretty_print(&self, ctx: &Context<TypedValue>) -> String {
         use self::Expr::*;
         match *self {
-            BinOper {
-                ref lhs,
-                ref op,
-                ref rhs,
-            } => {
-                format!("{} {} {}", lhs.pretty_print(ctx), op, rhs.pretty_print(ctx))
+            ErrExpr(ref e) => panic!("Invalid expression: {:?}", e),
+            BinOper { ref lhs, ref op, ref rhs } => {
+                format!("{} {} {}", lhs.data.pretty_print(ctx), op, rhs.data.pretty_print(ctx))
             },
-            UnaOper {
-                ref op,
-                ref rhs,
-            } => {
-                format!("{}{}", op, rhs.pretty_print(ctx))
+            UnaOper { ref op, ref rhs } => {
+                format!("{}{}", op, rhs.data.pretty_print(ctx))
             },
-            Opnd(ref opnd) => format!("({})", opnd.pretty_print(ctx)),
+            Opnd(ref opnd) => format!("({})", opnd.data.pretty_print(ctx)),
         }
     }
 }
 
 impl Opnd {
+    /// Pretty prints operand in given interpretion time context
     pub fn pretty_print(&self, ctx: &Context<TypedValue>) -> String {
         use self::Opnd::*;
         match *self {
+            OpndErr(ref e) => panic!("Error: {:?}", e),
             Int(ref i) => i.to_string(),
             StrLit(ref s) => s.to_string(),
             Ident(ref i) => format!("{}", ctx.get(i).unwrap().value()),
-            Expr(ref expr) => expr.pretty_print(ctx),
+            Expr(ref expr) => expr.data.pretty_print(ctx),
         }
     }
 }
 
+/// Value with it's type
 #[derive(Clone, PartialEq, Debug)]
 pub struct TypedValue {
     value: Value,
@@ -46,6 +46,28 @@ pub struct TypedValue {
 }
 
 impl TypedValue {
+    /// Creates new typed value that has types default value.
+    /// 
+    /// Default values:
+    /// 
+    ///   - Integer: 0
+    ///   - String: ""
+    ///   - Boolean: false
+    pub fn default(ty: Ty) -> Self {
+        use self::Ty::*;
+        TypedValue {
+            value: match ty {
+                Integer => Value::Integer(0.into()),
+                Str => Value::Str("".into()),
+                Bool => Value::Bool(false),
+            },
+            ty,
+        }
+    }
+
+    /// Creates new typed value
+    /// 
+    /// `None` is returned if value is not compatible with the type
     pub fn new(value: Value, ty: Ty) -> Option<Self> {
         let mut result = TypedValue {
             value: Value::Unknown,
@@ -58,6 +80,9 @@ impl TypedValue {
         }
     }
 
+    /// Creates typed value from value
+    /// 
+    /// If type cannot be guessed, panics instead
     pub fn from_value(value: Value) -> Self {
         use self::Value::*;
         TypedValue {
@@ -71,6 +96,9 @@ impl TypedValue {
         }
     }
 
+    /// Sets value from another typed value
+    /// 
+    /// Return true if types matched and setting was possible
     pub fn set_typed(&mut self, value: TypedValue) -> bool {
         if self.ty == value.ty {
             self.value = value.value;
@@ -80,6 +108,9 @@ impl TypedValue {
         }
     }
 
+    /// Sets the value
+    ///
+    /// If type of value wasn't compatible, returns false
     pub fn set(&mut self, value: Value) -> bool {
         use self::Value as V;
         if match (&value, &self.ty) {
@@ -96,14 +127,17 @@ impl TypedValue {
         }
     }
 
+    /// Immutable getter for the type
     pub fn ty(&self) -> &Ty {
         &self.ty
     }
 
+    /// Immutable getter for the value
     pub fn value(&self) -> &Value {
         &self.value
     }
 
+    /// Gets integer value or panics
     pub fn integer(&self) -> &BigInt {
         use self::Value::*;
         match self.value {
@@ -113,6 +147,7 @@ impl TypedValue {
         }
     }
 
+    /// Gets boolean value or panics
     pub fn boolean(&self) -> &bool {
         use self::Value::*;
         match self.value {
@@ -122,6 +157,7 @@ impl TypedValue {
         }
     }
 
+    /// Gets string value or panics
     pub fn string(&self) -> &str {
         use self::Value::*;
         match self.value {
@@ -143,11 +179,16 @@ impl fmt::Display for TypedValue {
     }
 }
 
+/// Internal interpreter representation of value
 #[derive(Clone, PartialEq, Debug)]
 pub enum Value {
+    /// Unknown value
     Unknown,
+    /// Integer value
     Integer(BigInt),
+    /// String value
     Str(String),
+    /// Boolean value
     Bool(bool),
 }
 
@@ -163,10 +204,14 @@ impl fmt::Display for Value {
     }
 }
 
+/// Interpreter representation of type
 #[derive(Clone, PartialEq, Debug)]
 pub enum Ty {
+    /// Integer type
     Integer,
+    /// String type
     Str,
+    /// Boolean type
     Bool,
 }
 
@@ -185,6 +230,7 @@ impl From<Type> for Ty {
     fn from(ty: Type) -> Self {
         use self::Type::*;
         match ty {
+            TypeErr(e) => panic!("Unknown type: {:?}", e),
             Integer => Ty::Integer,
             Str => Ty::Str,
             Bool => Ty::Bool,

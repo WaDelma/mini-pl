@@ -1,6 +1,40 @@
 use {Parser, Parseable, Sym, Result, take};
+use common::{Void, Err2};
 
 use std::fmt;
+
+/// Accepts anything and returns constant value. Used via `parsco::constant` function.
+pub struct Constant<C>(C);
+
+impl<C, S> Parser<S> for Constant<C>
+    where S: Parseable,
+          C: Clone,
+{
+    type Res = C;
+    type Err = Void;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
+        Ok((self.0.clone(), s, 0))
+    }
+}
+
+/// Returns constant value regardless of the input.
+/// 
+/// Beware: This combinator doesn't eat anything from the input.
+/// 
+/// # Examples
+/// ```rust
+/// use parsco::{Parser, Result, constant};
+/// 
+/// assert_eq!(
+///     Ok(("things", "stuff", 0)),
+///     constant("things").parse("stuff")
+/// );
+/// ```
+pub fn constant<C>(c: C) -> Constant<C>
+    where C: Clone
+{
+    Constant(c)
+}
 
 /// Allows wrapping function as parser. Used via `parsco::fun` function.
 pub struct Fun<P>(P);
@@ -22,7 +56,8 @@ impl<F, S, T, E> Parser<S> for Fun<F>
 /// 
 /// # Examples
 /// ```rust
-/// # use parsco::{Parser, Result, alt, fun};
+/// use parsco::{Parser, Result, alt, fun};
+/// 
 /// fn my_parser(s: &str) -> Result<&str, usize, ()> {
 ///     if s.is_empty() {
 ///         Err(((), 0..0))
@@ -72,7 +107,8 @@ impl<S: Parseable> Parser<S> for Tag<S> {
 /// 
 /// # Examples
 /// ```rust
-/// # use parsco::{Parser, tag};
+/// use parsco::{Parser, tag};
+/// 
 /// assert_eq!(
 ///     Ok(("return", " foo;", 6)),
 ///     tag("return").parse("return foo;")
@@ -90,19 +126,20 @@ pub fn tag<S>(tag: S) -> Tag<S>
 pub struct Symbol<S> {
     symbol: S,
 }
+
 impl<S> Parser<S> for Symbol<<S::Symbol as Sym>::Sym>
     where S: Parseable,
           <S::Symbol as Sym>::Sym: PartialEq + Clone
 {
-    type Res = <S::Symbol as Sym>::Sym;
-    type Err = ();
+    type Res = S::Symbol;
+    type Err = Err2<S::Symbol, ()>;
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         s.first()
-            .ok_or(((), 0..1))
+            .ok_or_else(|| (Err2::V2(()), 0..1))
             .and_then(|f| if f.sym().clone() == self.symbol {
-                Ok((self.symbol.clone(), s.split_at(1).expect("There is first").1, 1))
+                Ok((f, s.split_at(1).expect("There is first").1, 1))
             } else {
-                Err(((), 0..1))
+                Err((Err2::V1(f), 0..1))
             })
     }
 }
@@ -111,10 +148,20 @@ impl<S> Parser<S> for Symbol<<S::Symbol as Sym>::Sym>
 /// 
 /// # Examples
 /// ```rust
-/// # use parsco::{Parser, sym};
+/// use parsco::{Parser, sym};
+/// 
 /// assert_eq!(
 ///     Ok(('f', "function", 1)),
 ///     sym('f').parse("ffunction")
+/// );
+/// ```
+/// ```rust
+/// use parsco::{Parser, sym};
+/// use parsco::common::Err2;
+/// 
+/// assert_eq!(
+///     Err((Err2::V1('g'), 0..1)),
+///     sym('f').parse("gfunction")
 /// );
 /// ```
 pub fn sym<S>(symbol: S) -> Symbol<S>
@@ -145,7 +192,8 @@ impl<S: Parseable> Parser<S> for Fst {
 /// 
 /// # Examples
 /// ```rust
-/// # use parsco::{Parser, fst};
+/// use parsco::{Parser, fst};
+/// 
 /// assert_eq!(
 ///     Ok(('f', "unction", 1)),
 ///     fst().parse("function")

@@ -13,7 +13,7 @@ fn preceded_parses() {
 #[test]
 fn preceded_doesnt_parse() {
     assert_eq!(
-        Err((Err2::V2(()), 1..1)),
+        Err((Err2::V2(("a", ())), 1..1)),
         preceded(tag("a"), tag("b")).parse("acb")
     );
 }
@@ -29,7 +29,7 @@ fn terminated_parses() {
 #[test]
 fn terminated_doesnt_parses() {
     assert_eq!(
-        Err((Err2::V2(()), 1..1)),
+        Err((Err2::V2(("a", ())), 1..1)),
         terminated(tag("a"), tag("b")).parse("acb")
     );
 }

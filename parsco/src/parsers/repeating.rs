@@ -39,20 +39,22 @@ impl<F, S> Parser<S> for TakeWhile1<F, S>
 }
 
 // TODO: Transform this use parser instead of closure?
-/// Takes symbols from the source while given predicate returns true. Succeeds when predicate doesn't match at all.
+/// Takes symbols from the source while given predicate returns true. Needs at least one match of the predicate.
 /// 
 /// # Example
 /// ```rust
-/// # use parsco::{Parser, take_while1};
-/// # use std::char;
+/// use parsco::{Parser, take_while1};
+/// use std::char;
+/// 
 /// assert_eq!(
 ///     Ok(("foo", "123", 3)),
 ///     take_while1(char::is_alphabetic).parse("foo123")
 /// );
 /// ```
 /// ```rust
-/// # use parsco::{Parser, take_while1};
-/// # use std::char;
+/// use parsco::{Parser, take_while1};
+/// use std::char;
+/// 
 /// assert_eq!(
 ///     Err(((), 0..0)),
 ///     take_while1(char::is_numeric).parse("foo123")
@@ -109,24 +111,27 @@ impl<F, S> Parser<S> for TakeNM<F, S>
 /// 
 /// # Example
 /// ```rust
-/// # use parsco::{Parser, take_nm};
-/// # use std::char;
+/// use parsco::{Parser, take_nm};
+/// use std::char;
+/// 
 /// assert_eq!(
 ///     Ok(("foo", "bar", 3)),
 ///     take_nm(2, 3, char::is_alphabetic).parse("foobar")
 /// );
 /// ```
 /// ```rust
-/// # use parsco::{Parser, take_nm};
-/// # use std::char;
+/// use parsco::{Parser, take_nm};
+/// use std::char;
+/// 
 /// assert_eq!(
 ///     Ok(("fo", "0bar", 2)),
 ///     take_nm(2, 3, char::is_alphabetic).parse("fo0bar")
 /// );
 /// ```
 /// ```rust
-/// # use parsco::{Parser, take_nm};
-/// # use std::char;
+/// use parsco::{Parser, take_nm};
+/// use std::char;
+/// 
 /// assert_eq!(
 ///     Err(((), 0..1)),
 ///     take_nm(2, 3, char::is_alphabetic).parse("f00bar")
@@ -177,16 +182,18 @@ impl<F, S> Parser<S> for TakeWhile0<F, S>
 /// 
 /// # Example
 /// ```rust
-/// # use parsco::{Parser, take_while0};
-/// # use std::char;
+/// use parsco::{Parser, take_while0};
+/// use std::char;
+/// 
 /// assert_eq!(
 ///     Ok(("foo", "123", 3)),
 ///     take_while0(char::is_alphabetic).parse("foo123")
 /// );
 /// ```
 /// ```rust
-/// # use parsco::{Parser, take_while0};
-/// # use std::char;
+/// use parsco::{Parser, take_while0};
+/// use std::char;
+/// 
 /// assert_eq!(
 ///     Ok(("", "foo123", 0)),
 ///     take_while0(char::is_numeric).parse("foo123")
@@ -234,7 +241,8 @@ impl<'b, P, S> Parser<S> for TakeUntil<P>
 /// 
 /// # Example
 /// ```rust
-/// # use parsco::{Parser, tag, take_until, preceded};
+/// use parsco::{Parser, tag, take_until, preceded};
+/// 
 /// assert_eq!(
 ///     Ok((("Hello, World!", "'"), "", 15)),
 ///     preceded(
@@ -242,6 +250,19 @@ impl<'b, P, S> Parser<S> for TakeUntil<P>
 ///         take_until(tag("'"))
 ///     ).parse("'Hello, World!'")
 /// );
+/// ```
+/// ```rust
+/// use parsco::{Parser, tag, take_until, preceded};
+/// use parsco::common::Err2;
+/// 
+/// assert_eq!(
+///     Err((Err2::V2(("'", ())), 1..14)),
+///     preceded(
+///         tag("'"),
+///         take_until(tag("'"))
+///     ).parse("'Hello, World!")
+/// );
+/// ```
 pub fn take_until<P, S>(parser: P) -> TakeUntil<P>
     where S: Parseable,
           P: Parser<S>,
@@ -278,14 +299,16 @@ impl<P, S> Parser<S> for Many0<P>
 /// 
 /// # Examples
 /// ```rust
-/// # use parsco::{Parser, tag, many0};
+/// use parsco::{Parser, tag, many0};
+/// 
 /// assert_eq!(
 ///     Ok((vec!["foo", "foo"], "bar", 6)),
 ///     many0(tag("foo")).parse("foofoobar")
 /// );
 /// ```
 /// ```rust
-/// # use parsco::{Parser, tag, many0};
+/// use parsco::{Parser, tag, many0};
+/// 
 /// assert_eq!(
 ///     Ok((vec![], "goofoobar", 0)),
 ///     many0(tag("foo")).parse("goofoobar")
@@ -326,14 +349,16 @@ impl<P, S> Parser<S> for Many1<P>
 /// 
 /// # Examples
 /// ```rust
-/// # use parsco::{Parser, tag, many1};
+/// use parsco::{Parser, tag, many1};
+/// 
 /// assert_eq!(
 ///     Ok((vec!["foo", "foo"], "bar", 6)),
 ///     many1(tag("foo")).parse("foofoobar")
 /// );
 /// ```
 /// ```rust
-/// # use parsco::{Parser, tag, many1};
+/// use parsco::{Parser, tag, many1};
+/// 
 /// assert_eq!(
 ///     Err(((), 0..0)),
 ///     many1(tag("foo")).parse("goofoobar")
@@ -359,7 +384,7 @@ impl<P, S> Parser<S> for List0<P, S>
           P: Parser<S>,
 {
     type Res = Vec<P::Res>;
-    type Err = Err2<(), ()>;
+    type Err = Err2<(), (Vec<P::Res>, ())>;
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         map(
             (
@@ -380,35 +405,40 @@ impl<P, S> Parser<S> for List0<P, S>
 /// 
 /// # Examples
 /// ```rust
-/// # use parsco::{Parser, tag, list0};
+/// use parsco::{Parser, tag, list0};
+/// 
 /// assert_eq!(
 ///     Ok((vec!["foo", "foo"], "bar", 7)),
 ///     list0(tag("foo"), ",").parse("foo,foobar")
 /// );
 /// ```
 /// ```rust
-/// # use parsco::{Parser, tag, list0};
+/// use parsco::{Parser, tag, list0};
+/// 
 /// assert_eq!(
 ///     Ok((vec!["foo", "foo"], "bar", 8)),
 ///     list0(tag("foo"), ",").parse("foo,foo,bar")
 /// );
 /// ```
 /// ```rust
-/// # use parsco::{Parser, tag, list0};
+/// use parsco::{Parser, tag, list0};
+/// 
 /// assert_eq!(
 ///     Ok((vec!["foo"], "bar", 3)),
 ///     list0(tag("foo"), ",").parse("foobar")
 /// );
 /// ```
 /// ```rust
-/// # use parsco::{Parser, tag, list0};
+/// use parsco::{Parser, tag, list0};
+/// 
 /// assert_eq!(
 ///     Ok((vec!["foo"], "bar", 4)),
 ///     list0(tag("foo"), ",").parse("foo,bar")
 /// );
 /// ```
 /// ```rust
-/// # use parsco::{Parser, tag, list0};
+/// use parsco::{Parser, tag, list0};
+/// 
 /// assert_eq!(
 ///     Ok((vec![], "goofoobar", 0)),
 ///     list0(tag("foo"), ",").parse("goofoobar")
@@ -469,7 +499,8 @@ impl<'b, P> Parser<&'b str> for Whitespace<P>
 /// 
 /// # Examples
 /// ```rust
-/// # use parsco::{Parser, tag, ws};
+/// use parsco::{Parser, tag, ws};
+/// 
 /// assert_eq!(
 ///     Ok((("foo", 3, 2), " bar", 6)),
 ///     ws(tag("foo")).parse(" \n\n\n\t\tfoo bar")
@@ -504,14 +535,16 @@ impl<S> Parser<S> for Take
 /// 
 /// # Examples
 /// ```rust
-/// # use parsco::{Parser, take};
+/// use parsco::{Parser, take};
+/// 
 /// assert_eq!(
 ///     Ok(("123", "bar", 3)),
 ///     take(3).parse("123bar")
 /// );
 /// ```
 /// ```rust
-/// # use parsco::{Parser, take};
+/// use parsco::{Parser, take};
+/// 
 /// assert_eq!(
 ///     Err(((), 0..3)),
 ///     take(3).parse("12")

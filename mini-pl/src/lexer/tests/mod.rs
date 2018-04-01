@@ -1,4 +1,5 @@
-use super::{Tok, Token, Position, tokenize};
+use util::{Positioned, Position};
+use super::{Token, tokenize};
 use super::tokens::Token::*;
 use super::tokens::Punctuation::*;
 use super::tokens::Side::*;
@@ -8,8 +9,8 @@ use super::tokens::Literal::*;
 
 mod error;
 
-fn tok(token: Token, (from_line, from_column): (usize, usize), (to_line, to_column): (usize, usize)) -> Tok {
-    Tok::new(token, Position::new(from_line, from_column), Position::new(to_line, to_column))
+fn tok(token: Token, (from_line, from_column): (usize, usize), (to_line, to_column): (usize, usize)) -> Positioned<Token> {
+    Positioned::new(token, Position::new(from_line, from_column), Position::new(to_line, to_column))
 }
 
 #[test]
