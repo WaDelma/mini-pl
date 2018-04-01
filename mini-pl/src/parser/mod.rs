@@ -62,15 +62,15 @@ pub fn handle_semicolon_error(
     match err {
         Err2::V1(err) => Err((err, pos)),
         Err2::V2((stmt, _)) => {
+            let pos = pos.end - 1;
             let token = Positioned::new(
                 Punctuation(Semicolon),
                 stmt.to.clone(),
                 stmt.to
             );
-            let pos = pos.end - 1;
             Ok((
                 (
-                    token.clone_with_data(Stmt::ErrStmt(MissingSemicolon)),
+                    token.clone_with_data(Stmt::ErrStmt(MissingSemicolon(Box::new(stmt.data)))),
                     token
                 ),
                 &rest[pos..],

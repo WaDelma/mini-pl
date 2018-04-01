@@ -3,6 +3,7 @@ use lexer::tokens::Keyword;
 use lexer::tokens::Side::*;
 use util::{Positioned, Position};
 
+use super::super::ast::BinOp;
 use super::super::ast::Stmt::*;
 use super::super::ast::Expr::*;
 use super::super::ast::Opnd::*;
@@ -44,26 +45,26 @@ fn error_missing_expr() {
     );
 }
 
-#[ignore]
-#[test]
-fn error_keyword_as_expr() {
-    assert_eq!(
-        Ok((
-            vec![
-                Positioned::new(
-                    ErrStmt(MissingSemicolon),
-                    Position::new(1, 18),
-                    Position::new(1, 19)
-                ),
-            ],
-            &[][..],
-            3
-        )),
-        parse(&tokenize("
-            print print;
-        ").unwrap().0)
-    );
-}
+// #[ignore]
+// #[test]
+// fn error_keyword_as_expr() {
+//     assert_eq!(
+//         Ok((
+//             vec![
+//                 Positioned::new(
+//                     ErrStmt(MissingSemicolon),
+//                     Position::new(1, 18),
+//                     Position::new(1, 19)
+//                 ),
+//             ],
+//             &[][..],
+//             3
+//         )),
+//         parse(&tokenize("
+//             print print;
+//         ").unwrap().0)
+//     );
+// }
 
 #[test]
 fn error_missing_end_parenthesis_in_expr() {
@@ -133,7 +134,33 @@ fn error_missing_semicolon() {
         Ok((
             vec![
                 Positioned::new(
-                    ErrStmt(MissingSemicolon),
+                    ErrStmt(MissingSemicolon(Box::new(Print {
+                        expr: Positioned::new(
+                            Opnd(Positioned::new(
+                                Expr(Box::new(Positioned::new(
+                                    BinOper {
+                                        lhs: Positioned::new(
+                                            Int(1.into()),
+                                            Position::new(1, 19),
+                                            Position::new(1, 20)
+                                        ),
+                                        op: BinOp::Addition,
+                                        rhs: Positioned::new(
+                                            Int(1.into()),
+                                            Position::new(1, 23),
+                                            Position::new(1, 24)
+                                        ),
+                                    },
+                                    Position::new(1, 19),
+                                    Position::new(1, 24),
+                                ))),
+                                Position::new(1, 18),
+                                Position::new(1, 25),
+                            )),
+                            Position::new(1, 18),
+                            Position::new(1, 25),
+                        ),
+                    }))),
                     Position::new(1, 25),
                     Position::new(1, 25),
                 ),
@@ -169,7 +196,33 @@ fn error_missing_semicolon_last_line() {
         Ok((
             vec![
                 Positioned::new(
-                    ErrStmt(MissingSemicolon),
+                    ErrStmt(MissingSemicolon(Box::new(Print {
+                        expr: Positioned::new(
+                            Opnd(Positioned::new(
+                                Expr(Box::new(Positioned::new(
+                                    BinOper {
+                                        lhs: Positioned::new(
+                                            Int(1.into()),
+                                            Position::new(1, 19),
+                                            Position::new(1, 20)
+                                        ),
+                                        op: BinOp::Addition,
+                                        rhs: Positioned::new(
+                                            Int(1.into()),
+                                            Position::new(1, 23),
+                                            Position::new(1, 24)
+                                        ),
+                                    },
+                                    Position::new(1, 19),
+                                    Position::new(1, 24),
+                                ))),
+                                Position::new(1, 18),
+                                Position::new(1, 25),
+                            )),
+                            Position::new(1, 18),
+                            Position::new(1, 25),
+                        ),
+                    }))),
                     Position::new(1, 25),
                     Position::new(1, 25),
                 )
