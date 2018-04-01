@@ -60,20 +60,32 @@ pub enum Operator {
     Assignment,
     /// Equality comparison operator
     Equality,
+    /// Inequality comparison operator
+    Inequality,
     /// Less than comparison operator
     LessThan,
+    /// Less than or equal comparison operator
+    LessThanEqual,
+    /// Greater than comparison operator
+    GreaterThan,
+    /// Greater than or equal comparison operator
+    GreaterThanEqual,
     /// Addition/concatenation operator
     Addition,
     /// Substraction operator
     Substraction,
     /// Multiplication operator
     Multiplication,
+    /// Modulo operator
+    Modulo,
     /// Disivision operator
     Division,
     /// Range use in for
     Range,
     /// And operator
     And,
+    /// Or operator
+    Or,
     /// Unary not operator
     Not,
 }
@@ -87,6 +99,8 @@ pub enum Punctuation {
     Colon,
     /// Parenthesis used for operator precedence
     Parenthesis(Side),
+    /// Square brackets used for arrays
+    SquareBracket(Side),
 }
 
 /// Bracket sides
@@ -101,16 +115,20 @@ pub enum Side {
 /// Keyword tokens
 #[derive(Clone, Debug, PartialEq)]
 pub enum Keyword {
+    /// Start of program keyword
+    Program,
+    /// Start of procedure keyword
+    Procedure,
+    /// Start of function keyword
+    Function,
     /// Start of variable assigment
     Var,
-    /// Start of for-loop
-    For,
-    /// Part of ending for-loop
-    End,
-    /// Part of starting for-loop
-    In,
-    /// Ending of start of for-loop
+    /// Start of while-loop
+    While
+    /// Ending of start of while-loop
     Do,
+    /// Ending of block
+    End,
     /// Reading to variable
     Read,
     /// Printing variable or literal
@@ -121,8 +139,20 @@ pub enum Keyword {
     Str,
     /// Boolean type
     Bool,
+    /// Array type constructor
+    Array,
+    /// Part of array type constructor
+    Of,
     /// Asserting condition
     Assert,
+    /// Returning from function with value
+    Return,
+    /// Start of branch
+    If,
+    /// End of start of branch
+    Then,
+    /// Else branch
+    Else
 }
 
 /// Errors that can happen while lexing tokens
