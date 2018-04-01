@@ -71,7 +71,7 @@ pub enum StmtError {
     /// Invalid assignment operator
     InvalidAssignment,
     /// Semicolon missing at the end of statement
-    MissingSemicolon,
+    MissingSemicolon(Box<Stmt>),
 }
 
 impl FromErr<()> for StmtError {
