@@ -1,3 +1,24 @@
+//! # Repl for mini-pl
+//! 
+//! CLI application 
+//! 
+//! Supported flags:
+//! 
+//! | Long                 | Short | Description                |
+//! | -------------------- |:-----:|:--------------------------:|
+//! | --version            | -V    | Prints version information |
+//! | --plain              | -p    | Don't use fancy utf-8      |
+//! | --symbol <symbol>    | -s    | Change symbol before input |
+//! | --color Always/Never | -c    | Determine if color is used |
+//! 
+//! Supported commands inside repl:
+//! 
+//! | Command | Description   |
+//! | ------- |:-------------:|
+//! | :h      | In-repl help  |
+//! | :q      | Exit the repl |
+//! | :c      | Clear session |
+
 extern crate mini_pl;
 #[macro_use]
 extern crate clap;
@@ -39,7 +60,7 @@ mod history;
 mod style;
 
 #[derive(Debug, Fail)]
-pub enum CliError {
+enum CliError {
     #[fail(display = "IO error occured: {}", _0)]
     IoError(#[cause] ::std::io::Error)
 }
@@ -54,8 +75,8 @@ arg_enum! {
     #[derive(PartialEq, Debug, Clone, Copy)]
     enum ColorChoice {
         Always,
-        AlwaysAnsi,
-        Auto,
+        // AlwaysAnsi,
+        // Auto,
         Never
     }
 }
@@ -102,6 +123,10 @@ fn main() {
     run(matches).unwrap();
 }
 
+fn color_choice(args: &ArgMatches) -> ColorChoice {
+    value_t!(args, "color", ColorChoice).unwrap_or(ColorChoice::Always)
+}
+
 fn fancy_plain<'a>(args: &ArgMatches, fancy: &'a str, plain: &'a str) -> &'a str {
     if args.is_present("plain") {
         plain
@@ -115,37 +140,38 @@ fn repl_symbol<'a>(args: &'a ArgMatches) -> &'a str {
 }
 
 fn print_repl_symbol<W: Write>(s: &mut W, args: &ArgMatches) -> Result<()> {
-    s.cwrite(highlight_style(), repl_symbol(args))?;
+    s.cwrite(highlight_style(), repl_symbol(args), color_choice(args))?;
     Ok(())
 }
 
 fn print_help<W: Write>(s: &mut W, args: &ArgMatches) -> Result<()> {
+    let cc = color_choice(args);
     let hl = highlight_style();
-    s.cwrite(hl, fancy_plain(args, " ❘〃", " |//"))?;
-    s.cwriteln(info_style(), "HELP")?;
+    s.cwrite(hl, fancy_plain(args, " ❘〃", " |//"), cc)?;
+    s.cwriteln(info_style(), "HELP", cc)?;
     let repl_cmd_width = REPL_COMMANDS.iter().map(|&(ref c, _)| c.width()).max().unwrap_or(0);
     for &(c, h) in REPL_COMMANDS.iter() {
-        s.cwrite(hl, fancy_plain(args, " ❘", " |"))?;
-        s.cwrite(clear_style(), &format!("  {}", c))?;
-        s.cwrite(clear_style(), &repeat(" ").take(repl_cmd_width - c.width()).collect::<String>())?;
-        s.cwriteln(clear_style(), &format!("  {}", h))?;
+        s.cwrite(hl, fancy_plain(args, " ❘", " |"), cc)?;
+        s.cwrite(clear_style(), &format!("  {}", c), cc)?;
+        s.cwrite(clear_style(), &repeat(" ").take(repl_cmd_width - c.width()).collect::<String>(), cc)?;
+        s.cwriteln(clear_style(), &format!("  {}", h), cc)?;
     }
     Ok(())
 }
 
-fn interpret_line(line: &str, memory: &mut Context<TypedValue>, check_ctx: &mut Context<(Type, Mutability)>, stdout: &mut RawTerminal<Stdout>) -> Result<bool> {
+fn interpret_line<'a>(line: &str, memory: &mut Context<TypedValue>, check_ctx: &mut Context<(Type, Mutability)>, stdout: &mut RawTerminal<Stdout>, cc: ColorChoice) -> Result<bool> {
     let new_memory = memory.clone();
     let new_check_ctx = check_ctx.clone();
     let prev_hook = panic::take_hook();
     panic::set_hook(Box::new(move |panic_info| {
         let mut out = ::stdout();
-        out.cwriteln(error_style(), "Internal interpreter error:").unwrap();
+        out.cwriteln(error_style(), "Internal interpreter error:", cc).unwrap();
         if let Some(info) = panic_info.payload().downcast_ref::<String>() {
-            out.cwriteln(clear_style(), &format!("{}", info)).unwrap();
+            out.cwriteln(clear_style(), &format!("{}", info), cc).unwrap();
         } else if let Some(info) = panic_info.payload().downcast_ref::<&str>() {
-            out.cwriteln(clear_style(), &format!("{}", info)).unwrap();
+            out.cwriteln(clear_style(), &format!("{}", info), cc).unwrap();
         } else {
-            out.cwriteln(clear_style(), "Unknown error").unwrap();
+            out.cwriteln(clear_style(), "Unknown error", cc).unwrap();
         }
         // TODO: Seems useless
         // if let Some(location) = panic_info.location() {
@@ -155,6 +181,7 @@ fn interpret_line(line: &str, memory: &mut Context<TypedValue>, check_ctx: &mut 
     let result = {
         let mut stdio = ReplStdio {
             stdout,
+            cc
         };
         match catch_unwind(move || {
             let mut memory = new_memory;
@@ -164,8 +191,8 @@ fn interpret_line(line: &str, memory: &mut Context<TypedValue>, check_ctx: &mut 
                 let tokens = match tokenize(line) {
                     Ok((tokens, _, _)) => tokens,
                     Err((e, _)) => {
-                        stdio.stdout.cwriteln(error_style(), "Lexing failed:")?;
-                        stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", e))?;
+                        stdio.stdout.cwriteln(error_style(), "Lexing failed:", cc)?;
+                        stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", e), cc)?;
                         return Ok(false);
                     }
                 };
@@ -173,10 +200,10 @@ fn interpret_line(line: &str, memory: &mut Context<TypedValue>, check_ctx: &mut 
                 let mut errors = false;
                 for err in tokens.iter().filter_map(|t| if let Token::Error(_) = t.data { Some(t) } else { None }) {
                     if !errors {
-                        stdio.stdout.cwriteln(error_style(), "Lexing failed:")?;
+                        stdio.stdout.cwriteln(error_style(), "Lexing failed:", cc)?;
                         errors = true;
                     }
-                    stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", err))?;
+                    stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", err), cc)?;
                 }
                 if errors {
                     return Ok(false);
@@ -185,8 +212,8 @@ fn interpret_line(line: &str, memory: &mut Context<TypedValue>, check_ctx: &mut 
                 let ast = match parse(&tokens[..]) {
                     Ok((ast, _, _)) => ast,
                     Err((e, _)) => {
-                        stdio.stdout.cwriteln(error_style(), "Parsing failed:")?;
-                        stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", e))?;
+                        stdio.stdout.cwriteln(error_style(), "Parsing failed:", cc)?;
+                        stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", e), cc)?;
                         return Ok(false);
                     }
                 };
@@ -194,10 +221,10 @@ fn interpret_line(line: &str, memory: &mut Context<TypedValue>, check_ctx: &mut 
                 let mut no_error = true;
                 for e in analyze(&ast[..], &mut check_ctx) {
                     if no_error {
-                        stdio.stdout.cwriteln(error_style(), "Analysis failed:")?;
+                        stdio.stdout.cwriteln(error_style(), "Analysis failed:", cc)?;
                         no_error = false;
                     }
-                    stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", e))?;
+                    stdio.stdout.cwriteln(clear_style(), &format!("{:#?}", e), cc)?;
                 }
 
                 if no_error {
@@ -225,13 +252,14 @@ fn interpret_line(line: &str, memory: &mut Context<TypedValue>, check_ctx: &mut 
 
 struct ReplStdio<'a> {
     stdout: &'a mut RawTerminal<Stdout>,
+    cc: ColorChoice,
 }
 
 impl<'a> UnwindSafe for ReplStdio<'a> {}
 
 impl<'a> Io for ReplStdio<'a> {
     fn write<S: AsRef<[u8]>>(&mut self, s: &S) {
-        self.stdout.cwrite(clear_style(), str::from_utf8(s.as_ref()).unwrap()).unwrap();
+        self.stdout.cwrite(clear_style(), str::from_utf8(s.as_ref()).unwrap(), self.cc).unwrap();
     }
     fn read_to_whitespace(&mut self) -> String {
         let mut result = String::new();
@@ -248,35 +276,38 @@ impl<'a> Io for ReplStdio<'a> {
 }
 
 fn run(args: ArgMatches) -> Result<()> {
+    let args = &args;
+
     let mut out = stdout().into_raw_mode()?;
 
     let mut history = History::new();
     let mut memory = Context::<TypedValue>::new();
     let mut check_ctx = Context::<(Type, Mutability)>::new();
 
-    out.cwrite(logo_theme(), &format!("{}", fancy_plain(&args, "⌘", "~")))?;
-    out.cwriteln(welcome_theme(), &format!(" Welcome to the repl for Mini-pl {}!", crate_version!()))?;
-    print_repl_symbol(&mut out, &args)?;
+    let cc = color_choice(args);
+    out.cwrite(logo_theme(), &format!("{}", fancy_plain(&args, "⌘", "~")), cc)?;
+    out.cwriteln(welcome_theme(), &format!(" Welcome to the repl for Mini-pl {}!", crate_version!()), cc)?;
+    print_repl_symbol(&mut out, args)?;
     for c in stdin().keys() {
         use self::Key::*;
         match c? {
             Char('\n') => {
-                out.cwriteln(clear_style(), "")?;
+                out.cwriteln(clear_style(), "", cc)?;
                 if !history.current().trim().is_empty() {
                     if history.current().starts_with(":") {
                         match &history.current().trim()[1..] {
                             "q" => return Ok(()),
-                            "h" => print_help(&mut out, &args)?,
+                            "h" => print_help(&mut out, args)?,
                             "c" => {
                                 memory.clear();
                                 check_ctx.clear();
-                                out.cwrite(note_style(), fancy_plain(&args, "⚠", "!"))?;
-                                out.cwriteln(note_style(), " Cleared all code from the session")?
+                                out.cwrite(note_style(), fancy_plain(&args, "⚠", "!"), cc)?;
+                                out.cwriteln(note_style(), " Cleared all code from the session", cc)?
                             },
-                            _ => out.cwriteln(error_style(), "Unknown repl command")?,
+                            _ => out.cwriteln(error_style(), "Unknown repl command", cc)?,
                         }
                     } else {
-                        interpret_line(history.current(), &mut memory, &mut check_ctx, &mut out)?;
+                        interpret_line(history.current(), &mut memory, &mut check_ctx, &mut out, cc)?;
                     }
                     history.proceed();
                 }
@@ -289,28 +320,28 @@ fn run(args: ArgMatches) -> Result<()> {
             },
             Down => if history.go_forwards() {
                 update_pos(&mut out, 0, &args)?;
-                out.cwrite(clear_style(), &format!("{}", history.current()))?;
+                out.cwrite(clear_style(), &format!("{}", history.current()), cc)?;
                 out.flush()?;
             },
             Up => if history.go_backwards() {
                 update_pos(&mut out, 0, &args)?;
-                out.cwrite(clear_style(), &format!("{}", history.current()))?;
+                out.cwrite(clear_style(), &format!("{}", history.current()), cc)?;
                 out.flush()?;
             },
             Backspace => if history.erase().is_some() {
-                update_pos(&mut out, history.current().width(), &args)?;
+                update_pos(&mut out, history.current().width(), args)?;
                 out.flush()?;
             },
             PageUp => {
                 history.to_history();
                 update_pos(&mut out, 0, &args)?;
-                out.cwrite(clear_style(), &format!("{}", history.current()))?;
+                out.cwrite(clear_style(), &format!("{}", history.current()), cc)?;
                 out.flush()?;
             },
             PageDown => {
                 history.to_future();
                 update_pos(&mut out, 0, &args)?;
-                out.cwrite(clear_style(), &format!("{}", history.current()))?;
+                out.cwrite(clear_style(), &format!("{}", history.current()), cc)?;
                 out.flush()?;
             },
             Esc => break,
