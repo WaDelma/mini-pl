@@ -47,9 +47,10 @@ use mini_pl::interpreter::repr::TypedValue;
 
 use std::mem::replace;
 use std::panic::{self, UnwindSafe, catch_unwind};
-use std::io::{Write, stdout, Stdout, stdin};
+use std::io::{Write, Read, stdout, Stdout, stdin};
 use std::iter::repeat;
 use std::str;
+use std::fs::File;
 
 use history::History;
 use style::{WithColor, clear_style, error_style, note_style, highlight_style, info_style, logo_theme, welcome_theme};
@@ -159,7 +160,7 @@ fn print_help<W: Write>(s: &mut W, args: &ArgMatches) -> Result<()> {
     Ok(())
 }
 
-fn interpret_line<'a>(line: &str, memory: &mut Context<TypedValue>, check_ctx: &mut Context<(Type, Mutability)>, stdout: &mut RawTerminal<Stdout>, cc: ColorChoice) -> Result<bool> {
+fn interpret_line<'a, R: Write>(line: &str, memory: &mut Context<TypedValue>, check_ctx: &mut Context<(Type, Mutability)>, stdout: &mut R, cc: ColorChoice) -> Result<bool> {
     let new_memory = memory.clone();
     let new_check_ctx = check_ctx.clone();
     let prev_hook = panic::take_hook();
@@ -250,14 +251,14 @@ fn interpret_line<'a>(line: &str, memory: &mut Context<TypedValue>, check_ctx: &
     result
 }
 
-struct ReplStdio<'a> {
-    stdout: &'a mut RawTerminal<Stdout>,
+struct ReplStdio<'a, W: Write + 'a> {
+    stdout: &'a mut W,
     cc: ColorChoice,
 }
 
-impl<'a> UnwindSafe for ReplStdio<'a> {}
+impl<'a, W: Write + 'a> UnwindSafe for ReplStdio<'a, W> {}
 
-impl<'a> Io for ReplStdio<'a> {
+impl<'a, W: Write + 'a> Io for ReplStdio<'a, W> {
     fn write<S: AsRef<[u8]>>(&mut self, s: &S) {
         self.stdout.cwrite(clear_style(), str::from_utf8(s.as_ref()).unwrap(), self.cc).unwrap();
     }
@@ -276,15 +277,24 @@ impl<'a> Io for ReplStdio<'a> {
 }
 
 fn run(args: ArgMatches) -> Result<()> {
+
     let args = &args;
+    let cc = color_choice(args);
+    if let Some(file) = args.value_of("INPUT") {
+        let mut file = File::open(file)?;
+        let mut code = String::new();
+        file.read_to_string(&mut code)?;
+        let mut memory = Context::<TypedValue>::new();
+        let mut check_ctx = Context::<(Type, Mutability)>::new();
+        interpret_line(&code, &mut memory, &mut check_ctx, &mut stdout(), cc)?;
+        return Ok(());
+    }
 
     let mut out = stdout().into_raw_mode()?;
 
     let mut history = History::new();
     let mut memory = Context::<TypedValue>::new();
     let mut check_ctx = Context::<(Type, Mutability)>::new();
-
-    let cc = color_choice(args);
     out.cwrite(logo_theme(), &format!("{}", fancy_plain(&args, "⌘", "~")), cc)?;
     out.cwriteln(welcome_theme(), &format!(" Welcome to the repl for Mini-pl {}!", crate_version!()), cc)?;
     print_repl_symbol(&mut out, args)?;
