@@ -71,6 +71,7 @@ pub enum StmtError {
     /// Invalid assignment operator
     InvalidAssignment,
     /// Semicolon missing at the end of statement
+    // TODO: Remove statement from this and handle other errors overlapping with missing semicolon one better.
     MissingSemicolon(Box<Stmt>),
 }
 
