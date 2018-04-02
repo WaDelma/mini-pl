@@ -138,11 +138,13 @@ pub fn operator(input: &str) -> LexResult<Token> {
             | eat(tag("-"), Substraction)
             | eat(tag("*"), Multiplication)
             | eat(tag("/"), Division)
-            | eat(tag("&"), And)
-            | eat(tag("!"), Not)
             | eat(tag(":="), Assignment)
-            | eat(tag("="), Equality)
+            | eat(tag("<>"), Inequality)
+            | eat(tag(">="), GreaterThanEqual)
+            | eat(tag(">"), GreaterThan)
+            | eat(tag("<="), LessThanEqual)
             | eat(tag("<"), LessThan)
+            | eat(tag("="), Equality)
             | eat(tag(".."), Range),
         |oper, _, _| Token::Operator(oper)
     ).parse(input)
@@ -154,6 +156,8 @@ pub fn punctuation(input: &str) -> LexResult<Token> {
     map(alt()
             | eat(tag(";"), Semicolon)
             | eat(tag(":"), Colon)
+            | eat(tag("."), Dot)
+            | eat(tag(","), Comma)
             | eat(tag("("), Parenthesis(Open))
             | eat(tag(")"), Parenthesis(Close)),
         |punct, _, _| Token::Punctuation(punct)
@@ -163,28 +167,50 @@ pub fn punctuation(input: &str) -> LexResult<Token> {
 
 /// Lexes reserved keywords
 pub fn keyword(input: &str) -> LexResult<Token> {
-    map(alt()
+    (alt()
+        | eat(tag("and"), Token::Operator(And))
+        | eat(tag("not"), Token::Operator(Not))
+        | eat(tag("or"), Token::Operator(Not))
+        | map( alt()
+            | eat(tag("program"), Program)
+            | eat(tag("procedure"), Procedure)
+            | eat(tag("function"), Function)
             | eat(tag("var"), Var)
-            | eat(tag("for"), For)
-            | eat(tag("end"), End)
+            | eat(tag("while"), While)
             | eat(tag("do"), Do)
-            | eat(tag("read"), Read)
-            | eat(tag("print"), Print)
-            | eat(tag("int"), Int)
-            | eat(tag("in"), In)
-            | eat(tag("string"), Str)
-            | eat(tag("bool"), Bool)
-            | eat(tag("assert"), Assert),
+            | eat(tag("end"), End)
+            | eat(tag("assert"), Assert)
+            | eat(tag("array"), Array)
+            | eat(tag("of"), Of)
+            | eat(tag("if"), If)
+            | eat(tag("then"), Then)
+            | eat(tag("else"), Else),
         |keyword, _, _| Token::Keyword(keyword)
-    ).parse(input)
+    )).parse(input)
         .map_err(|(err, pos)| (FromErr::from(err), pos))
+}
+
+/// Checks if given character is letter [a-zA-Z]
+pub fn is_letter(c: char) -> bool {
+    match c {
+        'a'...'z' | 'A'...'Z' => true,
+        _ => false,
+    }
+}
+
+/// Checks if given character is digit [0-9]
+pub fn is_digit(c: char) -> bool {
+    match c {
+        '0'...'9' => true,
+        _ => false,
+    }
 }
 
 /// Lexes either identifier or keyword
 pub fn keyword_or_identifier(input: &str) -> LexResult<Token> {
     map((
-        satisfying(fst(), |c: &char| c.is_alphabetic()),
-        take_while0(|c| char::is_alphanumeric(c) || c == '_')
+        satisfying(fst(), |c| is_letter(*c)),
+        take_while0(|c| is_letter(c) || is_digit(c) || c == '_')
     ), |(fst, rest), _, _| {
         let ident = fst.to_string() + rest;
         // Check that is the identifier actually a keyword
@@ -201,7 +227,7 @@ pub fn keyword_or_identifier(input: &str) -> LexResult<Token> {
 /// Lexes integer literal
 pub fn integer(input: &str) -> LexResult<Token> {
     flat_map(
-        take_while1(char::is_alphanumeric),
+        take_while1(|c| is_digit(c)),
         |number: &str, rest, pos| {
             Ok::<_, (Void, _)>((
                 number.parse()

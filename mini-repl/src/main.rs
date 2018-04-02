@@ -34,7 +34,7 @@ use clap::{Arg, App, ArgMatches};
 use termion::{cursor, clear};
 use termion::event::Key;
 use termion::input::TermRead;
-use termion::raw::{IntoRawMode, RawTerminal};
+use termion::raw::IntoRawMode;
 
 use mini_pl::lexer::tokenize;
 use mini_pl::lexer::tokens::Token;
@@ -47,7 +47,7 @@ use mini_pl::interpreter::repr::TypedValue;
 
 use std::mem::replace;
 use std::panic::{self, UnwindSafe, catch_unwind};
-use std::io::{Write, Read, stdout, Stdout, stdin};
+use std::io::{Write, Read, stdout, stdin};
 use std::iter::repeat;
 use std::str;
 use std::fs::File;

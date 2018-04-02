@@ -28,9 +28,9 @@ macro_rules! assert_eq {
 }
 
 pub mod lexer;
-pub mod parser;
-pub mod analyzer;
-pub mod interpreter;
+// pub mod parser;
+// pub mod analyzer;
+// pub mod interpreter;
 pub mod util;
 
 /// New type for identifier, which is just a `String`.

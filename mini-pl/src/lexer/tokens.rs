@@ -97,6 +97,10 @@ pub enum Punctuation {
     Semicolon,
     /// Colon used for type ascription
     Colon,
+    /// Comma used in lists
+    Comma,
+    /// Dot used in size operator
+    Dot,
     /// Parenthesis used for operator precedence
     Parenthesis(Side),
     /// Square brackets used for arrays
@@ -124,21 +128,11 @@ pub enum Keyword {
     /// Start of variable assigment
     Var,
     /// Start of while-loop
-    While
+    While,
     /// Ending of start of while-loop
     Do,
     /// Ending of block
     End,
-    /// Reading to variable
-    Read,
-    /// Printing variable or literal
-    Print,
-    /// Integer type
-    Int,
-    /// String type
-    Str,
-    /// Boolean type
-    Bool,
     /// Array type constructor
     Array,
     /// Part of array type constructor
