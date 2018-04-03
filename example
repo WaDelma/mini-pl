@@ -1,0 +1,28 @@
+program gcd;
+function gcd(var a: integer, var b: integer): integer;
+begin
+    var d: integer;
+    d := 0;
+    while a % 2 == 0 and b % 2 == 0 do
+    begin
+        a := a / 2;
+        b := b / 2;
+        d := d + 1;
+    end;
+    while a != b do
+    begin
+        if a % 2 == 0 then a := a/2
+        else if b % 2 == 0 then b := b/2
+        else if a > b then a := (a - b)/2
+        else b := (b - a)/2;
+    end;
+    var e: integer;
+    e := 1;
+    while d > 0 do
+    begin
+        e := 2 * e;
+        d := d - 1;
+    end;
+    return a * e;
+end;
+writeln(gcd(77, 187)).

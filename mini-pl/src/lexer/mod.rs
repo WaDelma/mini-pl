@@ -170,7 +170,7 @@ pub fn keyword(input: &str) -> LexResult<Token> {
     (alt()
         | eat(tag("and"), Token::Operator(And))
         | eat(tag("not"), Token::Operator(Not))
-        | eat(tag("or"), Token::Operator(Not))
+        | eat(tag("or"), Token::Operator(Or))
         | map( alt()
             | eat(tag("program"), Program)
             | eat(tag("procedure"), Procedure)
@@ -227,7 +227,7 @@ pub fn keyword_or_identifier(input: &str) -> LexResult<Token> {
 /// Lexes integer literal
 pub fn integer(input: &str) -> LexResult<Token> {
     flat_map(
-        take_while1(|c| is_digit(c)),
+        take_while1(|c| c.is_alphanumeric()),
         |number: &str, rest, pos| {
             Ok::<_, (Void, _)>((
                 number.parse()

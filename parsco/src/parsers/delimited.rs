@@ -237,3 +237,33 @@ impl<P1, P2, P3, P4, P5, S> Parser<S> for (P1, P2, P3, P4, P5)
             .map(|(((r1, r2, r3, r4), r5), s, p)| ((r1, r2, r3, r4, r5), s, p))
     }
 }
+
+impl<P1, P2, P3, P4, P5, P6, S> Parser<S> for (P1, P2, P3, P4, P5, P6)
+    where S: Parseable,
+          P1: Parser<S>,
+          P2: Parser<S>,
+          P3: Parser<S>,
+          P4: Parser<S>,
+          P5: Parser<S>,
+          P6: Parser<S>,
+{
+    type Res = (P1::Res, P2::Res, P3::Res, P4::Res, P5::Res, P6::Res);
+    type Err = ::common::Err6<P1::Err, (P1::Res, P2::Err), (P1::Res, P2::Res, P3::Err), (P1::Res, P2::Res, P3::Res, P4::Err), (P1::Res, P2::Res, P3::Res, P4::Res, P5::Err), (P1::Res, P2::Res, P3::Res, P4::Res, P5::Res, P6::Err)>;
+    fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
+        use common::Err5::*;
+        use common::Err2 as E2;
+        use common::Err6 as E6;
+        let (ref p1, ref p2, ref p3, ref p4, ref p5, ref p6) = *self;
+        ((p1, p2, p3, p4, p5), p6)
+            .parse(s)
+            .map_err(|(e, p)| (match e {
+                E2::V1(V1(e1)) => E6::V1(e1),
+                E2::V1(V2(e2)) => E6::V2(e2),
+                E2::V1(V3(e3)) => E6::V3(e3),
+                E2::V1(V4(e4)) => E6::V4(e4),
+                E2::V1(V5(e5)) => E6::V5(e5),
+                E2::V2(((r1, r2, r3, r4, r5), e6)) => E6::V6((r1, r2, r3, r4, r5, e6)),
+            }, p))
+            .map(|(((r1, r2, r3, r4, r5), r6), s, p)| ((r1, r2, r3, r4, r5, r6), s, p))
+    }
+}

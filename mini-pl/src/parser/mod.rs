@@ -34,23 +34,36 @@ mod tests;
 
 /// Parses given list of tokens to ast
 pub fn parse(tokens: &[Positioned<Token>]) -> ParseResult<Vec<Positioned<Stmt>>> {
-    many1(
-        map(
-            flat_map_err(
-                (
-                    fun(stmt),
-                    sym(Punctuation(Semicolon))
-                ),
-                handle_semicolon_error
-            ),
-            // Make thereported ending position of statement to be after the semicolon
-            |(mut statement, semicolon), _, _| {
-                statement.to = semicolon.to;
-                statement
-            }
-        )
+    (
+        sym(Keyword(Program)),
+        fun(ident),
+        sym(Punctuation(Semicolon)),
+        many0(
+            alt()
+                | fun(procedure)
+                | fun(function)
+        ),
+        fun(block),
+        sym(Punctuation(Dot))
     ).parse(tokens)
         .map_err(|(e, r)| (FromErr::from(e), r))
+    // many1(
+    //     map(
+    //         flat_map_err(
+    //             (
+    //                 fun(stmt),
+    //                 sym(Punctuation(Semicolon))
+    //             ),
+    //             handle_semicolon_error
+    //         ),
+    //         // Make thereported ending position of statement to be after the semicolon
+    //         |(mut statement, semicolon), _, _| {
+    //             statement.to = semicolon.to;
+    //             statement
+    //         }
+    //     )
+    // ).parse(tokens)
+    //     .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
 /// Handles missing semicolon at the end of statement

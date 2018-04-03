@@ -17,126 +17,66 @@ impl<S: Parseable> Parser<S> for Void {
     }
 }
 
-/// Two variant enum.
-/// 
-/// This is workaround to the lack of anonymous enums.
-/// It's used as an error for tuple of parsers.
-#[derive(Clone, Debug, PartialEq)]
-pub enum Err2<E1, E2> {
-    /// First variant
-    V1(E1),
-    /// Second variant
-    V2(E2),
-}
+macro_rules! error_enums(
+    (@rec [] [$($gen:tt)*]) => {};
+    (@rec
+        [
+            ($name:ident, $variant:ident),
+            $($rest:tt)*
+        ]
+        [
+            $(($gen:ident, $var:ident),)*
+        ]
+    ) => {
+        #[allow(missing_docs)]
+        #[doc =
+"Generic enum used for errors.
 
-impl<E1, E2, E> FromErr<Err2<E1, E2>> for E
-    where E: FromErr<E1>,
-        E: FromErr<E2>,
-{
-    fn from(e: Err2<E1, E2>) -> Self {
-        use self::Err2::*;
-        match e {
-            V1(e) => FromErr::from(e),
-            V2(e) => FromErr::from(e),
+This is workaround to the lack of anonymous enums.
+It's used as an error for tuple of parsers.
+"]
+        #[derive(Clone, Debug, PartialEq)]
+        pub enum $name<$($var,)* $variant> {
+            $($var($var),)*
+            $variant($variant)
         }
-    }
-}
-
-/// Three variant enum.
-/// 
-/// This is workaround to the lack of anonymous enums.
-/// It's used as an error for tuple of parsers.
-#[derive(Clone, Debug, PartialEq)]
-pub enum Err3<E1, E2, E3> {
-    /// First variant
-    V1(E1),
-    /// Second variant
-    V2(E2),
-    /// Third variant
-    V3(E3),
-}
-
-impl<E1, E2, E3, E> FromErr<Err3<E1, E2, E3>> for E
-    where E: FromErr<E1>,
-        E: FromErr<E2>,
-        E: FromErr<E3>,
-{
-    fn from(e: Err3<E1, E2, E3>) -> Self {
-        use self::Err3::*;
-        match e {
-            V1(e) => FromErr::from(e),
-            V2(e) => FromErr::from(e),
-            V3(e) => FromErr::from(e),
+        impl<$($var,)* $variant, E> FromErr<$name<$($var,)* $variant>> for E
+            where $(E: FromErr<$var>,)*
+                  E: FromErr<$variant>
+        {
+            fn from(e: $name<$($var,)* $variant>) -> Self {
+                use self::$name::*;
+                match e {
+                    $($var(e) => FromErr::from(e),)*
+                    $variant(e) => FromErr::from(e)
+                }
+            }
         }
-    }
-}
+        // TODO: Implement `Parser` for tuples
+        // impl<$($var,)* $variant, S> Parser<S> for ($($var,)* $variant)
+        //     where S: Parseable,
+        //           $($var: Parser<S>,)*
+        //           $variant: Parser<S>
+        // {
+        //     type Res = (($var::Res,)* $variant::Res);
+        //     type Err = ::common::Err2<P1::Err, (P1::Res, P2::Err)>;
+        //     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
+        //         self.0
+        //             .parse(s)
+        //             .map_err(|(e, p)| (::common::Err2::V1(e), p))
+        //             .and_then(|(r1, s, pp)|
+        //                 match self.1.parse(s) {
+        //                     Ok((r2, s, p)) => Ok(((r1, r2), s, pp + p)),
+        //                     Err((e, p)) => Err((::common::Err2::V2((r1, e)), (pp + p.start)..(pp + p.end))),
+        //                 }
+        //             )
+        //     }
+        // }
+        error_enums!(@rec [$($rest)*] [$(($gen, $var),)* ($name, $variant),]);
+    };
+    ($($name:ident::$variant:ident),+) => {
+        error_enums!(@rec [$(($name, $variant),)+] []);
+    };
+);
 
-/// Four variant enum.
-/// 
-/// This is workaround to the lack of anonymous enums.
-/// It's used as an error for tuple of parsers.
-#[derive(Clone, Debug, PartialEq)]
-pub enum Err4<E1, E2, E3, E4> {
-    /// First variant
-    V1(E1),
-    /// Second variant
-    V2(E2),
-    /// Third variant
-    V3(E3),
-    /// Fourth variant
-    V4(E4),
-}
-
-impl<E1, E2, E3, E4, E> FromErr<Err4<E1, E2, E3, E4>> for E
-    where E: FromErr<E1>,
-          E: FromErr<E2>,
-          E: FromErr<E3>,
-          E: FromErr<E4>,
-{
-    fn from(e: Err4<E1, E2, E3, E4>) -> Self {
-        use self::Err4::*;
-        match e {
-            V1(e) => FromErr::from(e),
-            V2(e) => FromErr::from(e),
-            V3(e) => FromErr::from(e),
-            V4(e) => FromErr::from(e),
-        }
-    }
-}
-
-/// Five variant enum.
-/// 
-/// This is workaround to the lack of anonymous enums.
-/// It's used as an error for tuple of parsers.
-#[derive(Clone, Debug, PartialEq)]
-pub enum Err5<E1, E2, E3, E4, E5> {
-    /// First variant
-    V1(E1),
-    /// Second variant
-    V2(E2),
-    /// Third variant
-    V3(E3),
-    /// Fourth variant
-    V4(E4),
-    /// Fift variant
-    V5(E5),
-}
-
-impl<E1, E2, E3, E4, E5, E> FromErr<Err5<E1, E2, E3, E4, E5>> for E
-    where E: FromErr<E1>,
-          E: FromErr<E2>,
-          E: FromErr<E3>,
-          E: FromErr<E4>,
-          E: FromErr<E5>,
-{
-    fn from(e: Err5<E1, E2, E3, E4, E5>) -> Self {
-        use self::Err5::*;
-        match e {
-            V1(e) => FromErr::from(e),
-            V2(e) => FromErr::from(e),
-            V3(e) => FromErr::from(e),
-            V4(e) => FromErr::from(e),
-            V5(e) => FromErr::from(e),
-        }
-    }
-}
+error_enums!(Err1::V1, Err2::V2, Err3::V3, Err4::V4, Err5::V5, Err6::V6, Err7::V7);
