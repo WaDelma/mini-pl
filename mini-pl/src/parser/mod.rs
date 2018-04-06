@@ -66,6 +66,45 @@ pub fn parse(tokens: &[Positioned<Token>]) -> ParseResult<Vec<Positioned<Stmt>>>
     //     .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
+pub fn procedure(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Stmt>> {
+    (
+        sym(Keyword(Procedure)),
+        fun(ident),
+        sym(Punctuation(Parenthesis(Open))),
+        fun(parameters),
+        sym(Punctuation(Parenthesis(Close))),
+        fun(block),
+        sym(Punctuation(Semicolon))
+    ).parse(tokens)
+        .map_err(|(e, r)| (FromErr::from(e), r))
+}
+
+pub fn function(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Stmt>> {
+    (
+        sym(Keyword(Function)),
+        fun(ident),
+        sym(Punctuation(Parenthesis(Open))),
+        fun(parameters),
+        sym(Punctuation(Parenthesis(Close))),
+        sym(Punctuation(Colon)),
+        fun(ty),
+        sym(Punctuation(Semicolon)),
+        fun(block),
+        sym(Punctuation(Semicolon))
+    ).parse(tokens)
+        .map_err(|(e, r)| (FromErr::from(e), r))
+}
+
+pub fn parameters(tokens: &[Positioned<Token>]) -> ParseResult<Vec<Positioned<Stmt>>> {
+    list0((
+        opt(sym(Keyword(Var))),
+        fun(ident),
+        sym(Punctuation(Colon)),
+        fun(ty),
+    ), Punctuation(Comma)).parse(tokens)
+        .map_err(|(e, r)| (FromErr::from(e), r))
+}
+
 /// Handles missing semicolon at the end of statement
 pub fn handle_semicolon_error(
     err: Err2<StmtError, (Positioned<Stmt>, Err2<Positioned<Token>, ()>)>,
