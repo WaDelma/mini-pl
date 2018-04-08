@@ -178,6 +178,7 @@ pub fn keyword(input: &str) -> LexResult<Token> {
             | eat(tag("var"), Var)
             | eat(tag("while"), While)
             | eat(tag("do"), Do)
+            | eat(tag("begin"), Begin)
             | eat(tag("end"), End)
             | eat(tag("assert"), Assert)
             | eat(tag("array"), Array)

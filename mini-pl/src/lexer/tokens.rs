@@ -131,6 +131,8 @@ pub enum Keyword {
     While,
     /// Ending of start of while-loop
     Do,
+    /// Start of block
+    Begin,
     /// Ending of block
     End,
     /// Array type constructor

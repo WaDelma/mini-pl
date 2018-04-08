@@ -12,6 +12,30 @@ use Ident;
 use lexer::tokens::{Token, Operator, Keyword, Side};
 use util::Positioned;
 
+pub struct Program {
+    name: Positioned<Ident>,
+    functions: Vec<Positioned<Function>>,
+    stmts: Vec<Positioned<Stmt>>,
+}
+
+pub struct Function {
+    name: Positioned<Ident>,
+    params: Vec<Positioned<Parameter>>,
+    result: Option<Positioned<Type>>,
+    stmts: Vec<Positioned<Stmt>>,
+}
+
+pub struct Parameter {
+    by: AccessBy,
+    name: Positioned<Ident>,
+    ty: Positioned<Type>,
+}
+
+pub enum AccessBy {
+    Value,
+    Reference,
+}
+
 /// Statement nodes
 /// 
 /// Also contains node for errors that can happen while parsing statement

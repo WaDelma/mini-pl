@@ -1,7 +1,6 @@
 //! Parsers that are used to repeat other parsers.
 
-use {Parser, Parseable, Result, tag, terminated, opt, map};
-use parsers::Tag;
+use {Parser, Parseable, Result, terminated, opt, map};
 use common::{Err2, Void};
 
 use std::marker::PhantomData;
@@ -374,17 +373,19 @@ pub fn many1<P, S>(parser: P) -> Many1<P>
 }
 
 /// Allows applying given parser separated by delimiter 0 to n times. Used via `parsco::list0` function.
-pub struct List0<P, S> {
-    separator: Tag<S>,
-    parser: P,
+pub struct List0<P1, P2, S> {
+    separator: P2,
+    parser: P1,
+    _marker: PhantomData<fn(S) -> S>,
 }
 
-impl<P, S> Parser<S> for List0<P, S>
+impl<P1, P2, S> Parser<S> for List0<P1, P2, S>
     where S: Parseable,
-          P: Parser<S>,
+          P1: Parser<S>,
+          P2: Parser<S>,
 {
-    type Res = Vec<P::Res>;
-    type Err = Err2<(), (Vec<P::Res>, ())>;
+    type Res = Vec<P1::Res>;
+    type Err = Err2<(), (Vec<P1::Res>, ())>;
     fn parse(&self, s: S) -> Result<S, Self::Res, Self::Err> {
         map(
             (
@@ -409,7 +410,7 @@ impl<P, S> Parser<S> for List0<P, S>
 /// 
 /// assert_eq!(
 ///     Ok((vec!["foo", "foo"], "bar", 7)),
-///     list0(tag("foo"), ",").parse("foo,foobar")
+///     list0(tag("foo"), tag(",")).parse("foo,foobar")
 /// );
 /// ```
 /// ```rust
@@ -417,7 +418,7 @@ impl<P, S> Parser<S> for List0<P, S>
 /// 
 /// assert_eq!(
 ///     Ok((vec!["foo", "foo"], "bar", 8)),
-///     list0(tag("foo"), ",").parse("foo,foo,bar")
+///     list0(tag("foo"), tag(",")).parse("foo,foo,bar")
 /// );
 /// ```
 /// ```rust
@@ -425,7 +426,7 @@ impl<P, S> Parser<S> for List0<P, S>
 /// 
 /// assert_eq!(
 ///     Ok((vec!["foo"], "bar", 3)),
-///     list0(tag("foo"), ",").parse("foobar")
+///     list0(tag("foo"), tag(",")).parse("foobar")
 /// );
 /// ```
 /// ```rust
@@ -433,7 +434,7 @@ impl<P, S> Parser<S> for List0<P, S>
 /// 
 /// assert_eq!(
 ///     Ok((vec!["foo"], "bar", 4)),
-///     list0(tag("foo"), ",").parse("foo,bar")
+///     list0(tag("foo"), tag(",")).parse("foo,bar")
 /// );
 /// ```
 /// ```rust
@@ -441,16 +442,18 @@ impl<P, S> Parser<S> for List0<P, S>
 /// 
 /// assert_eq!(
 ///     Ok((vec![], "goofoobar", 0)),
-///     list0(tag("foo"), ",").parse("goofoobar")
+///     list0(tag("foo"), tag(",")).parse("goofoobar")
 /// );
 /// ```
-pub fn list0<P, S>(parser: P, separator: S) -> List0<P, S>
+pub fn list0<P1, P2, S>(parser: P1, separator: P2) -> List0<P1, P2, S>
     where S: Parseable,
-          P: Parser<S>,
+          P1: Parser<S>,
+          P2: Parser<S>,
 {
     List0 {
-        separator: tag(separator),
-        parser
+        separator,
+        parser,
+        _marker: PhantomData,
     }
 }
 

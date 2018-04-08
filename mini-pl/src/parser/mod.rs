@@ -6,6 +6,9 @@
 //! unhandled parsing errors will bubble out as `Err` variant of the result.
 //! 
 //! There shouldn't be any panics while parsing.
+use parser::ast::Program;
+use parser::ast::Parameter;
+use parser::ast::Function;
 use std::ops::Range;
 
 use parsco::common::{Err2, Err3};
@@ -20,7 +23,7 @@ use lexer::tokens::Side::*;
 use lexer::tokens::Keyword::*;
 use lexer::tokens::Operator::*;
 use lexer::tokens::Literal::*;
-use self::ast::{Stmt, Expr, Type, Opnd, BinOp, UnaOp, StmtError};
+use self::ast::{Stmt, Expr, Type, Opnd, BinOp, UnaOp, StmtError, AccessBy};
 use self::ast::OpndError::*;
 use self::ast::StmtError::*;
 use self::ast::TypeError::*;
@@ -33,18 +36,29 @@ pub mod ast;
 mod tests;
 
 /// Parses given list of tokens to ast
-pub fn parse(tokens: &[Positioned<Token>]) -> ParseResult<Vec<Positioned<Stmt>>> {
-    (
-        sym(Keyword(Program)),
-        fun(ident),
-        sym(Punctuation(Semicolon)),
-        many0(
-            alt()
-                | fun(procedure)
-                | fun(function)
+pub fn parse(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Program>> {
+    map(
+        (
+            sym(Keyword(Program)),
+            fun(ident),
+            sym(Punctuation(Semicolon)),
+            many0(
+                alt()
+                    | fun(procedure)
+                    | fun(function)
+            ),
+            fun(block),
+            sym(Punctuation(Dot))
         ),
-        fun(block),
-        sym(Punctuation(Dot))
+        |(program, name, _, functions, stmts, dot), _, _| Positioned::new(
+            Program {
+                name,
+                functions,
+                stmts
+            },
+            program.from,
+            dot.to
+        )
     ).parse(tokens)
         .map_err(|(e, r)| (FromErr::from(e), r))
     // many1(
@@ -66,42 +80,93 @@ pub fn parse(tokens: &[Positioned<Token>]) -> ParseResult<Vec<Positioned<Stmt>>>
     //     .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
-pub fn procedure(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Stmt>> {
-    (
-        sym(Keyword(Procedure)),
-        fun(ident),
-        sym(Punctuation(Parenthesis(Open))),
-        fun(parameters),
-        sym(Punctuation(Parenthesis(Close))),
-        fun(block),
-        sym(Punctuation(Semicolon))
+pub fn procedure(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Function>> {
+    map(
+        (
+            sym(Keyword(Procedure)),
+            fun(ident),
+            sym(Punctuation(Parenthesis(Open))),
+            fun(parameters),
+            sym(Punctuation(Parenthesis(Close))),
+            sym(Punctuation(Semicolon)),
+            fun(block),
+            sym(Punctuation(Semicolon))
+        ),
+        |(procedure, name, _, params, _, _, stmts, semicolon), _, _| Positioned::new(
+            Function {
+                name,
+                params,
+                result: None,
+                stmts,
+            },
+            procedure.from,
+            semicolon.to
+        )   
     ).parse(tokens)
         .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
-pub fn function(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Stmt>> {
-    (
-        sym(Keyword(Function)),
-        fun(ident),
-        sym(Punctuation(Parenthesis(Open))),
-        fun(parameters),
-        sym(Punctuation(Parenthesis(Close))),
-        sym(Punctuation(Colon)),
-        fun(ty),
-        sym(Punctuation(Semicolon)),
-        fun(block),
-        sym(Punctuation(Semicolon))
+pub fn function(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Function>> {
+    map(
+        (
+            sym(Keyword(Function)),
+            fun(ident),
+            sym(Punctuation(Parenthesis(Open))),
+            fun(parameters),
+            sym(Punctuation(Parenthesis(Close))),
+            sym(Punctuation(Colon)),
+            fun(ty),
+            sym(Punctuation(Semicolon)),
+            fun(block),
+            sym(Punctuation(Semicolon))
+        ),
+        |(function, name, _, params, _, _, result, _, stmts, semicolon), _, _| Positioned::new(
+            Function {
+                name,
+                params,
+                result: Some(result),
+                stmts,
+            },
+            function.from,
+            semicolon.to
+        ) 
     ).parse(tokens)
         .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
-pub fn parameters(tokens: &[Positioned<Token>]) -> ParseResult<Vec<Positioned<Stmt>>> {
-    list0((
-        opt(sym(Keyword(Var))),
-        fun(ident),
-        sym(Punctuation(Colon)),
-        fun(ty),
-    ), Punctuation(Comma)).parse(tokens)
+pub fn parameters(tokens: &[Positioned<Token>]) -> ParseResult<Vec<Positioned<Parameter>>> {
+    list0(
+        map(
+            (
+                opt(sym(Keyword(Var))),
+                fun(ident),
+                sym(Punctuation(Colon)),
+                fun(ty),
+            ),
+            |(var, name, _, ty), _, _| Positioned::new(
+                Parameter {
+                    by: var.map(|_| AccessBy::Reference).unwrap_or(AccessBy::Value),
+                    name,
+                    ty
+                },
+                var.map(|v| v.from).unwrap_or(name.from),
+                ty.to
+            )
+        ),
+        sym(Punctuation(Comma))
+    ).parse(tokens)
+        .map_err(|(e, r)| (FromErr::from(e), r))
+}
+
+pub fn block(tokens: &[Positioned<Token>]) -> ParseResult<Vec<Positioned<Stmt>>> {
+    (
+        sym(Keyword(Begin)),
+        list0(
+            fun(stmt),
+            sym(Punctuation(Semicolon))
+        ),
+        sym(Keyword(End)),
+    ).parse(tokens)
         .map_err(|(e, r)| (FromErr::from(e), r))
 }
 

@@ -53,7 +53,7 @@ fn many1_parses_many() {
 fn list0_parses_none() {
     assert_eq!(
         Ok((vec![], "c,a", 0)),
-        list0(tag("a"), ",").parse("c,a")
+        list0(tag("a"), tag(",")).parse("c,a")
     );
 }
 
@@ -61,7 +61,7 @@ fn list0_parses_none() {
 fn list0_parses_one() {
     assert_eq!(
         Ok((vec!["a"], "c", 2)),
-        list0(tag("a"), ",").parse("a,c")
+        list0(tag("a"), tag(",")).parse("a,c")
     );
 }
 
@@ -69,7 +69,7 @@ fn list0_parses_one() {
 fn list0_parses_many() {
     assert_eq!(
         Ok((vec!["a", "a", "a"], "c", 6)),
-        list0(tag("a"), ",").parse("a,a,a,c")
+        list0(tag("a"), tag(",")).parse("a,a,a,c")
     );
 }
 

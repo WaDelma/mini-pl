@@ -110,4 +110,4 @@ It's used as an error for tuple of parsers.
     };
 );
 
-error_enums!(Err1::V1, Err2::V2, Err3::V3, Err4::V4, Err5::V5, Err6::V6, Err7::V7, Err8::V8);
+error_enums!(Err1::V1, Err2::V2, Err3::V3, Err4::V4, Err5::V5, Err6::V6, Err7::V7, Err8::V8, Err9::V9, Err10::V10);
