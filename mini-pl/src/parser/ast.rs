@@ -12,27 +12,53 @@ use Ident;
 use lexer::tokens::{Token, Operator, Keyword, Side};
 use util::Positioned;
 
+/// The whole program
+#[derive(Clone, Debug, PartialEq)]
 pub struct Program {
-    name: Positioned<Ident>,
-    functions: Vec<Positioned<Function>>,
-    stmts: Vec<Positioned<Stmt>>,
+    /// Name of the program
+    pub name: Positioned<Ident>,
+    /// List of defined functions
+    pub functions: Vec<Positioned<Function>>,
+    /// Statements run when starting the program
+    pub stmts: Positioned<Stmt>,
 }
 
+/// A single function
+#[derive(Clone, Debug, PartialEq)]
 pub struct Function {
-    name: Positioned<Ident>,
-    params: Vec<Positioned<Parameter>>,
-    result: Option<Positioned<Type>>,
-    stmts: Vec<Positioned<Stmt>>,
+    /// Name of the function
+    pub name: Positioned<Ident>,
+    /// List of function parameters
+    pub params: Vec<Positioned<Parameter>>,
+    /// Result type of the function
+    /// 
+    /// If None then the function was a procedure
+    pub result: Option<Positioned<Type>>,
+    /// Body of the function
+    pub stmts: Positioned<Stmt>,
 }
 
+/// A single parameter
+#[derive(Clone, Debug, PartialEq)]
 pub struct Parameter {
-    by: AccessBy,
-    name: Positioned<Ident>,
-    ty: Positioned<Type>,
+    /// Way that the parameter is refered to
+    pub by: AccessBy,
+    /// Name of the parameter
+    pub name: Positioned<Ident>,
+    /// Type of the parameter
+    pub ty: Positioned<Type>,
 }
 
+/// Way of refering function parameters
+#[derive(Clone, Debug, PartialEq)]
 pub enum AccessBy {
+    /// The parameter is accessed by value
+    /// 
+    /// This means that a deep copy is made of it.
     Value,
+    /// The parameter is accessed by a reference
+    /// 
+    /// This means parameter will be just a pointer to the actual value.
     Reference,
 }
 
@@ -59,15 +85,16 @@ pub enum Stmt {
         /// Expression which value will be assigned to the variable
         value: Positioned<Expr>,
     },
-    /// For-loop
+    /// While-loop
     Loop {
-        /// Name of the loop control variable
-        ident: Ident,
-        /// Expression that determines the starting point of range iteration
-        from: Positioned<Expr>,
-        /// Expression that determines the ending point of range iteration
-        to: Positioned<Expr>,
-        /// The body of the for-loop
+        /// Condition that determines if the loop body is executed
+        cond: Positioned<Expr>,
+        /// Loop body
+        body: Box<Positioned<Stmt>>,
+    },
+    /// Scoped block
+    Block {
+        /// Statements of the block
         stmts: Vec<Positioned<Stmt>>,
     },
     /// Read from stdin
@@ -350,20 +377,17 @@ impl Type {
     pub fn from_token(tok: &Token) -> Self {
         use self::Keyword::*;
         use self::TypeError::*;
-        if let Token::Keyword(ref tok) = *tok {
-            match *tok {
-                Int => Type::Integer,
-                Bool => Type::Bool,
-                Str => Type::Str,
-                ref k => Type::TypeErr(KeywordNotType(k.clone())),
+        if let Token::Identifier(ref tok) = *tok {
+            match &**tok {
+                "integer" => Type::Integer,
+                "Boolean" => Type::Bool,
+                "string" => Type::Str,
+                // TODO: Add reals
+                _ => Type::TypeErr(UnknownType(tok.clone())),
             }
         } else {
-            match *tok {
-                Token::Identifier(ref i) => Type::TypeErr(UnknownType(i.clone())),
-                _ => Type::TypeErr(InvalidToken(tok.clone())),
-            }
+            Type::TypeErr(InvalidToken(tok.clone()))
         }
-        
     }
 }
 

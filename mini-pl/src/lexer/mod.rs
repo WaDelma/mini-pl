@@ -90,21 +90,12 @@ pub fn tokenize(s: &str) -> LexResult<Vec<Positioned<Token>>> {
         .map_err(|(_err, pos)| (LexError::Unknown, pos)) // TODO: Better error
 }
 
-/// Parses single and multiline comments
-pub fn comment(input: &str) -> LexResult<()> {
-    (alt()
-        | fun(multiline_comment)
-        | map((tag("//"), take_while0(|c| c != '\n')), |_, _, _| ())
-    ).parse(input)
-        .map_err(|(_err, pos)| (LexError::Unknown, pos)) // TODO: Better error
-}
-
 /// Parses multiline comments
-pub fn multiline_comment(input: &str) -> LexResult<()> {
+pub fn comment(input: &str) -> LexResult<()> {
     map((
-        tag("/*"),
+        tag("{*"),
         opt(fun(nested_comment)),
-        take_until(tag("*/"))
+        take_until(tag("*}"))
     ), |_, _, _| ())
         .parse(input)
         .map_err(|(_err, pos)| (LexError::Unknown, pos)) // TODO: Better error
@@ -115,15 +106,15 @@ pub fn nested_comment(input: &str) -> LexResult<()> {
     map((
         satisfying(
             take_until(alt()
-                // If we find */ we are at the end of the multiline comment
-                | map(tag("*/"), |_, _, _| false)
-                // If we find /* there is nested multiline comment
-                | map(tag("/*"), |_, _, _| true)),
+                // If we find *} we are at the end of the multiline comment
+                | map(tag("*}"), |_, _, _| false)
+                // If we find {* there is nested multiline comment
+                | map(tag("{*"), |_, _, _| true)),
             |&(_, c)| c
         ),
         // Handle nested multiline comments within multiline comments
         opt(fun(nested_comment)),
-        take_until(tag("*/")),
+        take_until(tag("*}")),
         // Handle adjanced multiline comments withing multiline comments
         opt(fun(nested_comment))
     ), |_, _, _| ())
@@ -171,7 +162,7 @@ pub fn keyword(input: &str) -> LexResult<Token> {
         | eat(tag("and"), Token::Operator(And))
         | eat(tag("not"), Token::Operator(Not))
         | eat(tag("or"), Token::Operator(Or))
-        | map( alt()
+        | map(alt()
             | eat(tag("program"), Program)
             | eat(tag("procedure"), Procedure)
             | eat(tag("function"), Function)

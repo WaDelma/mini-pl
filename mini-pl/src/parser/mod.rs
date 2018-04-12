@@ -60,7 +60,7 @@ pub fn parse(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Program>> {
             dot.to
         )
     ).parse(tokens)
-        .map_err(|(e, r)| (FromErr::from(e), r))
+        .map_err(|(e, r)| (Unknown, r))
     // many1(
     //     map(
     //         flat_map_err(
@@ -80,6 +80,7 @@ pub fn parse(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Program>> {
     //     .map_err(|(e, r)| (FromErr::from(e), r))
 }
 
+/// Parses single procedure
 pub fn procedure(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Function>> {
     map(
         (
@@ -103,9 +104,10 @@ pub fn procedure(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Functio
             semicolon.to
         )   
     ).parse(tokens)
-        .map_err(|(e, r)| (FromErr::from(e), r))
+        .map_err(|(e, r)| (Unknown, r))
 }
 
+/// Parses single function
 pub fn function(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Function>> {
     map(
         (
@@ -131,23 +133,24 @@ pub fn function(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Function
             semicolon.to
         ) 
     ).parse(tokens)
-        .map_err(|(e, r)| (FromErr::from(e), r))
+        .map_err(|(e, r)| (Unknown, r))
 }
 
+/// Parses parameter list
 pub fn parameters(tokens: &[Positioned<Token>]) -> ParseResult<Vec<Positioned<Parameter>>> {
     list0(
         map(
             (
-                opt(sym(Keyword(Var))),
+                opt::<_, &[Positioned<Token>]>(sym(Keyword(Var))),
                 fun(ident),
                 sym(Punctuation(Colon)),
                 fun(ty),
             ),
             |(var, name, _, ty), _, _| Positioned::new(
                 Parameter {
-                    by: var.map(|_| AccessBy::Reference).unwrap_or(AccessBy::Value),
-                    name,
-                    ty
+                    by: var.as_ref().map(|_| AccessBy::Reference).unwrap_or(AccessBy::Value),
+                    name: name.clone(),
+                    ty: ty.clone()
                 },
                 var.map(|v| v.from).unwrap_or(name.from),
                 ty.to
@@ -155,19 +158,29 @@ pub fn parameters(tokens: &[Positioned<Token>]) -> ParseResult<Vec<Positioned<Pa
         ),
         sym(Punctuation(Comma))
     ).parse(tokens)
-        .map_err(|(e, r)| (FromErr::from(e), r))
+        .map_err(|(e, r)| (Unknown, r))
 }
 
-pub fn block(tokens: &[Positioned<Token>]) -> ParseResult<Vec<Positioned<Stmt>>> {
-    (
-        sym(Keyword(Begin)),
-        list0(
-            fun(stmt),
-            sym(Punctuation(Semicolon))
+/// Parses block of statements
+pub fn block(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Stmt>> {
+    map(
+        (
+            sym(Keyword(Begin)),
+            list0(
+                fun(stmt),
+                sym(Punctuation(Semicolon))
+            ),
+            sym(Keyword(End)),
         ),
-        sym(Keyword(End)),
+        |(begin, stmts, end), _, _| Positioned::new(
+            Stmt::Block {
+                stmts
+            },
+            begin.from,
+            begin.to
+        )
     ).parse(tokens)
-        .map_err(|(e, r)| (FromErr::from(e), r))
+        .map_err(|(e, r)| (Unknown, r))
 }
 
 /// Handles missing semicolon at the end of statement
@@ -202,7 +215,7 @@ pub fn stmt(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Stmt>> {
     (alt()
         | fun(declaration)
         | fun(assigment)
-        | fun(for_loop)
+        | fun(while_loop)
         | fun(read)
         | fun(print)
         | fun(assert)
@@ -332,36 +345,23 @@ pub fn handle_missing_assignment_operator_error(
     }
 }
 
-/// Parses single for-loop
-pub fn for_loop(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Stmt>> {
+/// Parses single while-loop
+pub fn while_loop(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Stmt>> {
     map(
         (
-            (
-                sym(Keyword(For)),
-                fun(ident),
-                sym(Keyword(In))
-            ),
+            sym(Keyword(While)),
             fun(expr),
-            delimited(
-                sym(Operator(Range)),
-                fun(expr),
-                sym(Keyword(Do))
-            ),
-            (
-                fun(parse),
-                (sym(Keyword(End)), sym(Keyword(For)))
-            )
+            sym(Keyword(Do)),
+            fun(stmt)
         ),
-        |((for_keyword, ident, _), range_from, range_to, (stmts, (_, end))), _, _| {
+        |(while_keyword, cond, do_keyword, body), _, _| {
             Positioned::new(
                 Stmt::Loop {
-                    ident: ident.data,
-                    from: range_from,
-                    to: range_to,
-                    stmts
+                    cond,
+                    body: Box::new(body.clone()),
                 },
-                for_keyword.from,
-                end.to
+                while_keyword.from,
+                body.to
             )
         }
     ).parse(tokens)
@@ -372,7 +372,10 @@ pub fn for_loop(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Stmt>> {
 pub fn read(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Stmt>> {
     map(
         (
-            sym(Keyword(Read)),
+            satisfying(
+                fun(ident),
+                |c| c.data == "read"
+            ),
             fun(ident)
         ),
         |(read_keyword, ident), _, _| Positioned::new(
@@ -396,7 +399,10 @@ pub fn read(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Stmt>> {
 pub fn print(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Stmt>> {
     map(
         (
-            sym(Keyword(Print)),
+            satisfying(
+                fun(ident),
+                |c| c.data == "writeln"
+            ),
             fun(expr)
         ),
         |(print, expr), _, _| {
