@@ -182,20 +182,6 @@ fn string_literal_with_octal_escape_lexes() {
 }
 
 #[test]
-fn line_comment_lexes() {
-    assert_eq!(
-        Ok((
-           vec![
-                tok(Identifier(String::from("x")), (0, 0), (0, 1)),
-            ],
-            "",
-            4
-        )),
-        tokenize("x//y")
-    );
-}
-
-#[test]
 fn multiline_comment_simple_lexes() {
     assert_eq!(
         Ok((
@@ -205,7 +191,7 @@ fn multiline_comment_simple_lexes() {
             "",
             6
         )),
-        tokenize("x/*y*/")
+        tokenize("x{*y*}")
     );
 }
 
@@ -219,7 +205,7 @@ fn multiline_comment_star_lexes() {
             "",
             7
         )),
-        tokenize("x/**y*/")
+        tokenize("x{**y*}")
     );
 }
 
@@ -233,7 +219,7 @@ fn multiline_comment_nested_lexes() {
             "",
             10
         )),
-        tokenize("x/*/*y*/*/")
+        tokenize("x{*{*y*}*}")
     );
 }
 
@@ -247,7 +233,7 @@ fn multiline_comment_complex_nesting_lexes() {
             "",
             16
         )),
-        tokenize("x/*/*y*/z/*w*/*/")
+        tokenize("x{*{*y*}z{*w*}*}")
     );
 }
 
@@ -305,22 +291,6 @@ fn keyword_starting_identifier_lexes() {
     );
 }
 
-
-#[ignore] // TODO: To fix this, the lexer needs to be switched to use grapheme clusters
-#[test]
-fn unicode_identifier_lexes() {
-    assert_eq!(
-        Ok((
-           vec![
-                tok(Identifier(String::from("föö")), (0, 0), (0, 3)),
-            ],
-            "",
-            3
-        )),
-        tokenize("föö")
-    );
-}
-
 #[test]
 fn operators_lex() {
     assert_eq!(
@@ -344,23 +314,6 @@ fn operators_lex() {
             33
         )),
         tokenize("+ - * / and or not = < <= >= > <>")
-    );
-}
-
-#[test]
-#[ignore] // TODO: To fix this, the lexer needs to be switched to use grapheme clusters
-fn punctuation_lexes() {
-    assert_eq!(
-        Ok((
-           vec![
-                tok(Punctuation(Parenthesis(Open)), (0, 0), (0, 1)),
-                tok(Punctuation(Semicolon), (0, 1), (0, 2)),
-                tok(Punctuation(Parenthesis(Close)), (0, 2), (0, 3)),
-            ],
-            "§",
-            3
-        )),
-        tokenize("(;)§")
     );
 }
 

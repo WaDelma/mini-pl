@@ -6,28 +6,30 @@
 //! unhandled parsing errors will bubble out as `Err` variant of the result.
 //! 
 //! There shouldn't be any panics while parsing.
-use parser::ast::Program;
-use parser::ast::Parameter;
-use parser::ast::Function;
 use std::ops::Range;
+use std::iter::once;
 
 use parsco::common::{Err2, Err3};
 use parsco::*;
 
 use Ident;
 use util::{Positioned, Position};
-use lexer::tokens::Token;
-use lexer::tokens::Token::*;
-use lexer::tokens::Punctuation::*;
-use lexer::tokens::Side::*;
-use lexer::tokens::Keyword::*;
-use lexer::tokens::Operator::*;
-use lexer::tokens::Literal::*;
-use self::ast::{Stmt, Expr, Type, Opnd, BinOp, UnaOp, StmtError, AccessBy};
-use self::ast::OpndError::*;
-use self::ast::StmtError::*;
-use self::ast::TypeError::*;
-use self::ast::ExprError::*;
+use lexer::tokens::{
+    Token,
+    Token::*,
+    Punctuation::*,
+    Side::*,
+    Keyword::*,
+    Operator::*,
+    Literal::*
+};
+use self::ast::{
+    Parameter, Program, Function, Stmt, Expr, Type, Opnd, BinOp, UnaOp, StmtError, AccessBy,
+    OpndError::*,
+    StmtError::*,
+    TypeError::*,
+    ExprError::*
+};
 
 type ParseResult<'a, T> = ::parsco::Result<&'a [Positioned<Token>], T, StmtError>;
 
@@ -177,7 +179,7 @@ pub fn block(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Stmt>> {
                 stmts
             },
             begin.from,
-            begin.to
+            end.to
         )
     ).parse(tokens)
         .map_err(|(e, r)| (Unknown, r))
@@ -226,7 +228,14 @@ pub fn stmt(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Stmt>> {
 pub fn declaration(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Stmt>> {
     map(
         (
-            (sym(Keyword(Var)), fun(ident)),
+            sym(Keyword(Var)),
+            (
+                fun(ident),
+                many0(preceded(
+                    sym(Punctuation(Comma)),
+                    fun(ident)
+                ))
+            ),
             flat_map_err(
                 preceded(
                     // TODO: Handle missing colon
@@ -234,25 +243,15 @@ pub fn declaration(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Stmt>
                 ),
                 handle_type_annotation_error
             ),
-            // TODO: Handle missing assignment operator
-            opt(preceded(
-                sym(Operator(Assignment)), fun(expr)
-            ))
         ),
-        |((var, ident), ty, value), _, _| {
-            let to = value.clone()
-                .map(|expr| expr.to)
-                .unwrap_or(ty.to);
-            Positioned::new(
-                Stmt::Declaration {
-                    ident: ident.data,
-                    ty: ty.data,
-                    value
-                },
-                var.from,
-                to
-            )
-        }
+        |(var, (first_ident, rest_idents), ty), _, _| Positioned::new(
+            Stmt::Declaration {
+                idents: once(first_ident).chain(rest_idents.into_iter()).collect(),
+                ty: ty.data,
+            },
+            var.from,
+            ty.to
+        )
     ).parse(tokens)
         .map_err(|(_err, pos)| (StmtError::Unknown, pos)) // TODO: Better error
 }

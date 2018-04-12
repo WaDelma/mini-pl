@@ -69,14 +69,12 @@ pub enum AccessBy {
 pub enum Stmt {
     /// An error that can happen while parsing statements
     ErrStmt(StmtError),
-    /// Variable declaration
+    /// Declaration of variables
     Declaration {
-        /// Name of the variable
-        ident: Ident,
-        /// Type of the variable
+        /// Name of variables
+        idents: Vec<Positioned<Ident>>,
+        /// Type of the variables
         ty: Type,
-        /// Declaration may or might not assign expression as it's value
-        value: Option<Positioned<Expr>>,
     },
     /// Variable assignment
     Assignment {
