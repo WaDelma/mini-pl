@@ -6,6 +6,7 @@ use std::string::FromUtf8Error;
 use std::str::Utf8Error;
 
 use num_bigint::{BigInt, ParseBigIntError};
+use num_rational::BigRational;
 
 use parsco::{Sym, FromErr};
 
@@ -41,6 +42,10 @@ pub enum Token {
 /// Literal tokens
 #[derive(Clone, Debug, PartialEq)]
 pub enum Literal {
+    /// Real literal
+    /// 
+    /// Represented as rational number
+    Real(BigRational),
     /// Integer literal.
     /// 
     /// It's size wasn't defined in the specification, so this implementation uses big integer for it.

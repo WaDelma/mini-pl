@@ -9,6 +9,10 @@
 use std::char;
 use std::cell::Cell;
 
+use num_bigint::BigInt;
+use num_rational::BigRational;
+use num_traits::{FromPrimitive, One};
+
 use parsco::{Parser, FromErr, tag, many0, alt, fun, preceded, terminated, take_while0, take_while1, take_until, ws, fst, opt, map, eat, take, flat_map, satisfying, take_nm};
 use parsco::common::Void;
 
@@ -44,7 +48,7 @@ pub fn tokenize(s: &str) -> LexResult<Vec<Positioned<Token>>> {
                             | fun(operator)
                             | fun(punctuation)
                             | fun(keyword_or_identifier)
-                            | fun(integer)
+                            | fun(integer_or_real)
                             | fun(str_literal),
                         |token, _, place| (token, place)
                     ))
@@ -216,18 +220,50 @@ pub fn keyword_or_identifier(input: &str) -> LexResult<Token> {
         .map_err(|(_err, pos)| (LexError::Unknown, pos)) // TODO: Better error
 }
 
-/// Lexes integer literal
-pub fn integer(input: &str) -> LexResult<Token> {
-    flat_map(
-        take_while1(|c| c.is_alphanumeric()),
-        |number: &str, rest, pos| {
-            Ok::<_, (Void, _)>((
-                number.parse()
-                    .map(|i| Token::Literal(Integer(i)))
-                    .unwrap_or_else(|e| Token::Error(e.into())),
-                rest,
-                pos
+/// Lexes integer or real literal
+pub fn integer_or_real(input: &str) -> LexResult<Token> {
+    map(
+        (
+            flat_map(
+                take_while1(|c| c.is_alphanumeric()),
+                |number: &str, rest, pos| {
+                    Ok::<_, (Void, _)>((
+                        number.parse()
+                            .map(|i| Token::Literal(Integer(i)))
+                            .unwrap_or_else(|e| Token::Error(e.into())),
+                        rest,
+                        pos
+                    ))
+                }
+            ),
+            opt((
+                tag("."),
+                take_while1(|c| c.is_numeric()),
+                opt((
+                    tag("e"),
+                    opt(tag("-")),
+                    take_while1(|c| c.is_numeric())
+                ))
             ))
+        ),
+        |(i, postfix), _, _| if let Some((_, fraction, exponent)) = postfix {
+            let v = if let Token::Literal(Integer(i)) = i {
+                i
+            } else {
+                unreachable!()
+            };
+            let mut denom = BigInt::one();
+            for _ in 0..fraction.len() {
+                denom = denom * 10;
+            }
+            let numer = (v * denom) + fraction.parse().unwrap();
+            if let Some((_, sign, exponent)) = exponent {
+                unimplemented!()
+            } else {
+                Token::Literal(Real(BigRational::new(numer, denom)))
+            }
+        } else {
+            i
         }
     )
     .parse(input)
