@@ -252,22 +252,35 @@ pub fn integer_or_real(input: &str) -> LexResult<Token> {
             } else {
                 unreachable!()
             };
-            let mut denom = BigInt::one();
-            for _ in 0..fraction.len() {
-                denom = denom * 10;
-            }
-            let numer = (v * denom) + fraction.parse().unwrap();
+            let mut denom = pow(10, fraction.len() - 1);
+            let fraction: BigInt = fraction.parse().unwrap();
+            let mut numer = (v * denom.clone()) + fraction;
+
             if let Some((_, sign, exponent)) = exponent {
-                unimplemented!()
-            } else {
-                Token::Literal(Real(BigRational::new(numer, denom)))
+                let exp: usize = exponent.parse().unwrap();
+                let power = pow(10, exp - 1);
+                if sign.is_some() {
+                    denom = power * denom;
+                } else {
+                    numer = power * numer;
+                }
             }
+            Token::Literal(Real(BigRational::new(numer, denom)))
         } else {
             i
         }
     )
     .parse(input)
-    .map_err(|(err, pos)| (FromErr::from(err), pos))
+    .map_err(|(_err, pos)| (LexError::Unknown, pos)) // TODO: Better error
+    // .map_err(|(err, pos)| (FromErr::from(err), pos))
+}
+
+fn pow<I: Into<BigInt>>(base: I, exponent: usize) -> BigInt {
+    let mut base = base.into();
+    for _ in 0..exponent {
+        base = base.clone() * base;
+    }
+    base
 }
 
 /// Lexes string literal
