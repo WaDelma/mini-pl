@@ -9,6 +9,7 @@ extern crate parsco;
 extern crate char_stream;
 extern crate num_traits;
 extern crate num_bigint;
+extern crate llvm_sys;
 
 // Replace standard library provided `assert_eq` macro with one that does pretty printing.
 // TODO: Remove this uggly hack
@@ -32,6 +33,7 @@ pub mod parser;
 // pub mod analyzer;
 // pub mod interpreter;
 pub mod util;
+pub mod codegen;
 
 /// New type for identifier, which is just a `String`.
 // TODO: Optimise memory usage by doing interning.
