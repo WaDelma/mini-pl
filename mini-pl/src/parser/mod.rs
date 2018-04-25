@@ -143,7 +143,7 @@ pub fn parameters(tokens: &[Positioned<Token>]) -> ParseResult<Vec<Positioned<Pa
     list0(
         map(
             (
-                opt::<_, &[Positioned<Token>]>(sym(Keyword(Var))),
+                opt::<_, &[Positioned<_>]>(sym(Keyword(Var))),
                 fun(ident),
                 sym(Punctuation(Colon)),
                 fun(ty),

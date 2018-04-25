@@ -198,79 +198,80 @@ fn complex_expr() {
     );
 }
 
-// #[test]
-// fn example1_parses() {
-//     assert_eq!(
-//         Ok((
-//             vec![
-//                 Positioned::new(
-//                     Declaration {
-//                         ident: String::from("X"),
-//                         ty: Integer,
-//                         value: Some(
-//                             Positioned::new(
-//                                 BinOper {
-//                                     lhs: Positioned::new(
-//                                         Int(4.into()),
-//                                         Position::new(1, 27),
-//                                         Position::new(1, 28)
-//                                     ),
-//                                     op: Addition,
-//                                     rhs: Positioned::new(
-//                                             Expr(Box::new(Positioned::new(
-//                                             BinOper {
-//                                                 lhs: Positioned::new(
-//                                                     Int(6.into()),
-//                                                     Position::new(1, 32),
-//                                                     Position::new(1, 33)
-//                                                 ),
-//                                                 op: Multiplication,
-//                                                 rhs: Positioned::new(
-//                                                     Int(2.into()),
-//                                                     Position::new(1, 36),
-//                                                     Position::new(1, 37)
-//                                                 ),
-//                                             },
-//                                             Position::new(1, 32),
-//                                             Position::new(1, 37)
-//                                         ))),
-//                                         Position::new(1, 31),
-//                                         Position::new(1, 38)
-//                                     ),
-//                                 },
-//                                 Position::new(1, 27),
-//                                 Position::new(1, 38)
-//                             )
-//                         )
-//                     },
-//                     Position::new(1, 12),
-//                     Position::new(1, 39)
-//                 ),
-//                 Positioned::new(
-//                     Print {
-//                         expr: Positioned::new(
-//                             Opnd(Positioned::new(
-//                                 Ident(String::from("X")),
-//                                 Position::new(2, 18),
-//                                 Position::new(2, 19)
-//                             )),
-//                             Position::new(2, 18),
-//                             Position::new(2, 19)
-//                         ),
-//                     },
-//                     Position::new(2, 12),
-//                     Position::new(2, 20)
-//                 )
-//             ],
-//             &[][..],
-//             16
-//         )),
-//         parse(&tokenize("
-//             var X : int := 4 + (6 * 2);
-//             print X;
-//         ").unwrap().0)
-//     );
-// }
+#[test]
+fn example1_parses() {
+    assert_eq!(
+        Ok((
+            vec![
+                Positioned::new(
+                    Declaration {
+                        ident: String::from("X"),
+                        ty: Integer,
+                        value: Some(
+                            Positioned::new(
+                                BinOper {
+                                    lhs: Positioned::new(
+                                        Int(4.into()),
+                                        Position::new(1, 27),
+                                        Position::new(1, 28)
+                                    ),
+                                    op: Addition,
+                                    rhs: Positioned::new(
+                                            Expr(Box::new(Positioned::new(
+                                            BinOper {
+                                                lhs: Positioned::new(
+                                                    Int(6.into()),
+                                                    Position::new(1, 32),
+                                                    Position::new(1, 33)
+                                                ),
+                                                op: Multiplication,
+                                                rhs: Positioned::new(
+                                                    Int(2.into()),
+                                                    Position::new(1, 36),
+                                                    Position::new(1, 37)
+                                                ),
+                                            },
+                                            Position::new(1, 32),
+                                            Position::new(1, 37)
+                                        ))),
+                                        Position::new(1, 31),
+                                        Position::new(1, 38)
+                                    ),
+                                },
+                                Position::new(1, 27),
+                                Position::new(1, 38)
+                            )
+                        )
+                    },
+                    Position::new(1, 12),
+                    Position::new(1, 39)
+                ),
+                Positioned::new(
+                    Print {
+                        expr: Positioned::new(
+                            Opnd(Positioned::new(
+                                Ident(String::from("X")),
+                                Position::new(2, 18),
+                                Position::new(2, 19)
+                            )),
+                            Position::new(2, 18),
+                            Position::new(2, 19)
+                        ),
+                    },
+                    Position::new(2, 12),
+                    Position::new(2, 20)
+                )
+            ],
+            &[][..],
+            16
+        )),
+        parse(&tokenize("
+            var X : integer;
+            X := 4 + (6 * 2);
+            print X;
+        ").unwrap().0)
+    );
+}
 
 // #[test]
 // fn example2_parses() {

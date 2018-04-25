@@ -364,6 +364,8 @@ pub enum Type {
     Integer,
     /// String type
     Str,
+    /// Real type
+    Real,
     /// Boolean type
     Bool
 }
@@ -380,7 +382,7 @@ impl Type {
                 "integer" => Type::Integer,
                 "Boolean" => Type::Bool,
                 "string" => Type::Str,
-                // TODO: Add reals
+                "real" => Type::Real,
                 _ => Type::TypeErr(UnknownType(tok.clone())),
             }
         } else {

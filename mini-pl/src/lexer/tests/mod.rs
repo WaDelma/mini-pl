@@ -1,3 +1,5 @@
+use num_rational::BigRational;
+
 use util::{Positioned, Position};
 use super::{Token, tokenize};
 use super::tokens::Token::*;
@@ -11,6 +13,48 @@ mod error;
 
 fn tok(token: Token, (from_line, from_column): (usize, usize), (to_line, to_column): (usize, usize)) -> Positioned<Token> {
     Positioned::new(token, Position::new(from_line, from_column), Position::new(to_line, to_column))
+}
+
+#[test]
+fn real_literal_with_exponent_lexes() {
+    assert_eq!(
+        Ok((
+            vec![
+                tok(Literal(Real(BigRational::new(42.into(), 1.into()))), (0, 0), (0, 6)),
+            ],
+            "",
+            6
+        )),
+        tokenize(r#"0.42e2"#)
+    );
+}
+
+#[test]
+fn real_literal_lexes() {
+    assert_eq!(
+        Ok((
+            vec![
+                tok(Literal(Real(BigRational::new(42.into(), 10.into()))), (0, 0), (0, 3)),
+            ],
+            "",
+            3
+        )),
+        tokenize(r#"4.2"#)
+    );
+}
+
+#[test]
+fn integer_literal_lexes() {
+    assert_eq!(
+        Ok((
+            vec![
+                tok(Literal(Integer(42.into())), (0, 0), (0, 2)),
+            ],
+            "",
+            2
+        )),
+        tokenize(r#"42"#)
+    );
 }
 
 #[test]
