@@ -34,8 +34,8 @@ use self::ast::{
 type ParseResult<'a, T> = ::parsco::Result<&'a [Positioned<Token>], T, StmtError>;
 
 pub mod ast;
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;
 
 /// Parses given list of tokens to ast
 pub fn parse(tokens: &[Positioned<Token>]) -> ParseResult<Positioned<Program>> {

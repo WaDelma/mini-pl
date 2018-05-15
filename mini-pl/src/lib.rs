@@ -10,7 +10,9 @@ extern crate char_stream;
 extern crate num_traits;
 extern crate num_bigint;
 extern crate num_rational;
-extern crate llvm_sys;
+// extern crate llvm_sys;
+// #[macro_use]
+// extern crate cstr;
 
 // Replace standard library provided `assert_eq` macro with one that does pretty printing.
 // TODO: Remove this uggly hack
